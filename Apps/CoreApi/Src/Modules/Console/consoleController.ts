@@ -1,12 +1,44 @@
 import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
+import { monitorEventLoopDelay } from 'node:perf_hooks';
 import { AuditLogService } from '../../Infrastructure/Audit/auditLogService';
 import { ConversationRepository } from '../../Infrastructure/Database/conversationRepository.js';
+
+const eventLoopLagHistogram = monitorEventLoopDelay({
+  resolution: 20,
+});
+eventLoopLagHistogram.enable();
 
 interface ConversationListResponse {
   conversationId: string;
   title: string;
   lastMessageAt: string | null;
   unreadCount: number;
+}
+
+@Controller()
+export class MetricsController {
+  @Get('metrics')
+  getMetrics() {
+    const memUsage = process.memoryUsage();
+    const cpuUsage = process.cpuUsage();
+    const eventLoopLagMsRaw = eventLoopLagHistogram.mean / 1_000_000;
+    const eventLoopLagMs = Number.isFinite(eventLoopLagMsRaw) ? Number(eventLoopLagMsRaw.toFixed(3)) : 0;
+
+    return {
+      cpu: {
+        system: cpuUsage.system,
+        user: cpuUsage.user,
+      },
+      memory: {
+        external: memUsage.external,
+        heapTotal: memUsage.heapTotal,
+        heapUsed: memUsage.heapUsed,
+        rss: memUsage.rss,
+      },
+      eventLoopLagMs,
+      uptime: process.uptime(),
+    };
+  }
 }
 
 @Controller('console')

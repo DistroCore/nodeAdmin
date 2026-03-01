@@ -152,39 +152,52 @@ export class ImGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGa
     )
     payload: SendMessageDto,
   ): Promise<{ accepted: true; duplicate: boolean; messageId: string; sequenceId: number }> {
-    const identity = this.requireIdentity(client);
-    const context = this.conversationService.getContext(client.id);
-    if (!context) {
-      throw new WsException('Please join a conversation before sending messages.');
-    }
+    const startTime = Date.now();
 
-    const appendResult = await this.messageService.appendMessage(context, payload, identity);
+    try {
+      const identity = this.requireIdentity(client);
+      const context = this.conversationService.getContext(client.id);
+      if (!context) {
+        throw new WsException('Please join a conversation before sending messages.');
+      }
 
-    const roomKey = this.conversationService.toRoomKey(context.tenantId, context.conversationId);
-    if (!appendResult.duplicate) {
-      this.server.to(roomKey).emit('messageReceived', appendResult.message);
-    }
+      const appendResult = await this.messageService.appendMessage(context, payload, identity);
+      const sequenceId = appendResult.message.sequenceId;
 
-    void this.auditLogService.record({
-      action: appendResult.duplicate ? 'im.send_message_duplicate' : 'im.send_message',
-      context: {
-        conversationId: context.conversationId,
+      if (!appendResult.duplicate) {
+        const roomKey = this.conversationService.toRoomKey(context.tenantId, context.conversationId);
+        client.to(roomKey).emit('messageReceived', appendResult.message);
+        client.emit('messageReceived', appendResult.message);
+      }
+
+      void this.auditLogService.record({
+        action: appendResult.duplicate ? 'im.send_message_duplicate' : 'im.send_message',
+        context: {
+          conversationId: context.conversationId,
+          messageId: payload.messageId,
+          sequenceId,
+        },
+        targetId: payload.messageId,
+        targetType: 'message',
+        tenantId: identity.tenantId,
+        traceId: payload.traceId,
+        userId: identity.userId,
+      });
+
+      return {
+        accepted: true,
         messageId: payload.messageId,
-        sequenceId: appendResult.message.sequenceId,
-      },
-      targetId: payload.messageId,
-      targetType: 'message',
-      tenantId: identity.tenantId,
-      traceId: payload.traceId,
-      userId: identity.userId,
-    });
-
-    return {
-      accepted: true,
-      messageId: payload.messageId,
-      duplicate: appendResult.duplicate,
-      sequenceId: appendResult.message.sequenceId,
-    };
+        duplicate: appendResult.duplicate,
+        sequenceId,
+      };
+    } finally {
+      const duration = Date.now() - startTime;
+      if (duration > 100) {
+        this.logger.warn(
+          `sendMessage slow path: ${duration}ms messageId=${payload.messageId} conversationId=${payload.conversationId}`,
+        );
+      }
+    }
   }
 
   @SubscribeMessage('typing')

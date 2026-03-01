@@ -49,6 +49,11 @@ export const messages = pgTable(
       table.userId,
       table.createdAt,
     ),
+    messagesConversationCreatedIdx: index('messages_conversation_created_idx').on(
+      table.tenantId,
+      table.conversationId,
+      table.createdAt,
+    ),
   }),
 );
 
@@ -70,6 +75,14 @@ export const outboxEvents = pgTable(
     outboxCreatedIdx: index('outbox_created_idx').on(table.createdAt),
     outboxDlqIdx: index('outbox_dlq_idx').on(table.dlqAt),
     outboxPublishIdx: index('outbox_publish_idx').on(table.publishedAt),
+    outboxEventsPublishedCreatedIdx: index('outbox_events_published_created_idx').on(
+      table.publishedAt,
+      table.createdAt,
+    ),
+    outboxEventsAggregateCreatedIdx: index('outbox_events_aggregate_created_idx').on(
+      table.aggregateId,
+      table.createdAt,
+    ),
     pk: primaryKey({ columns: [table.id], name: 'outbox_events_pk' }),
   }),
 );

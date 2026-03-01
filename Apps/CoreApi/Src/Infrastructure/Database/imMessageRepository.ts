@@ -38,7 +38,9 @@ export class ImMessageRepository implements OnModuleDestroy {
 
     this.pool = new Pool({
       connectionString: this.databaseUrl,
-      max: 20,
+      max: 100,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
     });
   }
 
@@ -76,48 +78,24 @@ export class ImMessageRepository implements OnModuleDestroy {
         [message.tenantId, message.conversationId],
       );
 
-      const duplicateResult = await client.query<MessageRow>(
-        `
-          SELECT content,
-                 conversation_id,
-                 created_at,
-                 message_id,
-                 message_type,
-                 metadata_json,
-                 sequence_id,
-                 tenant_id,
-                 trace_id,
-                 user_id
-          FROM messages
-          WHERE tenant_id = $1
-            AND message_id = $2
-          LIMIT 1;
-        `,
-        [message.tenantId, message.messageId],
-      );
-
-      if (duplicateResult.rowCount && duplicateResult.rowCount > 0) {
-        return {
-          duplicate: true,
-          message: this.toStoredMessage(duplicateResult.rows[0]),
-        };
-      }
-
-      const sequenceResult = await client.query<{ next_sequence: number }>(
-        `
-          SELECT COALESCE(MAX(sequence_id), 0) + 1 AS next_sequence
-          FROM messages
-          WHERE tenant_id = $1
-            AND conversation_id = $2;
-        `,
-        [message.tenantId, message.conversationId],
-      );
-      const nextSequence = Number(sequenceResult.rows[0]?.next_sequence ?? 1);
       const metadataJson = message.metadata ? JSON.stringify(message.metadata) : null;
       const messageType = message.messageType ?? 'text';
 
       const insertResult = await client.query<MessageRow>(
         `
+          WITH next_sequence AS (
+            SELECT COALESCE(
+              (
+                SELECT sequence_id
+                FROM messages
+                WHERE tenant_id = $1
+                  AND conversation_id = $2
+                ORDER BY sequence_id DESC
+                LIMIT 1
+              ),
+              0
+            ) + 1 AS value
+          )
           INSERT INTO messages (
             tenant_id,
             conversation_id,
@@ -130,7 +108,18 @@ export class ImMessageRepository implements OnModuleDestroy {
             metadata_json,
             created_at
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          SELECT $1,
+                 $2,
+                 $3,
+                 next_sequence.value,
+                 $4,
+                 $5,
+                 $6,
+                 $7,
+                 $8,
+                 $9
+          FROM next_sequence
+          ON CONFLICT (tenant_id, message_id) DO NOTHING
           RETURNING content,
                     conversation_id,
                     created_at,
@@ -146,7 +135,6 @@ export class ImMessageRepository implements OnModuleDestroy {
           message.tenantId,
           message.conversationId,
           message.messageId,
-          nextSequence,
           message.userId,
           message.traceId,
           message.content,
@@ -155,6 +143,37 @@ export class ImMessageRepository implements OnModuleDestroy {
           message.createdAt,
         ],
       );
+
+      if (!insertResult.rowCount || insertResult.rowCount === 0) {
+        const duplicateResult = await client.query<MessageRow>(
+          `
+            SELECT content,
+                   conversation_id,
+                   created_at,
+                   message_id,
+                   message_type,
+                   metadata_json,
+                   sequence_id,
+                   tenant_id,
+                   trace_id,
+                   user_id
+            FROM messages
+            WHERE tenant_id = $1
+              AND message_id = $2
+            LIMIT 1;
+          `,
+          [message.tenantId, message.messageId],
+        );
+
+        if (!duplicateResult.rowCount || duplicateResult.rowCount === 0) {
+          throw new Error(`Message insert conflict without existing row: ${message.messageId}`);
+        }
+
+        return {
+          duplicate: true,
+          message: this.toStoredMessage(duplicateResult.rows[0]),
+        };
+      }
 
       const storedMessage = this.toStoredMessage(insertResult.rows[0]);
 
