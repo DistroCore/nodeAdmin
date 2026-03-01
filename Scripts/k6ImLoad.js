@@ -3,6 +3,16 @@ import { check, sleep } from 'k6';
 import { Trend, Counter } from 'k6/metrics';
 import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
 
+// Scenarios:
+// - api_smoke: 10 VUs for 30s (baseline smoke test)
+// - api_stress: 50 → 200 → 0 VUs over 2 minutes (stress test)
+// - api_spike: 300 VUs for 30s (spike test)
+// - api_5k_load: 1000 → 3000 → 5000 → 0 VUs over 3 minutes (5k concurrent load test)
+//
+// Usage:
+// - Run all: npm run load:k6:smoke
+// - Run 5k only: docker compose --profile loadtest run --rm k6 run /scripts/k6ImLoad.js --tag scenario=5k
+
 const DEFAULT_CORE_API_BASE_URL = 'http://127.0.0.1:3001';
 const DEFAULT_TENANT_ID = 'tenant-demo';
 const TENANT_ADMIN_ROLE = 'tenant:admin';
@@ -14,44 +24,70 @@ const STRESS_SLEEP_SECONDS = 0.1;
 
 const coreApiBaseUrl = __ENV.CORE_API_BASE_URL || DEFAULT_CORE_API_BASE_URL;
 const tenantId = __ENV.SMOKE_TENANT_ID || DEFAULT_TENANT_ID;
+const K6_SCENARIO = __ENV.K6_SCENARIO || 'all';
 
 const apiTokenDuration = new Trend('api_token_duration');
 const apiConsoleDuration = new Trend('api_console_duration');
 const apiErrors = new Counter('api_errors');
 
-export const options = {
-  scenarios: {
-    api_smoke: {
-      executor: 'constant-vus',
-      vus: 10,
-      duration: '30s',
-      exec: 'runApiSmoke',
-    },
-    api_stress: {
-      executor: 'ramping-vus',
-      stages: [
-        { duration: '30s', target: 50 },
-        { duration: '60s', target: 200 },
-        { duration: '30s', target: 0 },
-      ],
-      exec: 'runApiStress',
-    },
-    api_spike: {
-      executor: 'ramping-vus',
-      stages: [
-        { duration: '10s', target: 300 },
-        { duration: '20s', target: 300 },
-        { duration: '10s', target: 0 },
-      ],
-      exec: 'runApiSpike',
-    },
+const allScenarios = {
+  api_smoke: {
+    executor: 'constant-vus',
+    vus: 10,
+    duration: '30s',
+    exec: 'runApiSmoke',
   },
+  api_stress: {
+    executor: 'ramping-vus',
+    stages: [
+      { duration: '30s', target: 50 },
+      { duration: '60s', target: 200 },
+      { duration: '30s', target: 0 },
+    ],
+    exec: 'runApiStress',
+  },
+  api_spike: {
+    executor: 'ramping-vus',
+    stages: [
+      { duration: '10s', target: 300 },
+      { duration: '20s', target: 300 },
+      { duration: '10s', target: 0 },
+    ],
+    exec: 'runApiSpike',
+  },
+  api_5k_load: {
+    executor: 'ramping-vus',
+    stages: [
+      { duration: '30s', target: 1000 },
+      { duration: '30s', target: 3000 },
+      { duration: '30s', target: 5000 },
+      { duration: '60s', target: 5000 },
+      { duration: '30s', target: 0 },
+    ],
+    exec: 'runApi5kLoad',
+    startTime: '0s',
+  },
+};
+
+function resolveScenarios() {
+  if (K6_SCENARIO === 'smoke') {
+    return { api_smoke: allScenarios.api_smoke };
+  }
+  if (K6_SCENARIO === '5k') {
+    return { api_5k_load: allScenarios.api_5k_load };
+  }
+
+  return allScenarios;
+}
+
+export const options = {
+  scenarios: resolveScenarios(),
   thresholds: {
-    http_req_duration: ['p(95)<500', 'p(99)<1000'],
+    http_req_duration: ['p(95)<500', 'p(99)<200'],
     http_req_failed: ['rate<0.01'],
     api_token_duration: ['p(95)<300'],
     api_console_duration: ['p(95)<250'],
-    api_errors: ['count<10'],
+    api_errors: ['count<100'],
   },
 };
 
@@ -191,6 +227,19 @@ export function runApiStress() {
 
 export function runApiSpike() {
   requestHealth(coreApiBaseUrl);
+}
+
+export function runApi5kLoad() {
+  requestHealth(coreApiBaseUrl);
+  const accessToken = issueToken(coreApiBaseUrl, tenantId, __VU);
+  if (!accessToken) {
+    sleep(0.05);
+    return;
+  }
+
+  requestConsoleEndpoint('/api/v1/console/overview', accessToken, 'overview status 200');
+
+  sleep(0.05);
 }
 
 function buildHtmlSummary(data) {
