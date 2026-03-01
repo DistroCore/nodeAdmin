@@ -107,3 +107,4 @@ Docs/              ← 项目文档
 - 路线图：`Docs/Delivery/roadmapPlan.md`
 - 头脑风暴结果：`Docs/Delivery/brainstormingResults.md`
 - 决策日志：`Docs/Governance/decisionLog.md`
+- [CLAUDE.md](CLAUDE.md)

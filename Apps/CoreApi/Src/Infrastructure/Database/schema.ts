@@ -44,6 +44,11 @@ export const messages = pgTable(
       table.sequenceId,
     ),
     messagesTenantMessageIdUnique: uniqueIndex('messages_tenant_message_id_uniq').on(table.tenantId, table.messageId),
+    messagesTenantUserCreatedIdx: index('messages_tenant_user_created_idx').on(
+      table.tenantId,
+      table.userId,
+      table.createdAt,
+    ),
   }),
 );
 

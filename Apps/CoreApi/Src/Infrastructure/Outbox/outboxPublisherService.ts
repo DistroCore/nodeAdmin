@@ -4,6 +4,7 @@ import { Pool } from 'pg';
 import { runtimeConfig } from '../../App/runtimeConfig';
 
 interface OutboxRow {
+  aggregate_id: string;
   created_at: Date;
   event_type: string;
   id: string;
@@ -90,7 +91,8 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
       await client.query('BEGIN');
       const picked = await client.query<OutboxRow>(
         `
-          SELECT created_at,
+          SELECT aggregate_id,
+                 created_at,
                  event_type,
                  id,
                  payload,
@@ -126,7 +128,9 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
                   outboxId: row.id,
                   tenantId: row.tenant_id,
                 },
-                key: row.tenant_id,
+                // Partition key = aggregate_id (conversationId) to guarantee
+                // per-conversation ordering within a Kafka partition.
+                key: row.aggregate_id,
                 value: payload,
               },
             ],
@@ -158,7 +162,9 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
                       sourceTopic: runtimeConfig.kafka.topic,
                       tenantId: row.tenant_id,
                     },
-                    key: row.tenant_id,
+                    // Partition key = aggregate_id (conversationId) to guarantee
+                    // per-conversation ordering within a Kafka partition.
+                    key: row.aggregate_id,
                     value: payload,
                   },
                 ],

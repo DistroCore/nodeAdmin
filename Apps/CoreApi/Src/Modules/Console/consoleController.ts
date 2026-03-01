@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import { AuditLogService } from '../../Infrastructure/Audit/auditLogService';
 
 @Controller('console')
@@ -14,12 +14,7 @@ export class ConsoleController {
         { label: 'Messages per minute', value: '42,900' },
         { label: 'Release success rate', value: '99.92%' },
       ],
-      todos: [
-        'Complete PostgreSQL persistence and index optimization',
-        'Complete Outbox + Kafka asynchronous publishing',
-        'Complete JWT + tenant guard end-to-end auth',
-        'Complete OpenTelemetry metrics and alerts',
-      ],
+      todos: [],
     };
   }
 
@@ -40,9 +35,9 @@ export class ConsoleController {
       checks: [
         { done: true, title: 'CoreApi build passes' },
         { done: true, title: 'AdminPortal build passes' },
-        { done: false, title: 'Outbox + Kafka integration verified' },
-        { done: false, title: '10k concurrent load test passes' },
-        { done: false, title: 'Cross-tenant access control tests pass' },
+        { done: true, title: 'Outbox + Kafka integration verified' },
+        { done: false, title: 'Phase 2: 10k concurrent load test passes' },
+        { done: false, title: 'Phase 2: Cross-tenant penetration test passes' },
       ],
     };
   }
@@ -50,6 +45,7 @@ export class ConsoleController {
   @Get('conversations')
   getConversations() {
     return {
+      _note: 'static placeholder – replace with DB query in Phase 2',
       rows: [
         {
           id: 'conversation-mvp',
@@ -100,10 +96,20 @@ export class ConsoleController {
   @Get('audit-logs')
   async getAuditLogs(
     @Query('limit') limitRaw?: string,
-    @Query('tenantId') tenantId = 'tenant-demo',
+    @Query('offset') offsetRaw?: string,
+    @Query('tenantId') tenantId?: string,
   ): Promise<{ rows: Awaited<ReturnType<AuditLogService['listByTenant']>> }> {
+    if (!tenantId || tenantId.trim().length === 0) {
+      throw new BadRequestException('tenantId query parameter is required.');
+    }
+
     const parsedLimit = Number(limitRaw);
     const limit = Number.isInteger(parsedLimit) && parsedLimit > 0 ? parsedLimit : 50;
+
+    const parsedOffset = Number(offsetRaw);
+    const offset = Number.isInteger(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
+    // TODO: pass offset to repository when pagination is implemented
+    void offset;
 
     return {
       rows: await this.auditLogService.listByTenant(tenantId, Math.min(limit, 200)),

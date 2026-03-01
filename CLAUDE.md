@@ -1,0 +1,142 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+**nodeAdmin** is an enterprise-grade, multi-tenant SaaS middleware platform with an IM (Instant Messaging) module. It is organized as an npm workspace monorepo.
+
+## Commands
+
+All commands are run from the repo root unless noted.
+
+### Development
+
+```bash
+npm run dev:api          # Start CoreApi (NestJS, port 3001) with HMR via ts-node-dev
+npm run dev:web          # Start AdminPortal (Vite dev server, port 5173)
+```
+
+### Build
+
+```bash
+npm run build            # Build both CoreApi (tsc → CommonJS) and AdminPortal (tsc + Vite → ESM)
+```
+
+### Testing & Quality
+
+```bash
+npm run test:core-api    # Run backend unit tests with Vitest
+npm run test:e2e:web     # Run Playwright E2E tests for AdminPortal
+npm run lint             # ESLint on all Apps/**/*.{ts,tsx} — zero warnings allowed
+npm run format:check     # Prettier format check
+```
+
+### Infrastructure
+
+```bash
+npm run infra:up                  # Start core services (PostgreSQL on 55432, PgBouncer on 6432, Redis on 56379)
+npm run infra:up:kafka            # Add Kafka + Zookeeper
+npm run infra:up:monitoring       # Add Prometheus (9091), Grafana (3003), AlertManager (9093)
+npm run infra:up:tls              # Generate dev TLS cert + start Nginx TLS proxy (port 3443)
+npm run infra:down                # Stop all services
+```
+
+### Smoke & Load Tests
+
+```bash
+npm run smoke:im                  # IM end-to-end flow smoke test
+npm run smoke:outbox              # Kafka outbox smoke test
+npm run smoke:tls                 # TLS termination smoke test
+npm run smoke:pgbouncer           # PgBouncer connection pooling check
+npm run load:k6                   # K6 load test (default scenario)
+npm run load:k6:smoke             # K6 smoke scenario
+npm run load:k6:spike             # K6 spike scenario
+npm run load:k6:stress            # K6 stress scenario
+npm run m1:acceptance:auto        # M1 milestone acceptance (auto-starts API)
+npm run m2:acceptance:auto        # M2 milestone acceptance (auto-starts API)
+```
+
+## Architecture
+
+### Monorepo Structure
+
+```
+Apps/CoreApi/        ← NestJS 11 + Fastify backend (CommonJS, port 3001)
+Apps/AdminPortal/    ← React 18 + Vite 6 frontend (ESM, port 5173)
+Packages/shared-types/ ← Shared TypeScript types/interfaces (ESM)
+Infra/               ← Caddy, Nginx, Prometheus, Grafana configs
+Scripts/             ← Operational and acceptance test scripts (CommonJS .cjs)
+Docs/                ← Architecture, delivery, operations documentation
+```
+
+### Backend (CoreApi — NestJS)
+
+Layered architecture: **Controller → Service → Repository**
+
+```
+Src/
+  App/           ← Root module (appModule.ts), runtime config, global exception filter
+  Modules/       ← Business domains: Health, Auth, Im (conversations, messages, presence)
+  Infrastructure/ ← Database (Drizzle ORM), Redis, Kafka outbox, Audit, OpenTelemetry
+```
+
+- HTTP via Fastify; real-time via Socket.IO with Redis Adapter for multi-node scaling
+- DTOs validated with `class-validator` + `class-transformer` + `ValidationPipe`
+- Auth via JWT guards; tenant context injected at gateway layer — services must never skip tenant validation
+- Async messaging uses the **Outbox Pattern**: business write + outbox row in a single DB transaction; Kafka consumer publishes and marks as done
+- Structured logging only — no `console.log`; use NestJS logger or OpenTelemetry
+
+### Frontend (AdminPortal — React)
+
+```
+Src/
+  App/            ← Router + provider wrapper
+  Components/Ui/  ← shadcn/ui primitives (button, card, input, table, badge, toast…)
+  Components/Business/ ← Domain panels composing Ui components
+  Hooks/          ← useApiClient (HTTP), useImSocket (WebSocket)
+  Stores/         ← Zustand: useAuthStore, useSocketStore, useMessageStore, useUiStore
+  Lib/            ← apiClient.ts, className.ts (clsx + tailwind-merge)
+  Styles/         ← globals.css (Tailwind directives + CSS variables as hsl(var(--xxx)))
+```
+
+- Server state: **TanStack Query** (`useQuery`/`useMutation`)
+- Client state: **Zustand** stores
+- Path alias `@/` maps to `Src/`
+- Styling: Tailwind CSS utilities only; custom CSS avoided; CSS design tokens in `globals.css`
+
+### Multi-Tenancy
+
+- Shared PostgreSQL database with **Row-Level Security (RLS)**
+- Every core table has a `tenantId` column
+- All message/event payloads must carry: `tenantId`, `conversationId`, `messageId`, `traceId`
+- Consumers must be idempotent (deduplication via `eventId`)
+- Only **conversation-scoped ordering** is guaranteed — no global ordering
+
+### API Conventions
+
+- REST prefix: `/api/v1/`
+- Health check: `/health` (no prefix)
+- WebSocket: Socket.IO at `/socket.io`
+
+## Naming Conventions (Enforced)
+
+| Entity | Convention | Example |
+|--------|-----------|---------|
+| Directories | `UpperCamelCase` | `Components/`, `Modules/`, `Business/` |
+| Business files | `lowerCamelCase` | `messagePanel.tsx`, `conversationService.ts` |
+| Framework/config files | Official names | `package.json`, `vite.config.ts`, `tsconfig.json` |
+| React components (export) | `PascalCase` function | `export function ManagementOverviewPanel()` |
+| Variables & functions | `camelCase` | |
+| Constants | `UPPER_SNAKE_CASE` | |
+| Types & interfaces | `PascalCase` | `interface UserProfile`, `type MessageEvent` |
+
+## Coding Rules
+
+- **No `any` type** — unless absolutely necessary with an explanatory comment
+- **No `console.log`** — use structured logging
+- **No hardcoded** `tenantId`, `userId`, `conversationId`, or API base URLs
+- **No double-writes** — always use the outbox transaction pattern for Kafka events
+- Do not auto-install new dependencies or auto-commit/push
+- Backend is **CommonJS**; frontend is **ESM** — do not mix module systems within an app
+- Use `interface` for object shapes; use `type` for unions/aliases
