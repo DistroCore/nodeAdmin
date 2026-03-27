@@ -1,4 +1,22 @@
 import React from 'react';
+import { useIntl } from 'react-intl';
+
+function ErrorDisplay({ onRetry }: { onRetry: () => void }): JSX.Element {
+  const { formatMessage: t } = useIntl();
+  return (
+    <section className="rounded-md border border-red-300 bg-red-50 p-4 text-red-700">
+      <h2 className="text-base font-semibold">{t({ id: 'error.moduleRender' })}</h2>
+      <p className="mt-1 text-sm">{t({ id: 'error.moduleRenderDesc' })}</p>
+      <button
+        className="mt-3 rounded-md border border-red-300 px-3 py-1 text-sm"
+        onClick={onRetry}
+        type="button"
+      >
+        {t({ id: 'error.retry' })}
+      </button>
+    </section>
+  );
+}
 
 interface ModuleErrorBoundaryProps {
   children: React.ReactNode;
@@ -37,18 +55,6 @@ export class ModuleErrorBoundary extends React.Component<ModuleErrorBoundaryProp
       return this.props.children;
     }
 
-    return (
-      <section className="rounded-md border border-red-300 bg-red-50 p-4 text-red-700">
-        <h2 className="text-base font-semibold">模块渲染失败</h2>
-        <p className="mt-1 text-sm">该模块发生运行时错误，请稍后重试或刷新页面。</p>
-        <button
-          className="mt-3 rounded-md border border-red-300 px-3 py-1 text-sm"
-          onClick={this.handleReset}
-          type="button"
-        >
-          重试
-        </button>
-      </section>
-    );
+    return <ErrorDisplay onRetry={this.handleReset} />;
   }
 }

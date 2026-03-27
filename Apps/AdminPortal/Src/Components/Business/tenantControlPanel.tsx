@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useIntl } from 'react-intl';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/Components/Ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/Ui/table';
 import { useApiClient } from '@/Hooks/useApiClient';
@@ -15,6 +16,7 @@ interface TenantResponse {
 }
 
 export function TenantControlPanel(): JSX.Element {
+  const { formatMessage: t } = useIntl();
   const apiClient = useApiClient();
   const tenantQuery = useQuery({
     queryFn: () => apiClient.get<TenantResponse>('/api/v1/console/tenants'),
@@ -24,24 +26,25 @@ export function TenantControlPanel(): JSX.Element {
   const tenantRows = tenantQuery.data?.rows ?? [];
 
   return (
+    <section className="h-full overflow-y-auto">
     <Card className="p-4">
       <CardHeader className="mb-4 flex-row items-start justify-between space-y-0 p-0">
         <div className="space-y-1.5">
-          <CardTitle className="text-base">Tenants and Roles</CardTitle>
-          <CardDescription>Inspect tenant status, role footprint, and review progression.</CardDescription>
+          <CardTitle className="text-base">{t({ id: 'tenant.title' })}</CardTitle>
+          <CardDescription>{t({ id: 'tenant.desc' })}</CardDescription>
         </div>
         <span className="inline-flex items-center rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium">
-          Total: {tenantRows.length} tenants
+          {t({ id: 'tenant.total' }, { count: tenantRows.length })}
         </span>
       </CardHeader>
 
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Tenant ID</TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Role Count</TableHead>
-            <TableHead>Status</TableHead>
+            <TableHead>{t({ id: 'tenant.colId' })}</TableHead>
+            <TableHead>{t({ id: 'tenant.colName' })}</TableHead>
+            <TableHead>{t({ id: 'tenant.colRoles' })}</TableHead>
+            <TableHead>{t({ id: 'tenant.colStatus' })}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -67,7 +70,7 @@ export function TenantControlPanel(): JSX.Element {
           {tenantQuery.isError ? (
             <TableRow className="hover:bg-transparent">
               <TableCell className="py-8 text-center text-sm text-destructive" colSpan={4}>
-                Failed to load tenant data.
+                {t({ id: 'tenant.loadFailed' })}
               </TableCell>
             </TableRow>
           ) : null}
@@ -75,7 +78,7 @@ export function TenantControlPanel(): JSX.Element {
           {!tenantQuery.isLoading && !tenantQuery.isError && tenantRows.length === 0 ? (
             <TableRow className="hover:bg-transparent">
               <TableCell className="py-8 text-center text-sm text-muted-foreground" colSpan={4}>
-                No tenants found
+                {t({ id: 'tenant.empty' })}
               </TableCell>
             </TableRow>
           ) : null}
@@ -103,5 +106,6 @@ export function TenantControlPanel(): JSX.Element {
         </TableBody>
       </Table>
     </Card>
+    </section>
   );
 }

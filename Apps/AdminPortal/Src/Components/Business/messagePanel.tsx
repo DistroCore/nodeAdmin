@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useIntl } from 'react-intl';
 import { NavLink } from 'react-router-dom';
 import type { ImMessageType } from '@nodeadmin/shared-types';
 import { Badge } from '@/Components/Ui/badge';
@@ -13,11 +14,13 @@ import {
   useImSocket,
   type ImPresenceEvent,
 } from '@/Hooks/useImSocket';
+import { className } from '@/Lib/className';
 import { useApiClient } from '@/Hooks/useApiClient';
 import { useAuthStore } from '@/Stores/useAuthStore';
 import { useMessageStore } from '@/Stores/useMessageStore';
 import { usePermissionStore } from '@/Stores/usePermissionStore';
 import { useSocketStore } from '@/Stores/useSocketStore';
+import { useUiStore } from '@/Stores/useUiStore';
 
 interface MessagePanelProps {
   conversationIdOverride?: string;
@@ -26,7 +29,6 @@ interface MessagePanelProps {
 const maxSendAttempts = 3;
 const ackTimeoutMs = 2000;
 const retryDelayMs = 300;
-const messageViewportHeightPx = 320;
 const virtualRowHeightPx = 92;
 const virtualOverscan = 8;
 const typingExpirationMs = 3000;
@@ -123,6 +125,7 @@ function renderMessageBody(message: ImSocketMessage): JSX.Element {
 }
 
 export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX.Element {
+  const { formatMessage: t } = useIntl();
   const connectionState = useSocketStore((state) => state.connectionState);
   const setConnectionState = useSocketStore((state) => state.setConnectionState);
   const messages = useMessageStore((state) => state.messages);
@@ -148,10 +151,22 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
   const [typingUsers, setTypingUsers] = useState<TypingMap>({});
   const [offlineQueueCount, setOfflineQueueCount] = useState(0);
   const [presenceMembers, setPresenceMembers] = React.useState<Set<string>>(new Set());
+  const [viewportHeight, setViewportHeight] = useState(320);
 
   const messageViewportRef = useRef<HTMLDivElement | null>(null);
   const typingIdleTimerRef = useRef<number | null>(null);
   const apiClient = useApiClient();
+
+  // Dynamic viewport height via ResizeObserver
+  useEffect(() => {
+    const el = messageViewportRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setViewportHeight(entry.contentRect.height);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const conversationQuery = useQuery({
     queryFn: () => apiClient.get<ConversationListResponse>('/api/v1/console/conversations'),
@@ -529,9 +544,9 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
 
   const connectionLabel =
     connectionState === 'connected'
-      ? 'connected'
+      ? t({ id: 'im.connected' })
       : connectionState === 'reconnecting'
-        ? 'reconnecting...'
+        ? t({ id: 'im.reconnecting' })
         : connectionState;
 
   const sendLabel = sendState === 'retrying' ? 'sending retry...' : sendState === 'failed' ? 'send failed' : undefined;
@@ -539,7 +554,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
 
   const totalCount = messages.length;
   const firstVisibleIndex = Math.max(0, Math.floor(scrollTop / virtualRowHeightPx) - virtualOverscan);
-  const visibleCount = Math.ceil(messageViewportHeightPx / virtualRowHeightPx) + virtualOverscan * 2;
+  const visibleCount = Math.ceil((viewportHeight || 320) / virtualRowHeightPx) + virtualOverscan * 2;
   const lastVisibleIndex = Math.min(totalCount, firstVisibleIndex + visibleCount);
   const virtualItems = messages.slice(firstVisibleIndex, lastVisibleIndex);
   const topSpacerHeight = firstVisibleIndex * virtualRowHeightPx;
@@ -548,17 +563,40 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
   if (!canViewIm) {
     return (
       <section className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-        You do not have `im:view` permission.
+        {t({ id: 'permission.imDenied' })}
       </section>
     );
   }
 
+  const conversationPanelOpen = useUiStore((s) => s.imConversationPanelOpen);
+  const setConversationPanelOpen = useUiStore((s) => s.setImConversationPanelOpen);
+  const toggleConversationPanel = useUiStore((s) => s.toggleImConversationPanel);
+
   return (
-    <section className="mx-auto flex w-full max-w-5xl gap-4 rounded-md border border-border bg-card p-4">
-      <aside className="w-72 shrink-0 rounded-md border border-border bg-background p-3">
-        <h3 className="mb-2 text-sm font-semibold">Conversations</h3>
-        {conversationQuery.isLoading ? <p className="text-xs text-muted-foreground">Loading conversations...</p> : null}
-        {conversationQuery.isError ? <p className="text-xs text-destructive">Failed to load conversations.</p> : null}
+    <section className="flex h-full w-full overflow-hidden rounded-md border border-border bg-card md:gap-4 md:p-4">
+      {/* Mobile backdrop */}
+      {conversationPanelOpen ? (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          onClick={() => setConversationPanelOpen(false)}
+        />
+      ) : null}
+
+      {/* Conversation list — desktop: collapsible, mobile: slide-over */}
+      <aside
+        className={className(
+          'shrink-0 rounded-md border border-border bg-background p-3 transition-all duration-200 overflow-hidden',
+          // Mobile: fixed overlay
+          'fixed inset-y-0 left-0 z-40 w-72 md:relative md:z-0 md:shadow-none',
+          conversationPanelOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+          // Desktop: collapsible width
+          'md:translate-x-0',
+          conversationPanelOpen ? 'md:w-72' : 'md:w-0 md:p-0 md:border-0',
+        )}
+      >
+        <h3 className="mb-2 text-sm font-semibold">{t({ id: 'im.conversations' })}</h3>
+        {conversationQuery.isLoading ? <p className="text-xs text-muted-foreground">{t({ id: 'im.loadingConversations' })}</p> : null}
+        {conversationQuery.isError ? <p className="text-xs text-destructive">{t({ id: 'im.loadConversationsFailed' })}</p> : null}
         <ul className="space-y-2">
           {(conversationQuery.data?.rows ?? []).map((conversation) => (
             <li key={conversation.id}>
@@ -582,24 +620,35 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
         </ul>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-4">
-        <header className="flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-semibold">IM Conversation</h2>
-            <div className="text-sm text-gray-500">在线: {presenceMembers.size} 人</div>
+      <div className="flex min-w-0 flex-1 flex-col gap-4 min-h-0">
+        <header className="flex shrink-0 items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-border hover:bg-accent"
+              onClick={toggleConversationPanel}
+              type="button"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
+              </svg>
+            </button>
+            <div>
+              <h2 className="text-base font-semibold">{t({ id: 'im.conversation' })}</h2>
+              <div className="text-sm text-gray-500">{t({ id: 'im.online' }, { count: presenceMembers.size })}</div>
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            {offlineQueueCount > 0 ? <Badge variant="secondary">offline queue: {offlineQueueCount}</Badge> : null}
+            {offlineQueueCount > 0 ? <Badge variant="secondary">{t({ id: 'im.offlineQueue' }, { count: offlineQueueCount })}</Badge> : null}
             <Badge variant={connectionState === 'connected' ? 'default' : 'secondary'}>{connectionLabel}</Badge>
           </div>
         </header>
 
         {bootError ? <p className="text-xs text-red-600">{bootError}</p> : null}
         {sendLabel ? <p className="text-xs text-muted-foreground">{sendLabel}</p> : null}
-        {typingUsersLabel ? <p className="text-xs text-muted-foreground">Typing: {typingUsersLabel}</p> : null}
+        {typingUsersLabel ? <p className="text-xs text-muted-foreground">{t({ id: 'im.typing' }, { users: typingUsersLabel })}</p> : null}
 
         <div
-          className="overflow-y-auto rounded-md bg-muted p-3"
+          className="min-h-0 flex-1 overflow-y-auto rounded-md bg-muted p-3"
           onScroll={(event) => {
             const node = event.currentTarget;
             const remainingDistance = node.scrollHeight - (node.scrollTop + node.clientHeight);
@@ -607,7 +656,6 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
             setScrollTop(node.scrollTop);
           }}
           ref={messageViewportRef}
-          style={{ height: messageViewportHeightPx }}
         >
           <div style={{ height: topSpacerHeight }} />
           <ul className="flex flex-col gap-2">
@@ -633,7 +681,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
 
         <div className="grid gap-2 sm:grid-cols-3">
           <label className="text-xs">
-            Message type
+            {t({ id: 'im.messageType' })}
             <select
               className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
               onChange={(event) => setMessageType(event.target.value as ImMessageType)}
@@ -648,20 +696,20 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
           {(messageType === 'image' || messageType === 'file') && (
             <>
               <label className="text-xs">
-                Asset URL
+                {t({ id: 'im.assetUrl' })}
                 <Input
                   className="mt-1"
                   onChange={(event) => setAssetUrl(event.target.value)}
-                  placeholder="https://example.com/file.png"
+                  placeholder={t({ id: 'im.assetUrlPlaceholder' })}
                   value={assetUrl}
                 />
               </label>
               <label className="text-xs">
-                File name
+                {t({ id: 'im.fileName' })}
                 <Input
                   className="mt-1"
                   onChange={(event) => setFileName(event.target.value)}
-                  placeholder="Optional"
+                  placeholder={t({ id: 'im.fileNamePlaceholder' })}
                   value={fileName}
                 />
               </label>
@@ -705,7 +753,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                 void sendMessage();
               }
             }}
-            placeholder="Type a message and press Enter..."
+            placeholder={t({ id: 'im.inputPlaceholder' })}
             value={content}
           />
           <Button
@@ -716,12 +764,12 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
             type="button"
             variant="default"
           >
-            Send
+            {t({ id: 'im.send' })}
           </Button>
         </div>
 
         {!canSendMessage ? (
-          <p className="text-xs text-muted-foreground">Your account is read-only in IM (missing `im:send`).</p>
+          <p className="text-xs text-muted-foreground">{t({ id: 'im.readonly' })}</p>
         ) : null}
       </div>
     </section>

@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useIntl } from 'react-intl';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/Components/Ui/card';
 import { useApiClient } from '@/Hooks/useApiClient';
 
@@ -12,6 +13,7 @@ interface ReleaseCheckResponse {
 }
 
 export function ReleaseControlPanel(): JSX.Element {
+  const { formatMessage: t } = useIntl();
   const apiClient = useApiClient();
   const releaseQuery = useQuery({
     queryFn: () => apiClient.get<ReleaseCheckResponse>('/api/v1/console/release-checks'),
@@ -24,15 +26,16 @@ export function ReleaseControlPanel(): JSX.Element {
   const completionPercent = totalChecks > 0 ? Math.round((completedChecks / totalChecks) * 100) : 0;
 
   return (
+    <section className="h-full overflow-y-auto">
     <Card className="p-4">
       <CardHeader className="mb-4 flex-col gap-3 p-0 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
         <div className="space-y-1.5">
-          <CardTitle className="text-base">Release Controls</CardTitle>
-          <CardDescription>MVP release gates and current checkpoint status.</CardDescription>
+          <CardTitle className="text-base">{t({ id: 'release.title' })}</CardTitle>
+          <CardDescription>{t({ id: 'release.desc' })}</CardDescription>
         </div>
         <div className="w-full max-w-48 space-y-1">
           <p className="text-xs text-muted-foreground sm:text-right">
-            {completedChecks}/{totalChecks} completed
+            {t({ id: 'release.completed' }, { done: completedChecks, total: totalChecks })}
           </p>
           <div className="h-2 rounded-full bg-muted">
             <div className="h-2 rounded-full bg-primary transition-all" style={{ width: `${completionPercent}%` }} />
@@ -53,11 +56,11 @@ export function ReleaseControlPanel(): JSX.Element {
           : null}
 
         {releaseQuery.isError ? (
-          <li className="rounded-md border border-border px-3 py-2 text-sm text-destructive">Failed to load release checks.</li>
+          <li className="rounded-md border border-border px-3 py-2 text-sm text-destructive">{t({ id: 'release.loadFailed' })}</li>
         ) : null}
 
         {!releaseQuery.isLoading && !releaseQuery.isError && releaseChecks.length === 0 ? (
-          <li className="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground">No release checks found.</li>
+          <li className="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground">{t({ id: 'release.empty' })}</li>
         ) : null}
 
         {!releaseQuery.isLoading && !releaseQuery.isError
@@ -79,5 +82,6 @@ export function ReleaseControlPanel(): JSX.Element {
           : null}
       </ul>
     </Card>
+    </section>
   );
 }

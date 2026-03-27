@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { useIntl } from 'react-intl';
 import type { AppPermission } from '@nodeadmin/shared-types';
 import { usePermissionStore } from '@/Stores/usePermissionStore';
 
@@ -9,11 +10,12 @@ interface RequirePermissionProps {
 
 export function RequirePermission({ children, permission }: RequirePermissionProps): JSX.Element {
   const hasPermission = usePermissionStore((state) => state.hasPermission(permission));
+  const { formatMessage: t } = useIntl();
 
   if (!hasPermission) {
     return (
       <section className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-        You do not have permission for this module: <strong>{permission}</strong>
+        {t({ id: 'permission.denied' }, { permission })}
       </section>
     );
   }

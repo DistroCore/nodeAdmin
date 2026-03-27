@@ -2,12 +2,12 @@
 
 ## 1. 发布前（必须完成）
 
-- [ ] `CoreApi` 能通过构建。
-- [ ] `AdminPortal` 能通过构建。
-- [ ] `health` 接口可用（`GET /health`）。
-- [ ] WebSocket 可完成入会话与发送消息链路。
-- [ ] 环境变量模板已准备并审阅。
-- [ ] 回滚方案已确认。
+- [x] `CoreApi` 能通过构建。
+- [x] `AdminPortal` 能通过构建。
+- [x] `health` 接口可用（`GET /health` → `/api/v1/health`）。
+- [x] WebSocket 可完成入会话与发送消息链路。
+- [x] 环境变量模板已准备并审阅。
+- [x] 回滚方案已确认。
 
 ## 2. 冒烟验证（发布窗口）
 
@@ -38,3 +38,4 @@
 ## 6. 最近更新时间
 
 - 2026-02-28
+- 2026-03-27 — 发布前检查全部通过（CoreApi 构建、AdminPortal 构建、Health 接口、WebSocket 链路、环境变量模板、回滚方案）
