@@ -15,11 +15,11 @@
 
 ### 2.1 工程脚手架
 
-- [x] Monorepo 结构验证（`Apps/`、`packages/`）
-- [x] CoreApi NestJS 项目完整配置
-- [x] AdminPortal React + shadcn/ui 项目创建
-- [x] SharedTypes 共享类型包创建
-- [x] ESLint + Prettier 命名规范规则（目录 UpperCamelCase、文件 lowerCamelCase）
+- [x] Monorepo 结构验证（`apps/`、`packages/`）
+- [x] core-api NestJS 项目完整配置
+- [x] admin-portal React + shadcn/ui 项目创建
+- [x] shared-types 共享类型包创建
+- [x] ESLint + Prettier 命名规范规则（目录 lowercase、文件 lowerCamelCase）
 - [x] Git hook + PR 检查配置
 
 ### 2.2 基础设施增补

@@ -22,4 +22,16 @@
 - `docs/operations/monitoringRunbook.md`
 - `docs/operations/databasePartitionRunbook.md`
 
-Last updated: 2026-03-01
+## Optimization
+- `docs/optimization/p0-timeout-fixes-implementation.md`
+- `docs/optimization/timeout-configuration-analysis.md`
+
+## Security
+- `docs/security/multi-tenant-isolation-test-report.md`
+
+## Superpowers
+- `docs/superpowers/plans/2026-03-19-product-management-plan.md`
+- `docs/superpowers/specs/2026-03-19-antd-pro-frontend-design.md`
+- `docs/superpowers/specs/2026-03-19-product-management-design.md`
+
+Last updated: 2026-03-28
