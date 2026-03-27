@@ -13,7 +13,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
  * - PostgreSQL running with RLS enabled
  */
 
-describe('Multi-Tenant Isolation (RLS)', () => {
+const databaseUrl = process.env.DATABASE_URL;
+
+describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
   let pool: Pool;
   const TENANT_A = 'tenant-alpha';
   const TENANT_B = 'tenant-beta';
@@ -25,12 +27,10 @@ describe('Multi-Tenant Isolation (RLS)', () => {
   const USER_B = 'user-beta-001';
 
   beforeAll(async () => {
-    const databaseUrl = process.env.DATABASE_URL;
-    if (!databaseUrl) {
-      throw new Error(
-        'DATABASE_URL environment variable is required for multi-tenant isolation tests'
-      );
-    }
+    pool = new Pool({
+      connectionString: databaseUrl!,
+      max: 5,
+    });
 
     pool = new Pool({
       connectionString: databaseUrl,
