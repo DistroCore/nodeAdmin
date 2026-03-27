@@ -17,10 +17,13 @@ async function run() {
     PORT: process.env.PORT || '3001',
   };
 
+  console.log('[M2] Spawning CoreApi process...');
+  console.log(`[M2] DATABASE_URL=${env.DATABASE_URL}`);
   const apiProcess = cp.spawn(process.execPath, ['apps/coreApi/Dist/main.js'], {
     env,
     stdio: 'inherit',
   });
+  console.log(`[M2] CoreApi spawned with PID ${apiProcess.pid}`);
 
   let apiExitCode = null;
   let apiSpawnError = null;

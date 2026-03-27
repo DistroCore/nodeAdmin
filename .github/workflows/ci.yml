@@ -38,11 +38,15 @@ jobs:
       - name: Start Infra (Kafka Profile)
         run: npm run infra:up:kafka
 
+      - name: Wait for DB
+        run: sleep 5
+
       - name: Apply Migrations
         run: npm run db:migrate -w coreApi
 
       - name: M2 Acceptance
         run: npm run m2:acceptance:auto
+        timeout-minutes: 5
 
       - name: Shutdown Infra
         if: always()
