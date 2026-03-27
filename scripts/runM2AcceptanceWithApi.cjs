@@ -33,7 +33,7 @@ async function run() {
     apiExitCode = code ?? 0;
   });
 
-  const maxAttempts = 30;
+  const maxAttempts = 60;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     if (apiExitCode !== null) {
       throw new Error(`CoreApi exited before M2 acceptance run. Exit code: ${apiExitCode}`);
@@ -45,6 +45,7 @@ async function run() {
     try {
       const response = await fetch('http://127.0.0.1:3001/api/v1/health');
       if (response.ok) {
+        console.log(`[M2] CoreApi ready after attempt ${attempt}`);
         break;
       }
     } catch {
@@ -55,7 +56,11 @@ async function run() {
       throw new Error('CoreApi did not become ready in time.');
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    if (attempt % 10 === 0) {
+      console.log(`[M2] Still waiting for CoreApi... attempt ${attempt}/${maxAttempts}`);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
   let exitCode = 0;
