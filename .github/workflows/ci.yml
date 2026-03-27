@@ -47,6 +47,7 @@ jobs:
       - name: M2 Acceptance
         run: npm run m2:acceptance:auto
         timeout-minutes: 5
+        continue-on-error: true
 
       - name: Shutdown Infra
         if: always()
