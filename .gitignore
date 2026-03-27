@@ -10,3 +10,4 @@ coverage/
 Backups/
 Apps/**/test-results/
 **/*.tsbuildinfo
+.claude/

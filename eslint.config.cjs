@@ -14,7 +14,7 @@ module.exports = [
     ],
   },
   {
-    files: ['Apps/**/*.{ts,tsx}'],
+    files: ['apps/**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 'latest',
       parser: tsParser,

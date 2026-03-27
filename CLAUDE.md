@@ -28,7 +28,7 @@ npm run build            # Build both CoreApi (tsc → CommonJS) and AdminPortal
 ```bash
 npm run test:core-api    # Run backend unit tests with Vitest
 npm run test:e2e:web     # Run Playwright E2E tests for AdminPortal
-npm run lint             # ESLint on all Apps/**/*.{ts,tsx} — zero warnings allowed
+npm run lint             # ESLint on all apps/**/*.{ts,tsx} — zero warnings allowed
 npm run format:check     # Prettier format check
 ```
 
@@ -62,12 +62,12 @@ npm run m2:acceptance:auto        # M2 milestone acceptance (auto-starts API)
 ### Monorepo Structure
 
 ```
-Apps/CoreApi/        ← NestJS 11 + Fastify backend (CommonJS, port 3001)
-Apps/AdminPortal/    ← React 18 + Vite 6 frontend (ESM, port 5173)
-Packages/shared-types/ ← Shared TypeScript types/interfaces (ESM)
-Infra/               ← Caddy, Nginx, Prometheus, Grafana configs
-Scripts/             ← Operational and acceptance test scripts (CommonJS .cjs)
-Docs/                ← Architecture, delivery, operations documentation
+apps/core-api/        ← NestJS 11 + Fastify backend (CommonJS, port 3001)
+apps/admin-portal/    ← React 18 + Vite 6 frontend (ESM, port 5173)
+packages/shared-types/ ← Shared TypeScript types/interfaces (ESM)
+infra/               ← Caddy, Nginx, Prometheus, Grafana configs
+scripts/             ← Operational and acceptance test scripts (CommonJS .cjs)
+docs/                ← Architecture, delivery, operations documentation
 ```
 
 ### Backend (CoreApi — NestJS)
@@ -75,10 +75,10 @@ Docs/                ← Architecture, delivery, operations documentation
 Layered architecture: **Controller → Service → Repository**
 
 ```
-Src/
-  App/           ← Root module (appModule.ts), runtime config, global exception filter
-  Modules/       ← Business domains: Health, Auth, Im (conversations, messages, presence)
-  Infrastructure/ ← Database (Drizzle ORM), Redis, Kafka outbox, Audit, OpenTelemetry
+src/
+  app/           ← Root module (appModule.ts), runtime config, global exception filter
+  modules/       ← Business domains: Health, Auth, Im (conversations, messages, presence)
+  infrastructure/ ← Database (Drizzle ORM), Redis, Kafka outbox, Audit, OpenTelemetry
 ```
 
 - HTTP via Fastify; real-time via Socket.IO with Redis Adapter for multi-node scaling
@@ -90,19 +90,19 @@ Src/
 ### Frontend (AdminPortal — React)
 
 ```
-Src/
-  App/            ← Router + provider wrapper
-  Components/Ui/  ← shadcn/ui primitives (button, card, input, table, badge, toast…)
-  Components/Business/ ← Domain panels composing Ui components
-  Hooks/          ← useApiClient (HTTP), useImSocket (WebSocket)
-  Stores/         ← Zustand: useAuthStore, useSocketStore, useMessageStore, useUiStore
-  Lib/            ← apiClient.ts, className.ts (clsx + tailwind-merge)
-  Styles/         ← globals.css (Tailwind directives + CSS variables as hsl(var(--xxx)))
+src/
+  app/            ← Router + provider wrapper
+  components/ui/  ← shadcn/ui primitives (button, card, input, table, badge, toast...)
+  components/business/ ← Domain panels composing ui components
+  hooks/          ← useApiClient (HTTP), useImSocket (WebSocket)
+  stores/         ← Zustand: useAuthStore, useSocketStore, useMessageStore, useUiStore
+  lib/            ← apiClient.ts, className.ts (clsx + tailwind-merge)
+  styles/         ← globals.css (Tailwind directives + CSS variables as hsl(var(--xxx)))
 ```
 
 - Server state: **TanStack Query** (`useQuery`/`useMutation`)
 - Client state: **Zustand** stores
-- Path alias `@/` maps to `Src/`
+- Path alias `@/` maps to `src/`
 - Styling: Tailwind CSS utilities only; custom CSS avoided; CSS design tokens in `globals.css`
 
 ### Multi-Tenancy
@@ -123,7 +123,7 @@ Src/
 
 | Entity | Convention | Example |
 |--------|-----------|---------|
-| Directories | `UpperCamelCase` | `Components/`, `Modules/`, `Business/` |
+| Directories | `lowercase` | `components/`, `modules/`, `business/` |
 | Business files | `lowerCamelCase` | `messagePanel.tsx`, `conversationService.ts` |
 | Framework/config files | Official names | `package.json`, `vite.config.ts`, `tsconfig.json` |
 | React components (export) | `PascalCase` function | `export function ManagementOverviewPanel()` |

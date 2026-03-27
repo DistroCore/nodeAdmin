@@ -22,28 +22,28 @@ nodeAdmin 是一个企业级中台系统，包含 IM 即时通讯模块。Monore
 ## 目录结构
 
 ```
-Apps/
-  CoreApi/         ← 后端 NestJS 应用 (CommonJS, port 3001)
-    Src/
-      App/         ← 根模块、配置、过滤器
-      Modules/     ← 业务模块 (Health, Auth, Im)
-      Infrastructure/ ← 数据库、Redis、消息存储
-  AdminPortal/     ← 前端 React 应用 (ESM, port 5173)
-    Src/
-      App/         ← 路由、根组件
-      Components/
-        Ui/        ← shadcn/ui 基础组件 (button, card, input, table, badge, toast)
-        Business/  ← 业务面板组件
-      Hooks/       ← 自定义 Hooks (useApiClient, useImSocket)
-      Stores/      ← Zustand Stores (useAuthStore, useSocketStore, useMessageStore, useUiStore)
-      Lib/         ← 工具函数 (apiClient, className)
-Packages/          ← 共享包（预留）
-Docs/              ← 项目文档
+apps/
+  core-api/         ← 后端 NestJS 应用 (CommonJS, port 3001)
+    src/
+      app/         ← 根模块、配置、过滤器
+      modules/     ← 业务模块 (Health, Auth, Im)
+      infrastructure/ ← 数据库、Redis、消息存储
+  admin-portal/     ← 前端 React 应用 (ESM, port 5173)
+    src/
+      app/         ← 路由、根组件
+      components/
+        ui/        ← shadcn/ui 基础组件 (button, card, input, table, badge, toast)
+        business/  ← 业务面板组件
+      hooks/       ← 自定义 Hooks (useApiClient, useImSocket)
+      stores/      ← Zustand Stores (useAuthStore, useSocketStore, useMessageStore, useUiStore)
+      lib/         ← 工具函数 (apiClient, className)
+packages/          ← 共享包（预留）
+docs/              ← 项目文档
 ```
 
 ## 命名规范（强制）
 
-- **目录名**：`UpperCamelCase` — 如 `Components/`, `Modules/`, `Business/`
+- **目录名**：`lowercase` — 如 `components/`, `modules/`, `business/`
 - **业务文件名**：`lowerCamelCase` — 如 `healthController.ts`, `messagePanel.tsx`
 - **工具/框架文件**：保留官方命名 — 如 `package.json`, `tsconfig.json`, `vite.config.ts`
 - **组件导出**：`PascalCase` 函数名 — 如 `export function ManagementOverviewPanel()`
@@ -56,7 +56,7 @@ Docs/              ← 项目文档
 ### TypeScript
 - 严格模式 (`"strict": true`)
 - 后端是 CommonJS (`"module": "commonjs"`)，前端是 ESM (`"module": "ESNext"`)
-- 前端使用 `@/` 路径别名映射到 `Src/`
+- 前端使用 `@/` 路径别名映射到 `src/`
 - 使用 `interface` 定义对象结构，`type` 用于联合类型
 
 ### 后端 (NestJS)
@@ -71,7 +71,7 @@ Docs/              ← 项目文档
 - 使用 `useApiClient()` Hook 获取 API 客户端
 - 使用 `useQuery` / `useMutation` (TanStack Query) 管理服务端状态
 - 使用 Zustand store 管理客户端状态
-- 使用 shadcn/ui 组件（在 `Components/Ui/` 下）
+- 使用 shadcn/ui 组件（在 `components/ui/` 下）
 - Tailwind CSS 工具类，使用 `className()` 合并类名 (clsx + tailwind-merge)
 
 ### 样式
@@ -103,8 +103,8 @@ Docs/              ← 项目文档
 
 ## 相关文档
 
-- 架构基线：`Docs/Architecture/architectureBaseline.md`
-- 路线图：`Docs/Delivery/roadmapPlan.md`
-- 头脑风暴结果：`Docs/Delivery/brainstormingResults.md`
-- 决策日志：`Docs/Governance/decisionLog.md`
+- 架构基线：`docs/architecture/architectureBaseline.md`
+- 路线图：`docs/delivery/roadmapPlan.md`
+- 头脑风暴结果：`docs/delivery/brainstormingResults.md`
+- 决策日志：`docs/governance/decisionLog.md`
 - [CLAUDE.md](CLAUDE.md)

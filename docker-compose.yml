@@ -10,8 +10,8 @@ services:
       - '55432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./Infra/Docker/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
-      - ./Infra/Docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./infra/docker/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./infra/docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     command:
       - postgres
       - -c
@@ -31,8 +31,8 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./Infra/Docker/pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
-      - ./Infra/Docker/pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+      - ./infra/docker/pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./infra/docker/pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
     ports:
       - '6432:5432'
 
@@ -59,7 +59,7 @@ services:
       - '56379:6379'
     volumes:
       - redis_data:/data
-      - ./Infra/Docker/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - ./infra/docker/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
     command: ['redis-server', '/usr/local/etc/redis/redis.conf']
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
@@ -103,8 +103,8 @@ services:
     ports:
       - '3443:3443'
     volumes:
-      - ./Infra/Nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./Infra/Nginx/certs:/etc/nginx/certs:ro
+      - ./infra/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./infra/nginx/certs:/etc/nginx/certs:ro
     extra_hosts:
       - 'host.docker.internal:host-gateway'
 
@@ -116,8 +116,8 @@ services:
     ports:
       - '9091:9090'
     volumes:
-      - ./Infra/Prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./Infra/Prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
     extra_hosts:
       - 'host.docker.internal:host-gateway'
 
@@ -129,7 +129,7 @@ services:
     ports:
       - '9093:9093'
     volumes:
-      - ./Infra/Prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./infra/prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
 
   grafana:
     image: grafana/grafana:11.2.0
@@ -144,8 +144,8 @@ services:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
     volumes:
-      - ./Infra/Grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./Infra/Grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
 
   k6:
@@ -154,8 +154,8 @@ services:
       - loadtest
     container_name: nodeadmin-k6
     volumes:
-      - ./Scripts:/scripts:ro
-      - ./Reports/k6:/reports
+      - ./scripts:/scripts:ro
+      - ./reports/k6:/reports
     environment:
       CORE_API_BASE_URL: 'http://host.docker.internal:3001'
       WS_BASE_URL: 'ws://host.docker.internal:3001'
