@@ -12,7 +12,7 @@
 - 日期：2026-02-28
 - 决策：前端技术栈固定为 `React + TypeScript + Tailwind CSS + shadcn/ui`。
 - 原因：统一设计系统与组件复用路径，减少样式分叉。
-- 影响范围：`apps/admin-portal` 及后续所有前端应用。
+- 影响范围：`apps/adminPortal` 及后续所有前端应用。
 - 责任人：前端负责人。
 
 ### D-002
@@ -60,7 +60,7 @@
 - 日期：2026-03-01
 - 决策：采用模块化单体策略，M2 前不做物理微服务拆分。
 - 原因：团队规模与代码量不支持 8 个微服务的分布式运维开销；NestJS Module 边界已满足逻辑隔离需求。
-- 影响范围：`apps/core-api` 架构演进节奏，Phase 3 之前不新增独立进程。
+- 影响范围：`apps/coreApi` 架构演进节奏，Phase 3 之前不新增独立进程。
 - 责任人：架构负责人。
 
 ### D-008
@@ -68,7 +68,7 @@
 - 日期：2026-03-01
 - 决策：ORM 选用 Drizzle，不采用 TypeORM 或 Prisma。
 - 原因：类型安全、SQL-first、性能优异、社区活跃；TypeORM 处于维护模式，Prisma 生成层过重。
-- 影响范围：`apps/core-api/Infrastructure/Database/` 及所有数据库查询层。
+- 影响范围：`apps/coreApi/Infrastructure/Database/` 及所有数据库查询层。
 - 责任人：后端负责人。
 
 ### D-009
@@ -76,7 +76,7 @@
 - 日期：2026-03-01
 - 决策：前端状态管理采用 Zustand（客户端状态）+ TanStack Query（服务端状态）组合方案。
 - 原因：两者互补且轻量，Zustand 无 Provider 负担，TanStack Query 自动处理缓存/重试/失效。
-- 影响范围：`apps/admin-portal/src/stores/` 及所有数据获取逻辑。
+- 影响范围：`apps/adminPortal/src/stores/` 及所有数据获取逻辑。
 - 责任人：前端负责人。
 
 ### D-010
@@ -92,7 +92,7 @@
 - 日期：2026-03-01
 - 决策：结构化日志框架选用 Pino。
 - 原因：Fastify 原生支持 Pino，JSON 结构化输出性能最优，与 OpenTelemetry traceId 关联成本低。
-- 影响范围：`apps/core-api` 所有日志输出，禁止使用 `console.log`。
+- 影响范围：`apps/coreApi` 所有日志输出，禁止使用 `console.log`。
 - 责任人：后端负责人。
 
 ## 最近更新时间

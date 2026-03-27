@@ -15,7 +15,7 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
 
 ### 1. CoreApiMetricsMissing (P0)
 
-**Trigger Condition**: `up{job="core-api-otel"} == 0` for 2 minutes
+**Trigger Condition**: `up{job="coreApi-otel"} == 0` for 2 minutes
 
 **Severity**: P0 - System unavailable
 
@@ -49,7 +49,7 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
 
 4. **Check Prometheus scrape status**:
    - Open Prometheus: `http://localhost:9091/targets`
-   - Look for `core-api-otel` target status
+   - Look for `coreApi-otel` target status
 
 #### Common Root Causes
 

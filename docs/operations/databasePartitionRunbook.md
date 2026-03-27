@@ -4,9 +4,9 @@
 Validate partition strategy and migration safety before production rollout.
 
 ## Migration
-- Rehearsal migration file: `apps/core-api/drizzle/migrations/0004_partition_rehearsal.sql`
+- Rehearsal migration file: `apps/coreApi/drizzle/migrations/0004_partition_rehearsal.sql`
 - Apply with:
-  - `npm run db:migrate -w core-api`
+  - `npm run db:migrate -w coreApi`
 
 ## Verification
 - `npm run partition:check`

@@ -183,7 +183,7 @@ new Pool({
 
 ### 6.1 动态超时调整
 ```typescript
-// apps/core-api/src/infrastructure/adaptive/adaptiveTimeoutManager.ts
+// apps/coreApi/src/infrastructure/adaptive/adaptiveTimeoutManager.ts
 export class AdaptiveTimeoutManager {
   private baseTimeout = 5000;
   private maxTimeout = 30000;
@@ -216,7 +216,7 @@ export class AdaptiveTimeoutManager {
 
 ### 6.2 断路器模式
 ```typescript
-// apps/core-api/src/infrastructure/adaptive/circuitBreaker.ts
+// apps/coreApi/src/infrastructure/adaptive/circuitBreaker.ts
 export class CircuitBreaker {
   private state: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED';
   private failureCount = 0;
@@ -255,7 +255,7 @@ export class CircuitBreaker {
 
 ### 6.3 背压控制
 ```typescript
-// apps/core-api/src/infrastructure/adaptive/backpressureController.ts
+// apps/coreApi/src/infrastructure/adaptive/backpressureController.ts
 export class BackpressureController {
   private activeRequests = 0;
   private readonly maxConcurrent = 1000;

@@ -98,7 +98,7 @@ Status legend:
 ## Quick Commands
 - `npm run format:check`
 - `npm run lint`
-- `npm run test:core-api`
+- `npm run test:coreApi`
 - `npm run build`
 - `npm run infra:up`
 - `npm run infra:up:kafka`

@@ -256,7 +256,7 @@ CREATE POLICY audit_logs_tenant_isolation
 
 ### Priority 2: Application-Level Validation
 
-**File**: `apps/core-api/src/infrastructure/database/imMessageRepository.ts`
+**File**: `apps/coreApi/src/infrastructure/database/imMessageRepository.ts`
 
 Add tenant validation before database operations:
 
@@ -298,7 +298,7 @@ Add metrics to detect cross-tenant access attempts:
 
 ```typescript
 // In imMessageRepository.ts
-private static readonly crossTenantAttemptCounter = metrics.getMeter('core-api-security')
+private static readonly crossTenantAttemptCounter = metrics.getMeter('coreApi-security')
   .createCounter('cross_tenant_access_attempts', {
     description: 'Attempted cross-tenant data access (security violation)',
   });
@@ -321,7 +321,7 @@ if (message.tenantId !== expectedTenantId) {
 
 Add to CI/CD pipeline:
 ```bash
-npm run test:core-api -- apps/core-api/src/infrastructure/database/multiTenantIsolation.test.ts
+npm run test:coreApi -- apps/coreApi/src/infrastructure/database/multiTenantIsolation.test.ts
 ```
 
 **Acceptance Criteria**: 100% pass rate (26/26 tests passing)

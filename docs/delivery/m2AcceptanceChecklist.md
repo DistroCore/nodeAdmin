@@ -2,7 +2,7 @@
 
 ## Preconditions
 - `npm run infra:up:kafka`
-- `npm run db:migrate -w core-api`
+- `npm run db:migrate -w coreApi`
 
 ## Validation Commands
 1. Auto gate

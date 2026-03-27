@@ -15,7 +15,7 @@
 - Quality:
   - `npm run format:check`
   - `npm run lint`
-  - `npm run test:core-api`
+  - `npm run test:coreApi`
   - `npm run build`
 - Infra:
   - `npm run infra:up`

@@ -69,7 +69,7 @@ services:
     secrets:
       - postgres_password
 
-  core-api:
+  coreApi:
     environment:
       JWT_ACCESS_SECRET_FILE: /run/secrets/jwt_access_secret
       JWT_REFRESH_SECRET_FILE: /run/secrets/jwt_refresh_secret

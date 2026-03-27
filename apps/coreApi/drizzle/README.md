@@ -1,8 +1,8 @@
 # CoreApi SQL Migrations
 
-- Migration files are stored in `apps/core-api/drizzle/migrations`.
+- Migration files are stored in `apps/coreApi/drizzle/migrations`.
 - Apply migrations with:
-  - `npm run db:migrate -w core-api`
+  - `npm run db:migrate -w coreApi`
 - This project currently uses SQL-first migration files to keep RLS and index logic explicit.
 
 ## RLS Usage

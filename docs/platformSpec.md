@@ -3,7 +3,7 @@
 ## 1) 命名规范（强制）
 
 - 目录名：`lowercase` 或 `kebab-case`
-  - 示例：`apps`、`admin-portal`、`core-api`、`components`、`modules`
+  - 示例：`apps`、`adminPortal`、`coreApi`、`components`、`modules`
 - 业务代码文件名：`lowerCamelCase`
   - 示例：`conversationService.ts`、`messageRepository.ts`、`adminDashboardPage.tsx`
 - 特殊说明：工具/框架约定文件保留官方命名
@@ -23,7 +23,7 @@
 
 ```text
 apps/
-  admin-portal/
+  adminPortal/
     src/
       app/
         appRoot.tsx
@@ -37,7 +37,7 @@ apps/
       styles/
         globals.css
       main.tsx
-  core-api/
+  coreApi/
     src/
       modules/
         identity/

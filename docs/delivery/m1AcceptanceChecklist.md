@@ -8,10 +8,10 @@
 1. Code quality
    - `npm run format:check`
    - `npm run lint`
-   - `npm run test:core-api`
+   - `npm run test:coreApi`
    - `npm run build`
 2. Data and infra
-   - `npm run db:migrate -w core-api`
+   - `npm run db:migrate -w coreApi`
    - `npm run smoke:pgbouncer`
 3. API acceptance
    - `npm run m1:acceptance`

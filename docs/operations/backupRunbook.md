@@ -15,7 +15,7 @@
   - Falls back to `docker exec -i nodeadmin-postgres psql`
 
 ## Verification
-- `npm run db:migrate -w core-api`
+- `npm run db:migrate -w coreApi`
 - `npm run m1:acceptance:auto`
 
 Last updated: 2026-03-01

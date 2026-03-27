@@ -7,7 +7,7 @@
 
 ### 1. Socket.IO 超时配置修复 ✅
 
-**文件**: `apps/core-api/src/modules/im/imGateway.ts`
+**文件**: `apps/coreApi/src/modules/im/imGateway.ts`
 
 **修改前**:
 ```typescript
@@ -55,7 +55,7 @@ query_wait_timeout = 120         # 排队等待最多2分钟
 
 ### 3. PostgreSQL 连接池超时优化 ✅
 
-**文件**: `apps/core-api/src/infrastructure/database/imMessageRepository.ts`
+**文件**: `apps/coreApi/src/infrastructure/database/imMessageRepository.ts`
 
 **修改前**:
 ```typescript
@@ -78,7 +78,7 @@ connectionTimeoutMillis: runtimeConfig.database.connectionTimeoutMillis,  // 默
 
 ### 4. 配置中心化 ✅
 
-**文件**: `apps/core-api/src/app/runtimeConfig.ts`
+**文件**: `apps/coreApi/src/app/runtimeConfig.ts`
 
 **新增配置接口**:
 ```typescript
@@ -221,9 +221,9 @@ Duration    8.93s
 ## 文件清单
 
 ### 修改的文件
-1. `apps/core-api/src/app/runtimeConfig.ts`
-2. `apps/core-api/src/modules/im/imGateway.ts`
-3. `apps/core-api/src/infrastructure/database/imMessageRepository.ts`
+1. `apps/coreApi/src/app/runtimeConfig.ts`
+2. `apps/coreApi/src/modules/im/imGateway.ts`
+3. `apps/coreApi/src/infrastructure/database/imMessageRepository.ts`
 4. `docker-compose.yml`
 
 ### 新建的文件
