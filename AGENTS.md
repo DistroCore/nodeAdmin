@@ -23,12 +23,12 @@ nodeAdmin 是一个企业级中台系统，包含 IM 即时通讯模块。Monore
 
 ```
 apps/
-  coreApi/         ← 后端 NestJS 应用 (CommonJS, port 3001)
+  coreApi/         ← 后端 NestJS 应用 (CommonJS, port 11451)
     src/
       app/         ← 根模块、配置、过滤器
       modules/     ← 业务模块 (Health, Auth, Im)
       infrastructure/ ← 数据库、Redis、消息存储
-  adminPortal/     ← 前端 React 应用 (ESM, port 5173)
+  adminPortal/     ← 前端 React 应用 (ESM, port 3000)
     src/
       app/         ← 路由、根组件
       components/

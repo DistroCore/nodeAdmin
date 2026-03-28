@@ -4,7 +4,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { Dialog } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { FormField } from '@/components/ui/formField';
 import { useApiClient } from '@/hooks/useApiClient';
 import { type UserItem, type RoleItem } from '@nodeadmin/shared-types';
 
@@ -121,8 +121,7 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
     <Dialog onClose={handleDialogClose} open={open} title={title}>
       <form onSubmit={handleSubmit}>
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="user-email">{t({ id: 'auth.email' })}</Label>
+          <FormField label={t({ id: 'auth.email' })} htmlFor="user-email">
             <Input
               id="user-email"
               required
@@ -130,13 +129,17 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <Label htmlFor="user-password">
-              {t({ id: 'auth.password' })}
-              {!isEdit && <span className="text-destructive ml-1">*</span>}
-            </Label>
+          <FormField
+            label={
+              <>
+                {t({ id: 'auth.password' })}
+                {!isEdit && <span className="text-destructive ml-1">*</span>}
+              </>
+            }
+            htmlFor="user-password"
+          >
             <Input
               id="user-password"
               placeholder={isEdit ? t({ id: 'users.passwordOptional' }) : undefined}
@@ -145,10 +148,9 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <Label htmlFor="user-name">{t({ id: 'auth.name' })}</Label>
+          <FormField label={t({ id: 'auth.name' })} htmlFor="user-name">
             <Input
               id="user-name"
               required
@@ -156,10 +158,9 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <Label>{t({ id: 'users.colRoles' })}</Label>
+          <FormField label={t({ id: 'users.colRoles' })}>
             <div className="max-h-32 overflow-y-auto rounded-md border border-border p-3">
               {rolesQuery.isLoading
                 ? t({ id: 'users.loadingRoles' })
@@ -176,7 +177,7 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
                       </label>
                     ))}
             </div>
-          </div>
+          </FormField>
         </div>
 
         <div className="mt-6 flex justify-end gap-3">

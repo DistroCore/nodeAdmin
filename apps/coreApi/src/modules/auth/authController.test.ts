@@ -39,6 +39,8 @@ describe('AuthController', () => {
   describe('register', () => {
     it('should delegate to authService and return identity + tokens', async () => {
       authService.register.mockResolvedValue({
+        name: 'Test',
+        roles: ['viewer'],
         userId: 'user-1',
         tokens: { accessToken: 'at', refreshToken: 'rt', tokenType: 'Bearer' },
       });
@@ -53,7 +55,8 @@ describe('AuthController', () => {
       expect(authService.register).toHaveBeenCalledWith(
         'test@example.com', 'pass', 't-1', 'Test'
       );
-      expect(result.identity).toEqual({ userId: 'user-1', tenantId: 't-1' });
+      expect(result.identity).toEqual({ roles: ['viewer'], userId: 'user-1', tenantId: 't-1' });
+      expect(result.name).toBe('Test');
       expect(result.accessToken).toBe('at');
       expect(result.refreshToken).toBe('rt');
     });
@@ -62,6 +65,8 @@ describe('AuthController', () => {
   describe('login', () => {
     it('should delegate to authService and record audit log', async () => {
       authService.login.mockResolvedValue({
+        name: 'Test User',
+        roles: ['admin'],
         userId: 'user-1',
         tokens: { accessToken: 'access-token-123456', refreshToken: 'rt', tokenType: 'Bearer' },
       });
@@ -73,12 +78,15 @@ describe('AuthController', () => {
       } as any);
 
       expect(authService.login).toHaveBeenCalledWith('test@example.com', 'pass', 't-1');
-      expect(result.identity).toEqual({ userId: 'user-1', tenantId: 't-1' });
+      expect(result.identity).toEqual({ roles: ['admin'], userId: 'user-1', tenantId: 't-1' });
+      expect(result.name).toBe('Test User');
       expect(auditLogService.record).toHaveBeenCalled();
     });
 
     it('should not block login when audit log fails', async () => {
       authService.login.mockResolvedValue({
+        name: null,
+        roles: ['viewer'],
         userId: 'user-1',
         tokens: { accessToken: 'at-123456789', refreshToken: 'rt', tokenType: 'Bearer' },
       });

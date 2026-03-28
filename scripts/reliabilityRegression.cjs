@@ -1,7 +1,7 @@
 const { randomUUID } = require('node:crypto');
 const { io } = require('socket.io-client');
 
-const defaultBaseUrl = 'http://127.0.0.1:3001';
+const defaultBaseUrl = 'http://127.0.0.1:11451';
 const baseUrl = (process.env.CORE_API_BASE_URL || defaultBaseUrl).trim();
 const socketUrl = (process.env.CORE_API_SOCKET_URL || baseUrl).trim();
 const tenantId = (process.env.SMOKE_TENANT_ID || 'tenant-demo').trim();

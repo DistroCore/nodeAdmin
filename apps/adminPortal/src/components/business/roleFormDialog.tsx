@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { type RoleItem, type PaginatedResponse } from '@nodeadmin/shared-types';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { FormField } from '@/components/ui/formField';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { useApiClient } from '@/hooks/useApiClient';
 
@@ -91,23 +92,20 @@ export function RoleFormDialog({ onClose, onSaved, open, role }: RoleFormDialogP
     >
       <form onSubmit={handleSubmit}>
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="role-name">{t({ id: 'roles.fieldName' })}</Label>
+          <FormField label={t({ id: 'roles.fieldName' })} htmlFor="role-name">
             <Input id="role-name" required value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <Label htmlFor="role-description">{t({ id: 'roles.fieldDescription' })}</Label>
+          <FormField label={t({ id: 'roles.fieldDescription' })} htmlFor="role-description">
             <Input
               id="role-description"
               required
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <Label>{t({ id: 'roles.fieldPermissions' })}</Label>
+          <FormField label={t({ id: 'roles.fieldPermissions' })}>
             {permissionsQuery.isLoading ? (
               <div className="text-sm text-muted-foreground">
                 {t({ id: 'roles.loadingPermissions' })}
@@ -119,28 +117,20 @@ export function RoleFormDialog({ onClose, onSaved, open, role }: RoleFormDialogP
                     <div className="mb-2 text-sm font-semibold text-foreground">{module}</div>
                     <div className="space-y-1 pl-2">
                       {modulePerms.map((perm) => (
-                        <div className="flex items-center space-x-2" key={perm.id}>
-                          <input
-                            checked={selectedPermissionIds.includes(perm.id)}
-                            className="h-4 w-4 rounded border-border"
-                            id={`perm-${perm.id}`}
-                            onChange={() => togglePermission(perm.id)}
-                            type="checkbox"
-                          />
-                          <label
-                            className="text-sm text-foreground cursor-pointer"
-                            htmlFor={`perm-${perm.id}`}
-                          >
-                            {perm.name}
-                          </label>
-                        </div>
+                        <Checkbox
+                          checked={selectedPermissionIds.includes(perm.id)}
+                          id={`perm-${perm.id}`}
+                          key={perm.id}
+                          label={perm.name}
+                          onChange={() => togglePermission(perm.id)}
+                        />
                       ))}
                     </div>
                   </div>
                 ))}
               </div>
             )}
-          </div>
+          </FormField>
         </div>
 
         <div className="mt-6 flex justify-end gap-3">

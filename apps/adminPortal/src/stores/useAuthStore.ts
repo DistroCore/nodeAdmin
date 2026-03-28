@@ -87,7 +87,8 @@ export const useAuthStore = create<AuthState>((set) => ({
 /** Matches the actual API response shape: { identity, accessToken, refreshToken, tokenType } */
 export function setAuthFromLogin(data: {
   accessToken: string;
-  identity: { tenantId: string; userId: string };
+  identity: { roles?: string[]; tenantId: string; userId: string };
+  name?: string | null;
   refreshToken: string;
 }): void {
   const state: Partial<AuthState> = {
@@ -96,8 +97,8 @@ export function setAuthFromLogin(data: {
     refreshToken: data.refreshToken,
     tenantId: data.identity.tenantId,
     userId: data.identity.userId,
-    userName: null,
-    userRoles: [],
+    userName: data.name ?? null,
+    userRoles: data.identity.roles ?? [],
   };
   useAuthStore.setState(state);
   persistAuth({ ...useAuthStore.getState(), ...state });

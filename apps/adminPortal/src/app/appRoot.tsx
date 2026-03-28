@@ -106,7 +106,7 @@ export function AppRoot(): JSX.Element {
                       </RequirePermission>
                     </RouteModule>
                   }
-                  path="/tenant"
+                  path="/tenants"
                 />
                 <Route
                   element={

@@ -15,11 +15,11 @@ export function Sidebar(): JSX.Element {
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
   const mobileMenuOpen = useUiStore((s) => s.mobileMenuOpen);
   const setMobileMenuOpen = useUiStore((s) => s.setMobileMenuOpen);
-  const hasPermission = usePermissionStore((s) => s.hasPermission);
+  const permissions = usePermissionStore((s) => s.permissions);
   const menus = useMenuStore((s) => s.menus);
   const menusLoaded = useMenuStore((s) => s.loaded);
 
-  const visibleNavItems = navItems.filter((item) => hasPermission(item.permission));
+  const visibleNavItems = navItems.filter((item) => permissions[item.permission]);
 
   // Auto-collapse sidebar on tablet (768–1023px)
   useEffect(() => {

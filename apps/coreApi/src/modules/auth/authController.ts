@@ -16,7 +16,7 @@ export class AuthController {
 
   @Post('register')
   async register(@Body() dto: RegisterDto) {
-    const { userId, tokens } = await this.authService.register(
+    const { name, roles, tokens, userId } = await this.authService.register(
       dto.email,
       dto.password,
       dto.tenantId,
@@ -24,14 +24,15 @@ export class AuthController {
     );
 
     return {
-      identity: { userId, tenantId: dto.tenantId },
+      identity: { roles, tenantId: dto.tenantId, userId },
+      name,
       ...tokens,
     };
   }
 
   @Post('login')
   async login(@Body() dto: LoginDto) {
-    const { userId, tokens } = await this.authService.login(dto.email, dto.password, dto.tenantId);
+    const { name, roles, tokens, userId } = await this.authService.login(dto.email, dto.password, dto.tenantId);
 
     try {
       await this.auditLogService.record({
@@ -47,7 +48,8 @@ export class AuthController {
     }
 
     return {
-      identity: { userId, tenantId: dto.tenantId },
+      identity: { roles, tenantId: dto.tenantId, userId },
+      name,
       ...tokens,
     };
   }

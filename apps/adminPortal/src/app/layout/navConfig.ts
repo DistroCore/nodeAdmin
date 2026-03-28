@@ -42,7 +42,7 @@ export const navItems: NavItem[] = [
     icon: 'users',
     key: 'tenant',
     labelId: 'nav.tenants',
-    path: '/tenant',
+    path: '/tenants',
     permission: 'tenant:view',
   },
   {

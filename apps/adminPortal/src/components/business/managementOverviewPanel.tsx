@@ -51,10 +51,10 @@ export function ManagementOverviewPanel(): JSX.Element {
   const isOverviewPending = overviewQuery.isLoading || overviewQuery.isError;
   const isHealthPending = healthQuery.isLoading || healthQuery.isError;
 
-  const healthVersion = healthQuery.data ? `v${healthQuery.data.version}` : 'Unavailable';
+  const healthVersion = healthQuery.data ? `v${healthQuery.data.version}` : t({ id: 'overview.unavailable' });
   const healthStatus = healthQuery.data
     ? `${healthQuery.data.service} / ${healthQuery.data.status}`
-    : 'Unavailable';
+    : t({ id: 'overview.unavailable' });
 
   return (
     <section className="flex h-full flex-col gap-6 overflow-y-auto">

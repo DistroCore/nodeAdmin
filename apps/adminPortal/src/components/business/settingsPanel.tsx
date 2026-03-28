@@ -1,4 +1,5 @@
 import { useIntl } from 'react-intl';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUiStore } from '@/stores/useUiStore';
 
@@ -82,24 +83,18 @@ export function SettingsPanel(): JSX.Element {
         <div className="rounded-md border border-border bg-card p-4">
           <h2 className="mb-3 text-sm font-medium text-foreground">{t({ id: 'settings.display' })}</h2>
           <div className="space-y-2">
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
-              <input
-                checked={sidebarCollapsed}
-                onChange={toggleSidebar}
-                type="checkbox"
-                className="accent-primary"
-              />
-              {t({ id: 'settings.sidebarCollapsed' })}
-            </label>
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
-              <input
-                checked={imPanelOpen}
-                onChange={toggleImPanel}
-                type="checkbox"
-                className="accent-primary"
-              />
-              {t({ id: 'settings.imPanel' })}
-            </label>
+            <Checkbox
+              checked={sidebarCollapsed}
+              id="settings-sidebar-collapsed"
+              label={t({ id: 'settings.sidebarCollapsed' })}
+              onChange={toggleSidebar}
+            />
+            <Checkbox
+              checked={imPanelOpen}
+              id="settings-im-panel"
+              label={t({ id: 'settings.imPanel' })}
+              onChange={toggleImPanel}
+            />
           </div>
         </div>
 
@@ -108,11 +103,11 @@ export function SettingsPanel(): JSX.Element {
           <h2 className="mb-3 text-sm font-medium text-foreground">{t({ id: 'settings.session' })}</h2>
           <dl className="space-y-1 text-sm">
             <div className="flex justify-between">
-              <dt className="text-muted-foreground">User ID</dt>
+              <dt className="text-muted-foreground">{t({ id: 'settings.userId' })}</dt>
               <dd className="font-mono text-xs text-foreground">{userId ?? '—'}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-muted-foreground">Tenant ID</dt>
+              <dt className="text-muted-foreground">{t({ id: 'settings.tenantId' })}</dt>
               <dd className="font-mono text-xs text-foreground">{tenantId ?? '—'}</dd>
             </div>
             <div className="flex justify-between">

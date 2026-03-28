@@ -4,7 +4,9 @@ import { useMutation } from '@tanstack/react-query';
 import { Dialog } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { FormField } from '@/components/ui/formField';
+import { Select } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useApiClient } from '@/hooks/useApiClient';
 import { MenuItem } from '@nodeadmin/shared-types';
 
@@ -160,8 +162,7 @@ export function MenuFormDialog({
     <Dialog onClose={handleClose} open={open} title={title}>
       <form key={menu?.id ?? (isChildMode ? `child-${parentId}` : 'new')} onSubmit={handleSubmit}>
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="menu-name">{t({ id: 'menus.fieldName' })}</Label>
+          <FormField label={t({ id: 'menus.fieldName' })} htmlFor="menu-name">
             <Input
               id="menu-name"
               required
@@ -169,10 +170,9 @@ export function MenuFormDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <Label htmlFor="menu-path">{t({ id: 'menus.fieldPath' })}</Label>
+          <FormField label={t({ id: 'menus.fieldPath' })} htmlFor="menu-path">
             <Input
               id="menu-path"
               required
@@ -180,10 +180,9 @@ export function MenuFormDialog({
               value={path}
               onChange={(e) => setPath(e.target.value)}
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <Label htmlFor="menu-icon">{t({ id: 'menus.fieldIcon' })}</Label>
+          <FormField label={t({ id: 'menus.fieldIcon' })} htmlFor="menu-icon">
             <Input
               id="menu-icon"
               required
@@ -191,28 +190,19 @@ export function MenuFormDialog({
               value={icon}
               onChange={(e) => setIcon(e.target.value)}
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <Label htmlFor="menu-parent">{t({ id: 'menus.fieldParent' })}</Label>
-            <select
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          <FormField label={t({ id: 'menus.fieldParent' })} htmlFor="menu-parent">
+            <Select
               disabled={isChildMode}
-              id="menu-parent"
+              onChange={(value) => setSelectedParentId(value || null)}
+              options={availableParents.map((m) => ({ value: m.id, label: m.name }))}
+              placeholder={t({ id: 'menus.noParent' })}
               value={selectedParentId ?? ''}
-              onChange={(e) => setSelectedParentId(e.target.value || null)}
-            >
-              <option value="">{t({ id: 'menus.noParent' })}</option>
-              {availableParents.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-          </div>
+            />
+          </FormField>
 
-          <div className="space-y-2">
-            <Label htmlFor="menu-sort">{t({ id: 'menus.fieldSort' })}</Label>
+          <FormField label={t({ id: 'menus.fieldSort' })} htmlFor="menu-sort">
             <Input
               id="menu-sort"
               required
@@ -220,10 +210,9 @@ export function MenuFormDialog({
               value={sortOrder}
               onChange={(e) => setSortOrder(Number.parseInt(e.target.value) || 0)}
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <Label htmlFor="menu-permission">{t({ id: 'menus.fieldPermission' })}</Label>
+          <FormField label={t({ id: 'menus.fieldPermission' })} htmlFor="menu-permission">
             <Input
               id="menu-permission"
               required
@@ -231,17 +220,14 @@ export function MenuFormDialog({
               value={permissionCode}
               onChange={(e) => setPermissionCode(e.target.value)}
             />
-          </div>
+          </FormField>
 
-          <div className="flex items-center gap-2">
-            <input
-              checked={isVisible}
-              id="menu-visible"
-              onChange={(e) => setIsVisible(e.target.checked)}
-              type="checkbox"
-            />
-            <Label htmlFor="menu-visible">{t({ id: 'menus.fieldVisible' })}</Label>
-          </div>
+          <Checkbox
+            checked={isVisible}
+            id="menu-visible"
+            label={t({ id: 'menus.fieldVisible' })}
+            onChange={setIsVisible}
+          />
         </div>
 
         <div className="mt-6 flex justify-end gap-3">

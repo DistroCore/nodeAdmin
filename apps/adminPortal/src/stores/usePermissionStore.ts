@@ -20,11 +20,11 @@ const defaultPermissions: PermissionMap = {
 
 function buildPermissionMap(roles: string[]): PermissionMap {
   const roleSet = new Set(roles);
-  const isAdmin = roleSet.has('tenant:admin');
+  const isAdmin = roleSet.has('admin') || roleSet.has('super-admin');
 
   return {
     'im:send': isAdmin || roleSet.has('im:operator'),
-    'im:view': isAdmin || roleSet.has('im:operator') || roleSet.has('tenant:viewer'),
+    'im:view': isAdmin || roleSet.has('im:operator') || roleSet.has('viewer'),
     'menus:manage': isAdmin,
     'menus:view': isAdmin,
     'overview:view': true,
@@ -32,7 +32,7 @@ function buildPermissionMap(roles: string[]): PermissionMap {
     'roles:manage': isAdmin,
     'roles:view': isAdmin,
     'settings:view': isAdmin,
-    'tenant:view': isAdmin || roleSet.has('tenant:viewer'),
+    'tenant:view': isAdmin || roleSet.has('viewer'),
     'users:manage': isAdmin,
     'users:view': isAdmin,
   };

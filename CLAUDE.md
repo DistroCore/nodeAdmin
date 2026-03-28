@@ -13,8 +13,8 @@ All commands are run from the repo root unless noted.
 ### Development
 
 ```bash
-npm run dev:api          # Start CoreApi (NestJS, port 3001) with HMR via ts-node-dev
-npm run dev:web          # Start AdminPortal (Vite dev server, port 5173)
+npm run dev:api          # Start CoreApi (NestJS, port 11451) with HMR via ts-node-dev
+npm run dev:web          # Start AdminPortal (Vite dev server, port 3000)
 ```
 
 ### Build
@@ -62,8 +62,8 @@ npm run m2:acceptance:auto        # M2 milestone acceptance (auto-starts API)
 ### Monorepo Structure
 
 ```
-apps/coreApi/        ← NestJS 11 + Fastify backend (CommonJS, port 3001)
-apps/adminPortal/    ← React 18 + Vite 6 frontend (ESM, port 5173)
+apps/coreApi/        ← NestJS 11 + Fastify backend (CommonJS, port 11451)
+apps/adminPortal/    ← React 18 + Vite 6 frontend (ESM, port 3000)
 packages/shared-types/ ← Shared TypeScript types/interfaces (ESM)
 infra/               ← Caddy, Nginx, Prometheus, Grafana configs
 scripts/             ← Operational and acceptance test scripts (CommonJS .cjs)

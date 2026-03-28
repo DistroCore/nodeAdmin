@@ -9,7 +9,7 @@ export function useApiClient(): ApiClient {
       return envApiBaseUrl;
     }
 
-    return `http://${window.location.hostname}:3001`;
+    return `http://${window.location.hostname}:11451`;
   }, []);
 
   return useMemo(() => {

@@ -9,7 +9,7 @@
 const REQUIRED_KEYS: Record<string, string> = {
   JWT_ACCESS_SECRET: 'test-access-secret-key',
   JWT_REFRESH_SECRET: 'test-refresh-secret-key',
-  FRONTEND_ORIGINS: 'http://localhost:5173',
+  FRONTEND_ORIGINS: 'http://localhost:3000',
 };
 
 let savedEnvs: Record<string, string | undefined> = {};

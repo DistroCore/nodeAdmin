@@ -25,7 +25,7 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
 
 1. **Check CoreApi health**:
    ```bash
-   curl http://localhost:3001/health
+   curl http://localhost:11451/health
    ```
    - Expected: `{"status":"ok"}`
    - If fails: CoreApi is down
@@ -56,7 +56,7 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
 | Root Cause | Solution |
 |------------|----------|
 | CoreApi crashed | Restart: `npm run dev:api` or `docker restart nodeadmin-coreapi` |
-| Port 3001 already in use | Kill conflicting process: `lsof -ti:3001 \| xargs kill -9` |
+| Port 11451 already in use | Kill conflicting process: `lsof -ti:11451 \| xargs kill -9` |
 | OTEL_ENABLED=false | Set `OTEL_ENABLED=true` in .env and restart |
 | Metrics port 9464 blocked | Check firewall rules, ensure port is exposed in docker-compose.yml |
 | Out of memory | Check `docker stats`, increase memory limit in docker-compose.yml |
@@ -760,7 +760,7 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
 docker ps
 
 # Check CoreApi health
-curl http://localhost:3001/health
+curl http://localhost:11451/health
 
 # Check metrics endpoint
 curl http://localhost:9464/metrics
@@ -792,7 +792,7 @@ docker exec -it nodeadmin-redis redis-cli PING
 - **Prometheus**: http://localhost:9091
 - **AlertManager**: http://localhost:9093
 - **Grafana**: http://localhost:3003 (admin/admin)
-- **CoreApi Health**: http://localhost:3001/health
+- **CoreApi Health**: http://localhost:11451/health
 - **CoreApi Metrics**: http://localhost:9464/metrics
 
 ---

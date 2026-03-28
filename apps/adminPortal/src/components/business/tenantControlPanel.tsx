@@ -5,14 +5,7 @@ import { type TenantItem } from '@nodeadmin/shared-types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { DataTable } from '@/components/ui/dataTable';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast';
 import { useApiClient } from '@/hooks/useApiClient';
@@ -65,91 +58,49 @@ export function TenantControlPanel(): JSX.Element {
           </Button>
         </CardHeader>
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t({ id: 'tenant.colName' })}</TableHead>
-              <TableHead>{t({ id: 'tenant.colStatus' })}</TableHead>
-              <TableHead>{t({ id: 'tenant.colActions' })}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {tenantQuery.isLoading
-              ? Array.from({ length: 3 }).map((_, index) => (
-                  <TableRow className="hover:bg-muted/50" key={`tenant-skeleton-${index}`}>
-                    <TableCell>
-                      <div className="h-4 w-full animate-pulse rounded bg-muted" />
-                    </TableCell>
-                    <TableCell>
-                      <div className="h-4 w-full animate-pulse rounded bg-muted" />
-                    </TableCell>
-                    <TableCell>
-                      <div className="h-4 w-full animate-pulse rounded bg-muted" />
-                    </TableCell>
-                    <TableCell>
-                      <div className="h-4 w-full animate-pulse rounded bg-muted" />
-                    </TableCell>
-                  </TableRow>
-                ))
-              : null}
-
-            {tenantQuery.isError ? (
-              <TableRow className="hover:bg-transparent">
-                <TableCell className="py-8 text-center" colSpan={3}>
-                  <p className="text-sm text-destructive">{t({ id: 'tenant.loadFailed' })}</p>
+        <DataTable<TenantItem>
+          columns={[
+            { header: t({ id: 'tenant.colName' }), cell: (tenant) => <span className="font-medium">{tenant.name}</span> },
+            {
+              header: t({ id: 'tenant.colStatus' }),
+              cell: (tenant) =>
+                tenant.is_active ? (
+                  <Badge variant="default">{t({ id: 'tenant.active' })}</Badge>
+                ) : (
+                  <Badge variant="outline">{t({ id: 'tenant.inactive' })}</Badge>
+                ),
+            },
+            {
+              header: t({ id: 'tenant.colActions' }),
+              cell: (tenant) => (
+                <div className="flex gap-2">
                   <button
-                    className="mt-2 text-xs text-primary hover:underline"
-                    onClick={() => tenantQuery.refetch()}
+                    className="text-sm text-primary hover:underline"
+                    onClick={() => setEditTenant(tenant)}
                     type="button"
                   >
-                    {t({ id: 'common.retry' })}
+                    {t({ id: 'tenant.edit' })}
                   </button>
-                </TableCell>
-              </TableRow>
-            ) : null}
-
-            {!tenantQuery.isLoading && !tenantQuery.isError && tenants.length === 0 ? (
-              <TableRow className="hover:bg-transparent">
-                <TableCell className="py-8 text-center text-sm text-muted-foreground" colSpan={3}>
-                  {t({ id: 'tenant.empty' })}
-                </TableCell>
-              </TableRow>
-            ) : null}
-
-            {!tenantQuery.isLoading && !tenantQuery.isError
-              ? tenants.map((tenant) => (
-                  <TableRow className="hover:bg-muted/50" key={tenant.id}>
-                    <TableCell className="font-medium">{tenant.name}</TableCell>
-                    <TableCell>
-                      {tenant.is_active ? (
-                        <Badge variant="default">{t({ id: 'tenant.active' })}</Badge>
-                      ) : (
-                        <Badge variant="outline">{t({ id: 'tenant.inactive' })}</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <button
-                          className="text-sm text-primary hover:underline"
-                          onClick={() => setEditTenant(tenant)}
-                          type="button"
-                        >
-                          {t({ id: 'tenant.edit' })}
-                        </button>
-                        <button
-                          className="text-sm text-destructive hover:underline"
-                          onClick={() => setDeleteTenant(tenant)}
-                          type="button"
-                        >
-                          {t({ id: 'tenant.delete' })}
-                        </button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              : null}
-          </TableBody>
-        </Table>
+                  <button
+                    className="text-sm text-destructive hover:underline"
+                    onClick={() => setDeleteTenant(tenant)}
+                    type="button"
+                  >
+                    {t({ id: 'tenant.delete' })}
+                  </button>
+                </div>
+              ),
+            },
+          ]}
+          data={tenants}
+          emptyMessage={t({ id: 'tenant.empty' })}
+          errorMessage={t({ id: 'tenant.loadFailed' })}
+          isError={tenantQuery.isError}
+          isLoading={tenantQuery.isLoading}
+          onRetry={() => tenantQuery.refetch()}
+          retryLabel={t({ id: 'common.retry' })}
+          rowKey={(tenant) => tenant.id}
+        />
       </Card>
 
       <TenantFormDialog

@@ -298,6 +298,8 @@ describe('AuthService', () => {
 
       const result = await service.login('test@example.com', 'password123', 'tenant-1');
       expect(result.userId).toBe('user-1');
+      expect(result.name).toBe('Test');
+      expect(result.roles).toEqual(['admin']);
       expect(result.tokens).toHaveProperty('accessToken');
       expect(result.tokens).toHaveProperty('refreshToken');
     });

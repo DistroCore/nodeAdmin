@@ -19,14 +19,14 @@ export function AppLayout({ children }: { children: ReactNode }): JSX.Element {
       setPermissionsFromRoles(roles);
       return;
     }
-    // Dev fallback when no auth
+    // Dev fallback when no roles in auth store (e.g. dev mode without login)
     const rolesRaw = (import.meta.env.VITE_IM_ROLES as string | undefined)?.trim();
     const fallback = rolesRaw
       ? rolesRaw
           .split(',')
           .map((r) => r.trim())
           .filter((r) => r.length > 0)
-      : ['tenant:admin'];
+      : ['admin'];
     setPermissionsFromRoles(fallback);
   }, [setPermissionsFromRoles]);
 
