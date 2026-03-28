@@ -1,10 +1,12 @@
-import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
 import { AuditLogService } from '../../infrastructure/audit/auditLogService';
 import { ConnectionRegistry } from '../../infrastructure/connectionRegistry';
 import { ConversationRepository } from '../../infrastructure/database/conversationRepository';
 import { DatabaseService } from '../../infrastructure/database/databaseService';
 import { TenantsService } from '../tenants/tenantsService';
+import { CurrentUser } from '../auth/currentUser.decorator';
+import type { AuthIdentity } from '../auth/authIdentity';
 
 const eventLoopLagHistogram = monitorEventLoopDelay({
   resolution: 20,
@@ -180,22 +182,41 @@ export class ConsoleController {
 
   @Get('audit-logs')
   async getAuditLogs(
-    @Query('limit') limitRaw?: string,
-    @Query('offset') offsetRaw?: string,
-    @Query('tenantId') tenantId?: string,
-  ): Promise<{ rows: Awaited<ReturnType<AuditLogService['listByTenant']>> }> {
-    if (!tenantId || tenantId.trim().length === 0) {
-      throw new BadRequestException('tenantId query parameter is required.');
-    }
+    @CurrentUser() identity: AuthIdentity,
+    @Query('page') pageRaw?: string,
+    @Query('pageSize') pageSizeRaw?: string,
+    @Query('userId') userId?: string,
+    @Query('action') action?: string,
+    @Query('targetType') targetType?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const parsedPage = Number(pageRaw);
+    const page = Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
 
-    const parsedLimit = Number(limitRaw);
-    const limit = Number.isInteger(parsedLimit) && parsedLimit > 0 ? parsedLimit : 50;
+    const parsedPageSize = Number(pageSizeRaw);
+    const pageSize = Number.isInteger(parsedPageSize) && parsedPageSize > 0
+      ? Math.min(parsedPageSize, 100)
+      : 20;
 
-    const parsedOffset = Number(offsetRaw);
-    const offset = Number.isInteger(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
+    const { items, total } = await this.auditLogService.listByFilter(
+      {
+        tenantId: identity.tenantId,
+        userId: userId || undefined,
+        action: action || undefined,
+        targetType: targetType || undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+      },
+      page,
+      pageSize,
+    );
 
     return {
-      rows: await this.auditLogService.listByTenant(tenantId, Math.min(limit, 200), offset),
+      items,
+      page,
+      pageSize,
+      total,
     };
   }
 }
