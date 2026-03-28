@@ -230,5 +230,20 @@
   "profile.info": "Account Information",
   "roles.saveSuccess": "Role saved successfully",
   "tenant.saveSuccess": "Tenant saved successfully",
-  "common.confirm": "Confirm"
+  "common.confirm": "Confirm",
+
+  "nav.audit": "Audit Logs",
+  "audit.title": "Audit Logs",
+  "audit.desc": "System activity timeline",
+  "audit.search": "Search user/action...",
+  "audit.loadFailed": "Failed to load audit logs.",
+  "audit.empty": "No audit logs found.",
+  "audit.loadMore": "Load more",
+  "audit.action.create": "created",
+  "audit.action.update": "updated",
+  "audit.action.delete": "deleted",
+  "audit.action.login": "logged in",
+  "audit.allActions": "All actions",
+  "audit.startDate": "Start date",
+  "audit.endDate": "End date"
 }

@@ -230,5 +230,20 @@
   "profile.info": "账户信息",
   "roles.saveSuccess": "角色保存成功",
   "tenant.saveSuccess": "租户保存成功",
-  "common.confirm": "确认"
+  "common.confirm": "确认",
+
+  "nav.audit": "审计日志",
+  "audit.title": "审计日志",
+  "audit.desc": "系统活动时间线",
+  "audit.search": "搜索用户/操作...",
+  "audit.loadFailed": "加载审计日志失败。",
+  "audit.empty": "未找到审计日志。",
+  "audit.loadMore": "加载更多",
+  "audit.action.create": "创建了",
+  "audit.action.update": "更新了",
+  "audit.action.delete": "删除了",
+  "audit.action.login": "登录了",
+  "audit.allActions": "全部操作",
+  "audit.startDate": "开始日期",
+  "audit.endDate": "结束日期"
 }

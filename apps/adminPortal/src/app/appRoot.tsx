@@ -11,6 +11,7 @@ import { SettingsPanel } from '@/components/business/settingsPanel';
 import { ProfilePanel } from '@/components/business/profilePanel';
 import { TenantControlPanel } from '@/components/business/tenantControlPanel';
 import { UserManagementPanel } from '@/components/business/userManagementPanel';
+import { AuditLogPanel } from '@/components/business/auditLogPanel';
 import { AppLayout } from './layout/appLayout';
 import { AuthGuard } from './authGuard';
 import { ModuleErrorBoundary } from './moduleErrorBoundary';
@@ -88,6 +89,16 @@ export function AppRoot(): JSX.Element {
                     </RouteModule>
                   }
                   path="/roles"
+                />
+                <Route
+                  element={
+                    <RouteModule>
+                      <RequirePermission permission="audit:view">
+                        <AuditLogPanel />
+                      </RequirePermission>
+                    </RouteModule>
+                  }
+                  path="/audit"
                 />
                 <Route
                   element={

@@ -32,6 +32,13 @@ export const navItems: NavItem[] = [
     permission: 'roles:view',
   },
   {
+    icon: 'shield',
+    key: 'audit',
+    labelId: 'nav.audit',
+    path: '/audit',
+    permission: 'audit:view',
+  },
+  {
     icon: 'menuIcon',
     key: 'menus',
     labelId: 'nav.menus',

@@ -4,6 +4,7 @@ import type { AppPermission } from '@nodeadmin/shared-types';
 type PermissionMap = Record<AppPermission, boolean>;
 
 const defaultPermissions: PermissionMap = {
+  'audit:view': false,
   'im:send': false,
   'im:view': false,
   'menus:manage': false,
@@ -23,6 +24,7 @@ function buildPermissionMap(roles: string[]): PermissionMap {
   const isAdmin = roleSet.has('admin') || roleSet.has('super-admin');
 
   return {
+    'audit:view': isAdmin || roleSet.has('viewer'),
     'im:send': isAdmin || roleSet.has('im:operator'),
     'im:view': isAdmin || roleSet.has('im:operator') || roleSet.has('viewer'),
     'menus:manage': isAdmin,
