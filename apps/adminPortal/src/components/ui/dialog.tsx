@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { useIntl } from 'react-intl';
 
 interface DialogProps {
   children: ReactNode;
@@ -34,21 +35,21 @@ export function Dialog({ children, onClose, open, title }: DialogProps): JSX.Ele
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-in fade-in duration-150"
       onClick={(e) => {
         if (e.target === overlayRef.current) onClose();
       }}
       ref={overlayRef}
     >
       <div
-        className="relative w-full max-w-lg rounded-lg border border-border bg-card p-6 shadow-lg"
+        className="relative w-full max-w-lg rounded-lg border border-border bg-card p-6 shadow-lg animate-in zoom-in-95 fade-in duration-150"
         role="dialog"
       >
         {title ? (
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold">{title}</h2>
             <button
-              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               onClick={onClose}
               type="button"
             >
@@ -88,6 +89,7 @@ export function ConfirmDialog({
   open,
   title,
 }: ConfirmDialogProps): JSX.Element {
+  const { formatMessage: t } = useIntl();
   const [loading, setLoading] = useState(false);
 
   const handleConfirm = async () => {
@@ -105,19 +107,19 @@ export function ConfirmDialog({
       <p className="text-sm text-muted-foreground">{message}</p>
       <div className="mt-6 flex justify-end gap-3">
         <button
-          className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-accent"
+          className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-accent"
           onClick={onClose}
           type="button"
         >
-          Cancel
+          {t({ id: 'common.cancel' })}
         </button>
         <button
-          className="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+          className="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50"
           disabled={loading}
           onClick={handleConfirm}
           type="button"
         >
-          {loading ? '...' : 'Confirm'}
+          {loading ? '...' : t({ id: 'common.confirm' })}
         </button>
       </div>
     </Dialog>

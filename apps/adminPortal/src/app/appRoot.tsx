@@ -8,6 +8,7 @@ import { RegisterPage } from '@/components/business/registerPage';
 import { ReleaseControlPanel } from '@/components/business/releaseControlPanel';
 import { RoleManagementPanel } from '@/components/business/roleManagementPanel';
 import { SettingsPanel } from '@/components/business/settingsPanel';
+import { ProfilePanel } from '@/components/business/profilePanel';
 import { TenantControlPanel } from '@/components/business/tenantControlPanel';
 import { UserManagementPanel } from '@/components/business/userManagementPanel';
 import { AppLayout } from './layout/appLayout';
@@ -127,6 +128,14 @@ export function AppRoot(): JSX.Element {
                     </RouteModule>
                   }
                   path="/settings"
+                />
+                <Route
+                  element={
+                    <RouteModule>
+                      <ProfilePanel />
+                    </RouteModule>
+                  }
+                  path="/profile"
                 />
                 <Route element={<NotFoundPage />} path="*" />
               </Routes>

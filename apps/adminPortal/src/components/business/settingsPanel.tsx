@@ -1,4 +1,5 @@
 import { useIntl } from 'react-intl';
+import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useUiStore } from '@/stores/useUiStore';
@@ -26,7 +27,7 @@ export function SettingsPanel(): JSX.Element {
 
       <div className="grid gap-4 sm:grid-cols-2">
         {/* Theme */}
-        <div className="rounded-md border border-border bg-card p-4">
+        <Card className="p-4">
           <h2 className="mb-3 text-sm font-medium text-foreground">{t({ id: 'settings.theme' })}</h2>
           <div className="flex gap-2">
             <button
@@ -50,10 +51,10 @@ export function SettingsPanel(): JSX.Element {
               {t({ id: 'settings.themeDark' })}
             </button>
           </div>
-        </div>
+        </Card>
 
         {/* Language */}
-        <div className="rounded-md border border-border bg-card p-4">
+        <Card className="p-4">
           <h2 className="mb-3 text-sm font-medium text-foreground">{t({ id: 'settings.language' })}</h2>
           <div className="flex gap-2">
             <button
@@ -77,10 +78,10 @@ export function SettingsPanel(): JSX.Element {
               中文
             </button>
           </div>
-        </div>
+        </Card>
 
         {/* Display */}
-        <div className="rounded-md border border-border bg-card p-4">
+        <Card className="p-4">
           <h2 className="mb-3 text-sm font-medium text-foreground">{t({ id: 'settings.display' })}</h2>
           <div className="space-y-2">
             <Checkbox
@@ -96,10 +97,10 @@ export function SettingsPanel(): JSX.Element {
               onChange={toggleImPanel}
             />
           </div>
-        </div>
+        </Card>
 
         {/* Session Info */}
-        <div className="rounded-md border border-border bg-card p-4">
+        <Card className="p-4">
           <h2 className="mb-3 text-sm font-medium text-foreground">{t({ id: 'settings.session' })}</h2>
           <dl className="space-y-1 text-sm">
             <div className="flex justify-between">
@@ -119,7 +120,7 @@ export function SettingsPanel(): JSX.Element {
               <dd className="text-foreground">{userRoles.length > 0 ? userRoles.join(', ') : '—'}</dd>
             </div>
           </dl>
-        </div>
+        </Card>
       </div>
     </section>
   );

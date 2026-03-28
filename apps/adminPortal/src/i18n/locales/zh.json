@@ -212,5 +212,23 @@
 
   "notFound.title": "页面不存在",
   "notFound.desc": "您访问的页面不存在或已被移除。",
-  "notFound.backHome": "返回首页"
+  "notFound.backHome": "返回首页",
+
+  "profile.title": "个人中心",
+  "profile.desc": "查看账户信息和修改密码。",
+  "profile.avatar": "头像",
+  "profile.userName": "用户名",
+  "profile.userId": "用户 ID",
+  "profile.roles": "角色",
+  "profile.tenantId": "租户 ID",
+  "profile.changePassword": "修改密码",
+  "profile.currentPassword": "当前密码",
+  "profile.newPassword": "新密码",
+  "profile.updatePassword": "更新密码",
+  "profile.passwordChangeSuccess": "密码修改成功。",
+  "profile.passwordChangeFailed": "密码修改失败。",
+  "profile.info": "账户信息",
+  "roles.saveSuccess": "角色保存成功",
+  "tenant.saveSuccess": "租户保存成功",
+  "common.confirm": "确认"
 }

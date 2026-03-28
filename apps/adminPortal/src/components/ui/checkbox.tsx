@@ -13,13 +13,15 @@ export function Checkbox({ checked, onChange, label, disabled, id }: CheckboxPro
     <div className="flex items-center gap-2">
       <input
         checked={checked}
-        className="h-4 w-4 rounded border border-input"
+        className="h-4 w-4 shrink-0 cursor-pointer rounded border border-input accent-[hsl(var(--primary))] transition-all duration-150 hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         disabled={disabled}
         id={id}
         onChange={(e) => onChange(e.target.checked)}
         type="checkbox"
       />
-      <Label htmlFor={id}>{label}</Label>
+      <Label className={`cursor-pointer ${disabled ? 'opacity-50' : ''}`} htmlFor={id}>
+        {label}
+      </Label>
     </div>
   );
 }

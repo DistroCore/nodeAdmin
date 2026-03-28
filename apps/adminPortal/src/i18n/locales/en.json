@@ -212,5 +212,23 @@
 
   "notFound.title": "Page Not Found",
   "notFound.desc": "The page you are looking for does not exist or has been removed.",
-  "notFound.backHome": "Back to Home"
+  "notFound.backHome": "Back to Home",
+
+  "profile.title": "My Profile",
+  "profile.desc": "View your account information and change password.",
+  "profile.avatar": "Avatar",
+  "profile.userName": "User Name",
+  "profile.userId": "User ID",
+  "profile.roles": "Roles",
+  "profile.tenantId": "Tenant ID",
+  "profile.changePassword": "Change Password",
+  "profile.currentPassword": "Current Password",
+  "profile.newPassword": "New Password",
+  "profile.updatePassword": "Update Password",
+  "profile.passwordChangeSuccess": "Password changed successfully.",
+  "profile.passwordChangeFailed": "Failed to change password.",
+  "profile.info": "Account Information",
+  "roles.saveSuccess": "Role saved successfully",
+  "tenant.saveSuccess": "Tenant saved successfully",
+  "common.confirm": "Confirm"
 }

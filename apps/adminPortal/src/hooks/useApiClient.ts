@@ -9,6 +9,11 @@ export function useApiClient(): ApiClient {
       return envApiBaseUrl;
     }
 
+    // In dev mode, use relative path so Vite proxy handles /api requests
+    if (import.meta.env.DEV) {
+      return '';
+    }
+
     return `http://${window.location.hostname}:11451`;
   }, []);
 

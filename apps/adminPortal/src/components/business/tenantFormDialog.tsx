@@ -28,11 +28,11 @@ export function TenantFormDialog({
   const [name, setName] = useState(tenant?.name ?? '');
   const [isActive, setIsActive] = useState(Boolean(tenant?.is_active ?? true));
 
-  const isEditMode = !!tenant;
+  const isEdit = !!tenant;
 
   const saveMutation = useMutation({
     mutationFn: async (data: { name: string; is_active: boolean }) => {
-      if (isEditMode && tenant) {
+      if (isEdit && tenant) {
         await apiClient.put(`/api/v1/tenants/${tenant.id}`, data);
       } else {
         await apiClient.post('/api/v1/tenants', data);
@@ -59,7 +59,7 @@ export function TenantFormDialog({
     <Dialog
       onClose={handleClose}
       open={open}
-      title={t({ id: isEditMode ? 'tenant.edit' : 'tenant.create' })}
+      title={t({ id: isEdit ? 'tenant.edit' : 'tenant.create' })}
     >
       <form onSubmit={handleSubmit}>
         <div className="space-y-4">
@@ -81,7 +81,7 @@ export function TenantFormDialog({
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
-          <Button type="button" variant="secondary" onClick={handleClose}>
+          <Button disabled={saveMutation.isPending} type="button" variant="secondary" onClick={handleClose}>
             {t({ id: 'common.cancel' })}
           </Button>
           <Button disabled={saveMutation.isPending} type="submit">

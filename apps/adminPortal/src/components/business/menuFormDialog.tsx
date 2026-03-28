@@ -19,17 +19,7 @@ interface MenuFormDialogProps {
   menus: MenuItem[];
 }
 
-interface CreateMenuData {
-  name: string;
-  path: string;
-  icon: string;
-  parent_id: string | null;
-  sort_order: number;
-  permission_code: string;
-  is_visible: number;
-}
-
-interface UpdateMenuData {
+interface MenuData {
   name: string;
   path: string;
   icon: string;
@@ -95,29 +85,34 @@ export function MenuFormDialog({
   const [permissionCode, setPermissionCode] = useState(initialValues.permissionCode);
   const [isVisible, setIsVisible] = useState(initialValues.isVisible);
 
-  const createMutation = useMutation({
-    mutationFn: (data: CreateMenuData) => apiClient.post<MenuItem>('/api/v1/menus', data),
-    onSuccess: () => {
-      onSaved();
+  const saveMutation = useMutation({
+    mutationFn: async (data: MenuData) => {
+      if (isEdit && menu) {
+        await apiClient.put<MenuItem>(`/api/v1/menus/${menu.id}`, data);
+      } else {
+        await apiClient.post<MenuItem>('/api/v1/menus', data);
+      }
     },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ menuId, data }: { menuId: string; data: UpdateMenuData }) =>
-      apiClient.put<MenuItem>(`/api/v1/menus/${menuId}`, data),
     onSuccess: () => {
       onSaved();
     },
   });
 
   const handleClose = () => {
+    setName(initialValues.name);
+    setPath(initialValues.path);
+    setIcon(initialValues.icon);
+    setSelectedParentId(initialValues.selectedParentId);
+    setSortOrder(initialValues.sortOrder);
+    setPermissionCode(initialValues.permissionCode);
+    setIsVisible(initialValues.isVisible);
     onClose();
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const data: CreateMenuData | UpdateMenuData = {
+    const data: MenuData = {
       name,
       path,
       icon,
@@ -127,11 +122,7 @@ export function MenuFormDialog({
       is_visible: isVisible ? 1 : 0,
     };
 
-    if (isEdit) {
-      updateMutation.mutate({ menuId: menu.id, data });
-    } else {
-      createMutation.mutate(data);
-    }
+    saveMutation.mutate(data);
   };
 
   const flattenedMenus = flattenMenus(menus);
@@ -153,7 +144,7 @@ export function MenuFormDialog({
     return false;
   }
 
-  const isPending = createMutation.isPending || updateMutation.isPending;
+  const isPending = saveMutation.isPending;
   const title = t({
     id: isChildMode ? 'menus.createChild' : isEdit ? 'menus.edit' : 'menus.create',
   });

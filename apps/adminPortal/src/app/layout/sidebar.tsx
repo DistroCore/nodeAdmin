@@ -40,7 +40,9 @@ export function Sidebar(): JSX.Element {
     return className(
       'flex h-10 items-center rounded-md text-sm font-medium transition-colors',
       sidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-3',
-      isActive ? 'bg-accent text-accent-foreground' : 'hover:bg-[hsl(var(--sidebar-accent))]'
+      isActive
+        ? 'bg-primary text-primary-foreground shadow-sm'
+        : 'hover:bg-[hsl(var(--sidebar-accent))]'
     );
   }
 
@@ -117,13 +119,38 @@ export function Sidebar(): JSX.Element {
 
       {/* Footer */}
       <div className="border-t p-2">
+        <NavLink
+          className={({ isActive }) =>
+            className(
+              'flex h-9 items-center rounded-md text-sm transition-colors hover:bg-accent',
+              sidebarCollapsed ? 'justify-center px-2' : 'gap-2 px-3',
+              isActive ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'
+            )
+          }
+          to="/profile"
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          {!sidebarCollapsed ? <span className="truncate">{t({ id: 'profile.title' })}</span> : null}
+        </NavLink>
         <p className="mb-2 text-center text-xs text-muted-foreground">{t({ id: 'version' })}</p>
         <button
           className="hidden md:flex h-9 w-full items-center justify-center rounded-md border border-border bg-card text-sm transition-colors hover:bg-accent"
           onClick={toggleSidebar}
           type="button"
         >
-          {sidebarCollapsed ? '\u00BB' : '\u00AB'}
+          {sidebarCollapsed ? (
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M9 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          ) : (
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
         </button>
       </div>
     </>

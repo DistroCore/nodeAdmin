@@ -65,14 +65,14 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
     onSaved();
   };
 
-  const createMutation = useMutation({
-    mutationFn: (data: CreateUserData) => apiClient.post<UserItem>('/api/v1/users', data),
-    onSuccess: handleSaveSuccess,
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ userId, data }: { userId: string; data: UpdateUserData }) =>
-      apiClient.put<UserItem>(`/api/v1/users/${userId}`, data),
+  const saveMutation = useMutation({
+    mutationFn: async (data: CreateUserData | UpdateUserData) => {
+      if (isEdit && user) {
+        await apiClient.put<UserItem>(`/api/v1/users/${user.id}`, data);
+      } else {
+        await apiClient.post<UserItem>('/api/v1/users', data);
+      }
+    },
     onSuccess: handleSaveSuccess,
   });
 
@@ -90,7 +90,7 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
       if (password.trim()) {
         data.password = password;
       }
-      updateMutation.mutate({ userId: user.id, data });
+      saveMutation.mutate(data);
     } else {
       const data: CreateUserData = {
         email,
@@ -98,7 +98,7 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
         name,
         roleIds,
       };
-      createMutation.mutate(data);
+      saveMutation.mutate(data);
     }
   };
 
@@ -114,7 +114,7 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
     });
   };
 
-  const isPending = createMutation.isPending || updateMutation.isPending;
+  const isPending = saveMutation.isPending;
   const title = t({ id: isEdit ? 'users.edit' : 'users.create' });
 
   return (

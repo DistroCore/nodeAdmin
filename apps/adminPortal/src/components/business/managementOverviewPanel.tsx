@@ -41,8 +41,8 @@ export function ManagementOverviewPanel(): JSX.Element {
 
   const stats = overviewQuery.data?.stats ?? [];
   const todos = overviewQuery.data?.todos ?? [];
-  const isOverviewPending = overviewQuery.isLoading || overviewQuery.isError;
-  const isHealthPending = healthQuery.isLoading || healthQuery.isError;
+  const isOverviewPending = overviewQuery.isLoading;
+  const isHealthPending = healthQuery.isLoading;
 
   const healthVersion = healthQuery.data
     ? `v${healthQuery.data.version}`
@@ -72,8 +72,7 @@ export function ManagementOverviewPanel(): JSX.Element {
         <CardContent className="space-y-4">
           {isOverviewPending ? (
             <div
-              className="grid gap-3 sm:grid-cols-2"
-              style={{ gridTemplateColumns: `repeat(${Math.min(statCount, 5)}, minmax(0, 1fr))` }}
+              className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
             >
               {Array.from({ length: statCount }).map((_, index) => (
                 <div
@@ -85,9 +84,24 @@ export function ManagementOverviewPanel(): JSX.Element {
                 </div>
               ))}
             </div>
-          ) : (
+          ) : null}
+
+          {overviewQuery.isError ? (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3">
+              <p className="text-sm text-destructive">{t({ id: 'common.failed' })}</p>
+              <button
+                className="mt-1 text-xs text-primary hover:underline"
+                onClick={() => overviewQuery.refetch()}
+                type="button"
+              >
+                {t({ id: 'common.retry' })}
+              </button>
+            </div>
+          ) : null}
+
+          {!isOverviewPending && !overviewQuery.isError ? (
             <div
-              className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5"
+              className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
             >
               {stats.map((stat, index) => (
                 <div
@@ -106,9 +120,7 @@ export function ManagementOverviewPanel(): JSX.Element {
                 </div>
               ))}
             </div>
-          )}
-
-          {/* Health info with pulse */}
+          ) : null}
           <div className="rounded-md border border-border bg-muted/20 px-4 py-3">
             {isHealthPending ? (
               <div className="space-y-2">

@@ -110,11 +110,15 @@ export function RoleManagementPanel(): JSX.Element {
       </Card>
 
       <RoleFormDialog
+        key={editRole?.id ?? 'create'}
         onClose={() => {
           setCreateFormOpen(false);
           setEditRole(undefined);
         }}
-        onSaved={() => rolesQuery.refetch()}
+        onSaved={() => {
+          rolesQuery.refetch();
+          toast.success(t({ id: 'roles.saveSuccess' }));
+        }}
         open={createFormOpen || !!editRole}
         role={editRole}
       />

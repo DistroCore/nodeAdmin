@@ -15,7 +15,8 @@ services:
       PORT: '11451'
       JWT_ACCESS_SECRET: replace-with-a-long-random-access-secret
       JWT_REFRESH_SECRET: replace-with-a-long-random-refresh-secret
-      FRONTEND_ORIGINS: http://localhost:3000,http://adminportal
+      FRONTEND_ORIGINS: http://localhost,http://localhost:80,http://adminportal
+      KAFKA_BROKERS: kafka:29092
     ports:
       - '11451:11451'
     healthcheck:
@@ -35,7 +36,7 @@ services:
       coreapi:
         condition: service_healthy
     ports:
-      - '3000:80'
+      - '80:80'
     restart: unless-stopped
 
   postgres:

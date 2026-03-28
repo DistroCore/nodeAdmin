@@ -168,11 +168,6 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
     return () => observer.disconnect();
   }, []);
 
-  const conversationQuery = useQuery({
-    queryFn: () => apiClient.get<ConversationListResponse>('/api/v1/console/conversations'),
-    queryKey: ['console-conversations'],
-  });
-
   const configuredRoles = useMemo(() => readRolesFromEnv(), []);
 
   const imConfig = useMemo<RuntimeImConfig | null>(() => {
@@ -196,6 +191,21 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
       };
     }
   }, [conversationIdOverride, authTenantId, authUserId]);
+
+  const conversationQuery = useQuery({
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (imConfig?.tenantId) {
+        params.set('tenantId', imConfig.tenantId);
+      } else if (authTenantId) {
+        params.set('tenantId', authTenantId);
+      }
+      const qs = params.toString();
+      const url = `/api/v1/console/conversations${qs ? `?${qs}` : ''}`;
+      return apiClient.get<ConversationListResponse>(url);
+    },
+    queryKey: ['console-conversations', imConfig?.tenantId ?? authTenantId],
+  });
 
   useEffect(() => {
     if (!imConfig) {

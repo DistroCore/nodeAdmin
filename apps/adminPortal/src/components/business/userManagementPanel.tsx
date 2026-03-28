@@ -124,19 +124,22 @@ export function UserManagementPanel(): JSX.Element {
             {
               header: t({ id: 'users.colActions' }),
               cell: (user) => (
-                <div className="flex gap-2">
-                  <Button size="sm" variant="secondary" onClick={() => openEditDialog(user)} type="button">
+                <div className="flex items-center gap-3">
+                  <button
+                    className="text-sm text-primary hover:underline"
+                    onClick={() => openEditDialog(user)}
+                    type="button"
+                  >
                     {t({ id: 'users.edit' })}
-                  </Button>
-                  <Button
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  </button>
+                  <button
+                    className="text-sm text-destructive hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed"
                     disabled={deleteMutation.isPending}
                     onClick={() => openDeleteConfirm(user.id)}
-                    size="sm"
                     type="button"
                   >
                     {t({ id: 'users.delete' })}
-                  </Button>
+                  </button>
                 </div>
               ),
             },
@@ -165,6 +168,7 @@ export function UserManagementPanel(): JSX.Element {
       </Card>
 
       <UserFormDialog
+        key={editingUser?.id ?? 'create'}
         onClose={closeDialog}
         onSaved={() => {
           closeDialog();

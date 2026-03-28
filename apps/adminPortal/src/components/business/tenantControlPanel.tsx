@@ -104,11 +104,15 @@ export function TenantControlPanel(): JSX.Element {
       </Card>
 
       <TenantFormDialog
+        key={editTenant?.id ?? 'create'}
         onClose={() => {
           setCreateFormOpen(false);
           setEditTenant(undefined);
         }}
-        onSaved={() => tenantQuery.refetch()}
+        onSaved={() => {
+          tenantQuery.refetch();
+          toast.success(t({ id: 'tenant.saveSuccess' }));
+        }}
         open={createFormOpen || !!editTenant}
         tenant={editTenant}
       />

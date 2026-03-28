@@ -12,9 +12,9 @@ const eventLoopLagHistogram = monitorEventLoopDelay({
 eventLoopLagHistogram.enable();
 
 interface ConversationListResponse {
-  conversationId: string;
-  title: string;
-  lastMessageAt: string | null;
+  id: string;
+  name: string;
+  lastMessagePreview: string;
   unreadCount: number;
 }
 
@@ -141,15 +141,17 @@ export class ConsoleController {
   @Get('conversations')
   async getConversations(
     @Query('tenantId') tenantId = 'default',
-  ): Promise<ConversationListResponse[]> {
+  ): Promise<{ rows: ConversationListResponse[] }> {
     const rows = await this.conversationRepository.listByTenant(tenantId, 50);
 
-    return rows.map((row) => ({
-      conversationId: row.conversationId,
-      title: row.title,
-      lastMessageAt: row.lastMessageAt?.toISOString() ?? null,
-      unreadCount: 0, // TODO: implement unread count in Phase 2
-    }));
+    return {
+      rows: rows.map((row) => ({
+        id: row.conversationId,
+        name: row.title,
+        lastMessagePreview: row.lastMessageAt?.toISOString() ?? '',
+        unreadCount: 0, // TODO: implement unread count in Phase 2
+      })),
+    };
   }
 
   @Get('permissions')

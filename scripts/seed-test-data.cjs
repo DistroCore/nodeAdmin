@@ -8,7 +8,7 @@ const { Client } = require('pg');
 
 const DATABASE_URL =
   process.env.DATABASE_URL || 'postgres://nodeadmin:nodeadmin@localhost:55432/nodeadmin';
-const TENANT_ID = 'tenant-demo';
+const TENANT_ID = process.env.SEED_TENANT_ID || 'default';
 
 async function seedData() {
   const client = new Client({ connectionString: DATABASE_URL });
