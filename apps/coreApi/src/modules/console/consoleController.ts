@@ -2,6 +2,7 @@ import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
 import { AuditLogService } from '../../infrastructure/audit/auditLogService';
 import { ConversationRepository } from '../../infrastructure/database/conversationRepository';
+import { TenantsService } from '../tenants/tenantsService';
 
 const eventLoopLagHistogram = monitorEventLoopDelay({
   resolution: 20,
@@ -47,40 +48,36 @@ export class MetricsController {
 export class ConsoleController {
   constructor(
     private readonly auditLogService: AuditLogService,
-    private readonly conversationRepository: ConversationRepository
+    private readonly conversationRepository: ConversationRepository,
+    private readonly tenantsService: TenantsService
   ) {}
 
   @Get('overview')
-  getOverview() {
+  async getOverview() {
+    const tenants = await this.tenantsService.list();
+    const activeCount = tenants.filter((t: any) => t.is_active).length;
+
     return {
       stats: [
-        { label: 'Online connections', value: '1,284' },
-        { label: 'Active tenants', value: '37' },
-        { label: 'Messages per minute', value: '42,900' },
-        { label: 'Release success rate', value: '99.92%' },
+        { label: 'Online connections', value: '—' },
+        { label: 'Active tenants', value: String(activeCount) },
+        { label: 'Total tenants', value: String(tenants.length) },
+        { label: 'API status', value: 'healthy' },
       ],
       todos: [],
     };
   }
 
   @Get('tenants')
-  getTenants() {
+  async getTenants() {
+    const tenants = await this.tenantsService.list();
     return {
-      rows: [
-        {
-          key: 'tenant-cn-001',
-          name: 'East Region Business Unit',
-          roleCount: 12,
-          status: 'active',
-        },
-        {
-          key: 'tenant-cn-002',
-          name: 'South Region Business Unit',
-          roleCount: 9,
-          status: 'active',
-        },
-        { key: 'tenant-cn-003', name: 'Overseas Business Unit', roleCount: 7, status: 'review' },
-      ],
+      rows: tenants.map((t: any) => ({
+        key: t.id,
+        name: t.name,
+        roleCount: 0,
+        status: t.is_active ? 'active' : 'inactive',
+      })),
     };
   }
 
@@ -88,11 +85,11 @@ export class ConsoleController {
   getReleaseChecks() {
     return {
       checks: [
-        { done: true, title: 'CoreApi build passes' },
-        { done: true, title: 'AdminPortal build passes' },
-        { done: true, title: 'Outbox + Kafka integration verified' },
-        { done: false, title: 'Phase 2: 10k concurrent load test passes' },
-        { done: false, title: 'Phase 2: Cross-tenant penetration test passes' },
+        { done: !!process.env.DATABASE_URL, title: 'Database (PostgreSQL) configured' },
+        { done: !!process.env.REDIS_URL, title: 'Redis configured' },
+        { done: !!process.env.KAFKA_BROKERS, title: 'Kafka configured' },
+        { done: !!process.env.JWT_ACCESS_SECRET, title: 'JWT secrets configured' },
+        { done: !!process.env.FRONTEND_ORIGINS, title: 'CORS origins configured' },
       ],
     };
   }

@@ -1,4 +1,3 @@
-import { useIntl } from 'react-intl';
 import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { LoginPage } from '@/components/business/loginPage';
 import { ManagementOverviewPanel } from '@/components/business/managementOverviewPanel';
@@ -8,6 +7,7 @@ import { NotFoundPage } from '@/components/business/notFoundPage';
 import { RegisterPage } from '@/components/business/registerPage';
 import { ReleaseControlPanel } from '@/components/business/releaseControlPanel';
 import { RoleManagementPanel } from '@/components/business/roleManagementPanel';
+import { SettingsPanel } from '@/components/business/settingsPanel';
 import { TenantControlPanel } from '@/components/business/tenantControlPanel';
 import { UserManagementPanel } from '@/components/business/userManagementPanel';
 import { AppLayout } from './layout/appLayout';
@@ -25,8 +25,6 @@ function RouteModule({ children }: { children: JSX.Element }): JSX.Element {
 }
 
 export function AppRoot(): JSX.Element {
-  const { formatMessage: t } = useIntl();
-
   return (
     <Routes>
       {/* Public routes */}
@@ -124,11 +122,7 @@ export function AppRoot(): JSX.Element {
                   element={
                     <RouteModule>
                       <RequirePermission permission="settings:view">
-                        <section className="h-full overflow-y-auto">
-                          <div className="rounded-md border border-border bg-card p-4 text-sm text-muted-foreground">
-                            {t({ id: 'settings.reserved' })}
-                          </div>
-                        </section>
+                        <SettingsPanel />
                       </RequirePermission>
                     </RouteModule>
                   }

@@ -182,6 +182,18 @@
   "permission.imDenied": "您没有 `im:view` 权限。",
 
   "settings.reserved": "系统设置模块仅限平台管理员使用。",
+  "settings.title": "系统设置",
+  "settings.desc": "管理您的偏好设置和查看会话信息。",
+  "settings.theme": "主题",
+  "settings.themeLight": "浅色",
+  "settings.themeDark": "深色",
+  "settings.language": "语言",
+  "settings.display": "显示",
+  "settings.sidebarCollapsed": "折叠侧边栏",
+  "settings.imPanel": "显示会话面板",
+  "settings.session": "会话信息",
+  "settings.userName": "用户名",
+  "settings.userRoles": "角色",
 
   "notFound.title": "页面不存在",
   "notFound.desc": "您访问的页面不存在或已被移除。",
