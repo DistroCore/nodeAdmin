@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useIntl } from 'react-intl';
-import { type TenantItem, type PaginatedResponse } from '@nodeadmin/shared-types';
+import { type TenantItem } from '@nodeadmin/shared-types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,19 +14,21 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ConfirmDialog } from '@/components/ui/dialog';
+import { useToast } from '@/components/ui/toast';
 import { useApiClient } from '@/hooks/useApiClient';
 import { TenantFormDialog } from './tenantFormDialog';
 
 export function TenantControlPanel(): JSX.Element {
   const { formatMessage: t } = useIntl();
   const apiClient = useApiClient();
+  const toast = useToast();
 
   const [createFormOpen, setCreateFormOpen] = useState(false);
   const [editTenant, setEditTenant] = useState<TenantItem | undefined>();
   const [deleteTenant, setDeleteTenant] = useState<TenantItem | undefined>();
 
   const tenantQuery = useQuery({
-    queryFn: () => apiClient.get<PaginatedResponse<TenantItem>>('/api/v1/tenants?limit=100'),
+    queryFn: () => apiClient.get<TenantItem[]>('/api/v1/tenants'),
     queryKey: ['tenants'],
   });
 
@@ -34,6 +36,10 @@ export function TenantControlPanel(): JSX.Element {
     mutationFn: (id: string) => apiClient.del<{ success: boolean }>(`/api/v1/tenants/${id}`),
     onSuccess: () => {
       tenantQuery.refetch();
+      toast.success(t({ id: 'tenant.deleteSuccess' }));
+    },
+    onError: () => {
+      toast.error(t({ id: 'tenant.deleteFailed' }));
     },
   });
 
@@ -44,7 +50,7 @@ export function TenantControlPanel(): JSX.Element {
     }
   };
 
-  const tenants = tenantQuery.data?.items ?? [];
+  const tenants = Array.isArray(tenantQuery.data) ? tenantQuery.data : [];
 
   return (
     <section className="h-full overflow-y-auto">
@@ -63,7 +69,6 @@ export function TenantControlPanel(): JSX.Element {
           <TableHeader>
             <TableRow>
               <TableHead>{t({ id: 'tenant.colName' })}</TableHead>
-              <TableHead>{t({ id: 'tenant.colPlan' })}</TableHead>
               <TableHead>{t({ id: 'tenant.colStatus' })}</TableHead>
               <TableHead>{t({ id: 'tenant.colActions' })}</TableHead>
             </TableRow>
@@ -90,15 +95,22 @@ export function TenantControlPanel(): JSX.Element {
 
             {tenantQuery.isError ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell className="py-8 text-center text-sm text-destructive" colSpan={4}>
-                  {t({ id: 'tenant.loadFailed' })}
+                <TableCell className="py-8 text-center" colSpan={3}>
+                  <p className="text-sm text-destructive">{t({ id: 'tenant.loadFailed' })}</p>
+                  <button
+                    className="mt-2 text-xs text-primary hover:underline"
+                    onClick={() => tenantQuery.refetch()}
+                    type="button"
+                  >
+                    {t({ id: 'common.retry' })}
+                  </button>
                 </TableCell>
               </TableRow>
             ) : null}
 
             {!tenantQuery.isLoading && !tenantQuery.isError && tenants.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell className="py-8 text-center text-sm text-muted-foreground" colSpan={4}>
+                <TableCell className="py-8 text-center text-sm text-muted-foreground" colSpan={3}>
                   {t({ id: 'tenant.empty' })}
                 </TableCell>
               </TableRow>
@@ -108,7 +120,6 @@ export function TenantControlPanel(): JSX.Element {
               ? tenants.map((tenant) => (
                   <TableRow className="hover:bg-muted/50" key={tenant.id}>
                     <TableCell className="font-medium">{tenant.name}</TableCell>
-                    <TableCell>{tenant.plan}</TableCell>
                     <TableCell>
                       {tenant.is_active ? (
                         <Badge variant="default">{t({ id: 'tenant.active' })}</Badge>

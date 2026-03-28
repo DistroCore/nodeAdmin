@@ -4,6 +4,7 @@ import { IntlProvider } from 'react-intl';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { getMessages } from './i18n';
+import { ToastContainer } from './components/ui/toast';
 import { useUiStore } from './stores/useUiStore';
 import { AppRoot } from './app/appRoot';
 import './styles/globals.css';
@@ -19,6 +20,7 @@ function LocalizedApp(): JSX.Element {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AppRoot />
+          <ToastContainer />
         </BrowserRouter>
       </QueryClientProvider>
     </IntlProvider>

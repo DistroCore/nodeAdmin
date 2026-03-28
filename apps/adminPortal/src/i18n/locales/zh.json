@@ -170,6 +170,9 @@
   "common.loading": "加载中...",
   "common.search": "搜索",
   "common.actions": "操作",
+  "common.retry": "重试",
+  "common.success": "操作成功",
+  "common.failed": "操作失败",
 
   "error.moduleRender": "模块渲染失败",
   "error.moduleRenderDesc": "该模块发生运行时错误，请稍后重试或刷新页面。",
@@ -178,5 +181,9 @@
   "permission.denied": "您没有该模块的访问权限: {permission}",
   "permission.imDenied": "您没有 `im:view` 权限。",
 
-  "settings.reserved": "系统设置模块仅限平台管理员使用。"
+  "settings.reserved": "系统设置模块仅限平台管理员使用。",
+
+  "notFound.title": "页面不存在",
+  "notFound.desc": "您访问的页面不存在或已被移除。",
+  "notFound.backHome": "返回首页"
 }

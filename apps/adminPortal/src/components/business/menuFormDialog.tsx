@@ -24,7 +24,7 @@ interface CreateMenuData {
   parent_id: string | null;
   sort_order: number;
   permission_code: string;
-  is_visible: boolean;
+  is_visible: number;
 }
 
 interface UpdateMenuData {
@@ -34,7 +34,7 @@ interface UpdateMenuData {
   parent_id: string | null;
   sort_order: number;
   permission_code: string;
-  is_visible: boolean;
+  is_visible: number;
 }
 
 function flattenMenus(menus: MenuItem[]): MenuItem[] {
@@ -64,7 +64,7 @@ function getInitialValues(
     selectedParentId: isChildMode ? (parentId ?? null) : (menu?.parent_id ?? null),
     sortOrder: menu?.sort_order ?? 0,
     permissionCode: menu?.permission_code ?? '',
-    isVisible: menu?.is_visible ?? true,
+    isVisible: menu ? Boolean(menu.is_visible) : true,
   };
 }
 
@@ -122,7 +122,7 @@ export function MenuFormDialog({
       parent_id: selectedParentId,
       sort_order: sortOrder,
       permission_code: permissionCode,
-      is_visible: isVisible,
+      is_visible: isVisible ? 1 : 0,
     };
 
     if (isEdit) {

@@ -41,37 +41,40 @@ export type AppPermission =
 
 // ─── API Response Types ──────────────────────────────────────────────
 
+/** POST /api/v1/auth/login & /register actual response */
 export interface AuthResponse {
   accessToken: string;
+  identity: { tenantId: string; userId: string };
   refreshToken: string;
-  user: UserItem;
+  tokenType: string;
 }
 
 export interface UserItem {
+  avatar: string | null;
   created_at: string;
   email: string;
   id: string;
-  is_active: boolean;
-  name: string;
-  roles: RoleItem[];
+  is_active: number;
+  name: string | null;
+  phone: string | null;
+  roles: { id: string; name: string }[];
   tenant_id: string;
   updated_at: string;
 }
 
 export interface RoleItem {
   created_at: string;
-  description: string;
+  description: string | null;
   id: string;
-  is_system: boolean;
+  is_system: number;
   name: string;
-  permissions: PermissionItem[];
-  tenant_id: string;
+  permissions: { code: string; id: string; name: string }[];
   updated_at: string;
 }
 
 export interface PermissionItem {
   code: string;
-  description: string;
+  description: string | null;
   id: string;
   module: string;
   name: string;
@@ -79,29 +82,31 @@ export interface PermissionItem {
 
 export interface MenuItem {
   children: MenuItem[];
+  created_at: string;
   icon: string;
   id: string;
-  is_visible: boolean;
+  is_visible: number;
   name: string;
   parent_id: string | null;
   path: string;
-  permission_code: string;
+  permission_code: string | null;
   sort_order: number;
-  tenant_id: string;
 }
 
 export interface TenantItem {
+  config_json: string | null;
   created_at: string;
   id: string;
-  is_active: boolean;
+  is_active: number;
+  logo: string | null;
   name: string;
-  plan: string;
+  slug: string;
   updated_at: string;
 }
 
 export interface PaginatedResponse<T> {
   items: T[];
-  limit: number;
-  offset: number;
+  page: number;
+  pageSize: number;
   total: number;
 }

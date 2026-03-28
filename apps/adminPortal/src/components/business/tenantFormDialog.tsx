@@ -25,13 +25,12 @@ export function TenantFormDialog({
   const apiClient = useApiClient();
 
   const [name, setName] = useState(tenant?.name ?? '');
-  const [plan, setPlan] = useState(tenant?.plan ?? 'basic');
-  const [isActive, setIsActive] = useState(tenant?.is_active ?? true);
+  const [isActive, setIsActive] = useState(Boolean(tenant?.is_active ?? true));
 
   const isEditMode = !!tenant;
 
   const saveMutation = useMutation({
-    mutationFn: async (data: { name: string; plan: string; is_active: boolean }) => {
+    mutationFn: async (data: { name: string; is_active: boolean }) => {
       if (isEditMode && tenant) {
         await apiClient.put(`/api/v1/tenants/${tenant.id}`, data);
       } else {
@@ -46,13 +45,12 @@ export function TenantFormDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    saveMutation.mutate({ name, plan, is_active: isActive });
+    saveMutation.mutate({ name, is_active: isActive });
   };
 
   const handleClose = () => {
     setName(tenant?.name ?? '');
-    setPlan(tenant?.plan ?? 'basic');
-    setIsActive(tenant?.is_active ?? true);
+    setIsActive(Boolean(tenant?.is_active ?? true));
     onClose();
   };
 
@@ -72,20 +70,6 @@ export function TenantFormDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="tenant-plan">{t({ id: 'tenant.fieldPlan' })}</Label>
-            <select
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              id="tenant-plan"
-              value={plan}
-              onChange={(e) => setPlan(e.target.value)}
-            >
-              <option value="basic">Basic</option>
-              <option value="pro">Pro</option>
-              <option value="enterprise">Enterprise</option>
-            </select>
           </div>
 
           <div className="flex items-center space-x-2">

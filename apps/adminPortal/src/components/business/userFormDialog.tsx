@@ -38,21 +38,21 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
   const [password, setPassword] = useState('');
   const [name, setName] = useState(user?.name ?? '');
   const [selectedRoleIds, setSelectedRoleIds] = useState<Set<string>>(
-    new Set(user?.roles.map((r: RoleItem) => r.id) ?? [])
+    new Set(user?.roles.map((r) => r.id) ?? [])
   );
 
   const rolesQuery = useQuery({
-    queryFn: () => apiClient.get<PaginatedResponse<RoleItem>>('/api/v1/roles?limit=100'),
+    queryFn: () => apiClient.get<RoleItem[]>('/api/v1/roles'),
     queryKey: ['roles'],
   });
 
-  const roles = rolesQuery.data?.items ?? [];
+  const roles = Array.isArray(rolesQuery.data) ? rolesQuery.data : [];
 
   const resetForm = () => {
     setEmail(user?.email ?? '');
     setName(user?.name ?? '');
     setPassword('');
-    setSelectedRoleIds(new Set(user?.roles.map((r: RoleItem) => r.id) ?? []));
+    setSelectedRoleIds(new Set(user?.roles.map((r) => r.id) ?? []));
   };
 
   const handleDialogClose = () => {
@@ -165,7 +165,7 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
                 ? t({ id: 'users.loadingRoles' })
                 : roles.length === 0
                   ? t({ id: 'users.noRoles' })
-                  : roles.map((role: RoleItem) => (
+                  : roles.map((role) => (
                       <label className="flex items-center gap-2 py-1" key={role.id}>
                         <input
                           checked={selectedRoleIds.has(role.id)}

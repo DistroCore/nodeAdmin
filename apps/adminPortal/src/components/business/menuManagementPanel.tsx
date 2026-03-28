@@ -5,6 +5,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/ca
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/dialog';
+import { useToast } from '@/components/ui/toast';
 import { useApiClient } from '@/hooks/useApiClient';
 import { MenuItem } from '@nodeadmin/shared-types';
 import { MenuFormDialog } from './menuFormDialog';
@@ -38,6 +39,7 @@ function buildTree(menus: MenuItem[]): TreeNode[] {
 export function MenuManagementPanel(): JSX.Element {
   const { formatMessage: t } = useIntl();
   const apiClient = useApiClient();
+  const toast = useToast();
   const [editingMenu, setEditingMenu] = useState<MenuItem | undefined>(undefined);
   const [childParentId, setChildParentId] = useState<string | undefined>(undefined);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -55,6 +57,10 @@ export function MenuManagementPanel(): JSX.Element {
       menusQuery.refetch();
       setShowDeleteDialog(false);
       setDeleteTarget(undefined);
+      toast.success(t({ id: 'menus.deleteSuccess' }));
+    },
+    onError: () => {
+      toast.error(t({ id: 'menus.deleteFailed' }));
     },
   });
 
@@ -117,8 +123,15 @@ export function MenuManagementPanel(): JSX.Element {
         ) : null}
 
         {menusQuery.isError ? (
-          <div className="py-8 text-center text-sm text-destructive">
-            {t({ id: 'menus.loadFailed' })}
+          <div className="py-8 text-center">
+            <p className="text-sm text-destructive">{t({ id: 'menus.loadFailed' })}</p>
+            <button
+              className="mt-2 text-xs text-primary hover:underline"
+              onClick={() => menusQuery.refetch()}
+              type="button"
+            >
+              {t({ id: 'common.retry' })}
+            </button>
           </div>
         ) : null}
 
@@ -189,6 +202,7 @@ export function MenuManagementPanel(): JSX.Element {
         onSaved={() => {
           closeDialog();
           menusQuery.refetch();
+          toast.success(t({ id: 'menus.saveSuccess' }));
         }}
         parentId={childParentId}
         open={showCreateDialog}

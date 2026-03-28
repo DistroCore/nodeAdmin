@@ -4,6 +4,7 @@ import { LoginPage } from '@/components/business/loginPage';
 import { ManagementOverviewPanel } from '@/components/business/managementOverviewPanel';
 import { MenuManagementPanel } from '@/components/business/menuManagementPanel';
 import { MessagePanel } from '@/components/business/messagePanel';
+import { NotFoundPage } from '@/components/business/notFoundPage';
 import { RegisterPage } from '@/components/business/registerPage';
 import { ReleaseControlPanel } from '@/components/business/releaseControlPanel';
 import { RoleManagementPanel } from '@/components/business/roleManagementPanel';
@@ -133,7 +134,7 @@ export function AppRoot(): JSX.Element {
                   }
                   path="/settings"
                 />
-                <Route element={<Navigate replace to="/overview" />} path="*" />
+                <Route element={<NotFoundPage />} path="*" />
               </Routes>
             </AppLayout>
           </AuthGuard>

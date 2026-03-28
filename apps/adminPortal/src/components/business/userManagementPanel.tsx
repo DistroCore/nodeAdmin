@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/dialog';
+import { useToast } from '@/components/ui/toast';
 import { useApiClient } from '@/hooks/useApiClient';
 import { type UserItem, type PaginatedResponse } from '@nodeadmin/shared-types';
 import { UserFormDialog } from './userFormDialog';
@@ -23,6 +24,7 @@ const PAGE_SIZE = 10;
 export function UserManagementPanel(): JSX.Element {
   const { formatMessage: t } = useIntl();
   const apiClient = useApiClient();
+  const toast = useToast();
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -33,7 +35,7 @@ export function UserManagementPanel(): JSX.Element {
   const usersQuery = useQuery({
     queryFn: () =>
       apiClient.get<PaginatedResponse<UserItem>>(
-        `/api/v1/users?limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}&search=${encodeURIComponent(search)}`
+        `/api/v1/users?pageSize=${PAGE_SIZE}&page=${page + 1}&search=${encodeURIComponent(search)}`
       ),
     queryKey: ['users', page, search],
   });
@@ -44,6 +46,10 @@ export function UserManagementPanel(): JSX.Element {
       usersQuery.refetch();
       setShowDeleteDialog(false);
       setSelectedUserId(null);
+      toast.success(t({ id: 'users.deleteSuccess' }));
+    },
+    onError: () => {
+      toast.error(t({ id: 'users.deleteFailed' }));
     },
   });
 
@@ -132,8 +138,15 @@ export function UserManagementPanel(): JSX.Element {
 
             {usersQuery.isError ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell className="py-8 text-center text-sm text-destructive" colSpan={5}>
-                  {t({ id: 'users.loadFailed' })}
+                <TableCell className="py-8 text-center" colSpan={5}>
+                  <p className="text-sm text-destructive">{t({ id: 'users.loadFailed' })}</p>
+                  <button
+                    className="mt-2 text-xs text-primary hover:underline"
+                    onClick={() => usersQuery.refetch()}
+                    type="button"
+                  >
+                    {t({ id: 'common.retry' })}
+                  </button>
                 </TableCell>
               </TableRow>
             ) : null}
@@ -228,6 +241,7 @@ export function UserManagementPanel(): JSX.Element {
         onSaved={() => {
           closeDialog();
           usersQuery.refetch();
+          toast.success(t({ id: 'users.saveSuccess' }));
         }}
         open={showCreateDialog}
         user={editingUser}

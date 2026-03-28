@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useIntl } from 'react-intl';
 import { useState } from 'react';
-import { type PaginatedResponse, type RoleItem } from '@nodeadmin/shared-types';
+import { type RoleItem } from '@nodeadmin/shared-types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,19 +14,21 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ConfirmDialog } from '@/components/ui/dialog';
+import { useToast } from '@/components/ui/toast';
 import { useApiClient } from '@/hooks/useApiClient';
 import { RoleFormDialog } from './roleFormDialog';
 
 export function RoleManagementPanel(): JSX.Element {
   const { formatMessage: t } = useIntl();
   const apiClient = useApiClient();
+  const toast = useToast();
 
   const [createFormOpen, setCreateFormOpen] = useState(false);
   const [editRole, setEditRole] = useState<RoleItem | undefined>();
   const [deleteRole, setDeleteRole] = useState<RoleItem | undefined>();
 
   const rolesQuery = useQuery({
-    queryFn: () => apiClient.get<PaginatedResponse<RoleItem>>('/api/v1/roles?limit=100'),
+    queryFn: () => apiClient.get<RoleItem[]>('/api/v1/roles'),
     queryKey: ['roles'],
   });
 
@@ -34,6 +36,10 @@ export function RoleManagementPanel(): JSX.Element {
     mutationFn: (id: string) => apiClient.del(`/api/v1/roles/${id}`),
     onSuccess: () => {
       rolesQuery.refetch();
+      toast.success(t({ id: 'roles.deleteSuccess' }));
+    },
+    onError: () => {
+      toast.error(t({ id: 'roles.deleteFailed' }));
     },
   });
 
@@ -44,7 +50,7 @@ export function RoleManagementPanel(): JSX.Element {
     }
   };
 
-  const roles = rolesQuery.data?.items ?? [];
+  const roles = Array.isArray(rolesQuery.data) ? rolesQuery.data : [];
 
   return (
     <section className="h-full overflow-y-auto">
@@ -94,8 +100,15 @@ export function RoleManagementPanel(): JSX.Element {
 
             {rolesQuery.isError ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell className="py-8 text-center text-sm text-destructive" colSpan={5}>
-                  {t({ id: 'roles.loadFailed' })}
+                <TableCell className="py-8 text-center" colSpan={5}>
+                  <p className="text-sm text-destructive">{t({ id: 'roles.loadFailed' })}</p>
+                  <button
+                    className="mt-2 text-xs text-primary hover:underline"
+                    onClick={() => rolesQuery.refetch()}
+                    type="button"
+                  >
+                    {t({ id: 'common.retry' })}
+                  </button>
                 </TableCell>
               </TableRow>
             ) : null}
@@ -125,7 +138,7 @@ export function RoleManagementPanel(): JSX.Element {
                       <div className="flex gap-2">
                         <button
                           className="text-sm text-primary hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed"
-                          disabled={role.is_system}
+                          disabled={Boolean(role.is_system)}
                           onClick={() => setEditRole(role)}
                           title={role.is_system ? t({ id: 'roles.systemRoleLocked' }) : undefined}
                           type="button"
@@ -134,7 +147,7 @@ export function RoleManagementPanel(): JSX.Element {
                         </button>
                         <button
                           className="text-sm text-destructive hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed"
-                          disabled={role.is_system}
+                          disabled={Boolean(role.is_system)}
                           onClick={() => setDeleteRole(role)}
                           title={role.is_system ? t({ id: 'roles.systemRoleLocked' }) : undefined}
                           type="button"

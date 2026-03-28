@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { type AppLocale, getMessages } from '@/i18n';
+import { type AppLocale } from '@/i18n';
 import { ApiClient } from '@/lib/apiClient';
 import { setAuthFromLogin } from '@/stores/useAuthStore';
 import { useUiStore } from '@/stores/useUiStore';

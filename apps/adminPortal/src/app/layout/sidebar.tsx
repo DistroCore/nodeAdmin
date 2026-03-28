@@ -106,6 +106,11 @@ export function Sidebar(): JSX.Element {
                 {!sidebarCollapsed ? (
                   <span className="truncate">{t({ id: item.labelId })}</span>
                 ) : null}
+                {sidebarCollapsed ? (
+                  <span className="absolute left-full ml-2 hidden whitespace-nowrap rounded bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md group-hover:block">
+                    {t({ id: item.labelId })}
+                  </span>
+                ) : null}
               </NavLink>
             ))}
       </nav>
