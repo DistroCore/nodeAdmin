@@ -7,6 +7,7 @@ const EXCLUDED_PATHS = [
   '/api/v1/auth/login',
   '/api/v1/auth/register',
   '/api/v1/auth/refresh',
+  '/api/v1/auth/dev-token',
 ];
 
 @Injectable()
@@ -16,7 +17,8 @@ export class JwtAuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<{ headers: Record<string, string>; url: string; user?: AuthIdentity }>();
 
-    if (EXCLUDED_PATHS.some((path) => request.url === path || request.url.startsWith(path + '/'))) {
+    const pathname = request.url.split('?')[0];
+    if (EXCLUDED_PATHS.some((path) => pathname === path || pathname.startsWith(path + '/'))) {
       return true;
     }
 

@@ -4,6 +4,10 @@ import { JwtAuthGuard } from './jwtAuthGuard';
 import type { AuthService } from './authService';
 import type { AuthIdentity } from './authIdentity';
 
+// Note: @CurrentUser() decorator is a 12-line createParamDecorator wrapper that
+// reads request.user. It cannot be unit-tested outside the NestJS parameter
+// resolution pipeline. The guard tests verify request.user is populated correctly.
+
 function createHttpExecutionContext(
   headers: Record<string, string>,
   url: string,
@@ -131,6 +135,32 @@ describe('JwtAuthGuard', () => {
     const guard = new JwtAuthGuard(authService);
 
     const ctx = createHttpExecutionContext({}, '/api/v1/auth/refresh');
+
+    const result = guard.canActivate(ctx);
+    expect(result).toBe(true);
+    expect(authService.verifyAccessToken).not.toHaveBeenCalled();
+  });
+
+  it('skips guard for /api/v1/auth/dev-token', () => {
+    const authService = {
+      verifyAccessToken: vi.fn(),
+    } as unknown as AuthService;
+    const guard = new JwtAuthGuard(authService);
+
+    const ctx = createHttpExecutionContext({}, '/api/v1/auth/dev-token');
+
+    const result = guard.canActivate(ctx);
+    expect(result).toBe(true);
+    expect(authService.verifyAccessToken).not.toHaveBeenCalled();
+  });
+
+  it('skips guard for excluded path with query string', () => {
+    const authService = {
+      verifyAccessToken: vi.fn(),
+    } as unknown as AuthService;
+    const guard = new JwtAuthGuard(authService);
+
+    const ctx = createHttpExecutionContext({}, '/health?format=json');
 
     const result = guard.canActivate(ctx);
     expect(result).toBe(true);
