@@ -13,6 +13,7 @@ import { TenantControlPanel } from '@/components/business/tenantControlPanel';
 import { UserManagementPanel } from '@/components/business/userManagementPanel';
 import { AuditLogPanel } from '@/components/business/auditLogPanel';
 import { ModernizerPanel } from '@/components/business/modernizerPanel';
+import { BacklogPanel } from '@/components/business/backlogPanel';
 import { AppLayout } from './layout/appLayout';
 import { AuthGuard } from './authGuard';
 import { ModuleErrorBoundary } from './moduleErrorBoundary';
@@ -158,6 +159,16 @@ export function AppRoot(): JSX.Element {
                     </RouteModule>
                   }
                   path="/modernizer"
+                />
+                <Route
+                  element={
+                    <RouteModule>
+                      <RequirePermission permission="backlog:view">
+                        <BacklogPanel />
+                      </RequirePermission>
+                    </RouteModule>
+                  }
+                  path="/backlog"
                 />
                 <Route element={<NotFoundPage />} path="*" />
               </Routes>

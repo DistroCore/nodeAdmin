@@ -73,6 +73,13 @@ export const navItems: NavItem[] = [
     path: '/modernizer',
     permission: 'modernizer:view',
   },
+  {
+    icon: 'list',
+    key: 'backlog',
+    labelId: 'nav.backlog',
+    path: '/backlog',
+    permission: 'backlog:view',
+  },
 ];
 
 export function isNavItemActive(pathname: string, navPath: string): boolean {

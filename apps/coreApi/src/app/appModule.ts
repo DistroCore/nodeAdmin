@@ -13,6 +13,7 @@ import { MenusModule } from '../modules/menus/menusModule';
 import { PermissionsModule } from '../modules/permissions/permissionsModule';
 import { RolesModule } from '../modules/roles/rolesModule';
 import { TenantsModule } from '../modules/tenants/tenantsModule';
+import { BacklogModule } from '../modules/backlog/backlogModule';
 import { ModernizerModule } from '../modules/modernizer/modernizerModule';
 import { UsersModule } from '../modules/users/usersModule';
 
@@ -30,6 +31,7 @@ import { UsersModule } from '../modules/users/usersModule';
     MenusModule,
     TenantsModule,
     ModernizerModule,
+    BacklogModule,
   ],
   providers: [
     OutboxPublisherService,

@@ -27,6 +27,8 @@ export interface AuthIdentitySnapshot {
 
 export type AppPermission =
   | 'audit:view'
+  | 'backlog:manage'
+  | 'backlog:view'
   | 'im:send'
   | 'im:view'
   | 'menus:manage'
@@ -151,4 +153,33 @@ export interface AnalysisSummary {
 export interface AnalysisResult {
   issues: AnalysisIssue[];
   summary: AnalysisSummary;
+}
+
+// ─── Backlog Types ──────────────────────────────────────────────────
+
+export interface BacklogTask {
+  id: string;
+  tenant_id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string;
+  assignee_id: string | null;
+  sprint_id: string | null;
+  sort_order: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BacklogSprint {
+  id: string;
+  tenant_id: string;
+  name: string;
+  goal: string | null;
+  status: string;
+  start_date: string | null;
+  end_date: string | null;
+  created_at: string;
+  updated_at: string;
 }
