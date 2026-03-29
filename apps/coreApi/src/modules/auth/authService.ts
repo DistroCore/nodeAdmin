@@ -222,6 +222,48 @@ export class AuthService {
     return this.issueTokens({ roles, tenantId, userId });
   }
 
+  async changePassword(
+    userId: string,
+    tenantId: string,
+    currentPassword: string,
+    newPassword: string
+  ): Promise<void> {
+    if (!this.pool) throw new UnauthorizedException('Database not available.');
+
+    const result = await this.pool.query<UserRow>(
+      'SELECT id, password_hash, is_active FROM users WHERE id = $1 AND tenant_id = $2',
+      [userId, tenantId]
+    );
+
+    const user = result.rows[0];
+    if (!user) {
+      throw new UnauthorizedException('User not found.');
+    }
+
+    const passwordValid = await compare(currentPassword, user.password_hash);
+    if (!passwordValid) {
+      throw new UnauthorizedException('Current password is incorrect.');
+    }
+
+    const newPasswordHash = await hash(newPassword, 12);
+
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [tenantId]);
+      await client.query('UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2', [
+        newPasswordHash,
+        userId,
+      ]);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   private async getUserRoles(userId: string, tenantId: string): Promise<string[]> {
     if (!this.pool) return [];
 

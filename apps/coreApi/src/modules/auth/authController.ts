@@ -1,8 +1,9 @@
-import { Body, Controller, ForbiddenException, Post } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Post, Req } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { runtimeConfig } from '../../app/runtimeConfig';
 import { AuditLogService } from '../../infrastructure/audit/auditLogService';
 import { AuthService } from './authService';
+import { ChangePasswordDto } from './dto/changePasswordDto';
 import { IssueDevTokenDto } from './dto/issueDevTokenDto';
 import { LoginDto } from './dto/loginDto';
 import { RefreshTokenDto } from './dto/refreshTokenDto';
@@ -67,6 +68,23 @@ export class AuthController {
   async refresh(@Body() dto: RefreshTokenDto) {
     const tokens = await this.authService.refreshTokens(dto.refreshToken);
     return tokens;
+  }
+
+  @Post('change-password')
+  @ApiSecurity('bearer')
+  @ApiOperation({ summary: 'Change password for authenticated user' })
+  async changePassword(@Body() dto: ChangePasswordDto, @Req() req: Request) {
+    const user = (req as any).user;
+    if (!user?.userId || !user?.tenantId) {
+      throw new ForbiddenException('Not authenticated.');
+    }
+    await this.authService.changePassword(
+      user.userId,
+      user.tenantId,
+      dto.currentPassword,
+      dto.newPassword
+    );
+    return { success: true };
   }
 
   @Post('dev-token')

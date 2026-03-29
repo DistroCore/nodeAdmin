@@ -328,4 +328,91 @@ describe('AuthService', () => {
       );
     });
   });
+
+  // ─── changePassword ──────────────────────────────────────────
+
+  describe('changePassword', () => {
+    it('should throw when pool is null', async () => {
+      await expect(
+        service.changePassword('user-1', 'tenant-1', 'old', 'newpass123')
+      ).rejects.toThrow('Database not available.');
+    });
+
+    it('should throw when user not found', async () => {
+      const mockPool = createMockPool([{ rows: [], rowCount: 0 }]);
+      (service as any).pool = mockPool;
+
+      await expect(
+        service.changePassword('nonexistent', 'tenant-1', 'old', 'newpass123')
+      ).rejects.toThrow('User not found.');
+    });
+
+    it('should throw when current password is incorrect', async () => {
+      const passwordHash = await hash('correct-password', 4);
+      const mockPool = createMockPool([
+        {
+          rows: [{ id: 'user-1', password_hash: passwordHash, is_active: 1 }],
+          rowCount: 1,
+        },
+      ]);
+      (service as any).pool = mockPool;
+
+      await expect(
+        service.changePassword('user-1', 'tenant-1', 'wrong-password', 'newpass123')
+      ).rejects.toThrow('Current password is incorrect.');
+    });
+
+    it('should update password when current password is correct', async () => {
+      const passwordHash = await hash('old-password', 4);
+      const mockClient = createMockClient([
+        { rows: [], rowCount: 0 }, // set_config
+        { rows: [], rowCount: 1 }, // UPDATE
+        { rows: [], rowCount: 0 }, // COMMIT
+      ]);
+      const mockPool = createMockPool([
+        {
+          rows: [{ id: 'user-1', password_hash: passwordHash, is_active: 1 }],
+          rowCount: 1,
+        },
+      ]);
+      mockPool.connect = vi.fn(async () => mockClient);
+      (service as any).pool = mockPool;
+
+      await service.changePassword('user-1', 'tenant-1', 'old-password', 'newpass123');
+
+      // Verify UPDATE was called
+      const updateCall = mockClient.calls.find((c) => c.sql.includes('UPDATE users'));
+      expect(updateCall).toBeDefined();
+      // Verify COMMIT was called
+      const commitCall = mockClient.calls.find((c) => c.sql === 'COMMIT');
+      expect(commitCall).toBeDefined();
+    });
+
+    it('should rollback on UPDATE failure', async () => {
+      const passwordHash = await hash('old-password', 4);
+      const mockClient = createMockClient([]);
+      mockClient.query.mockImplementation(async (sql: string, params?: unknown[]) => {
+        mockClient.calls.push({ sql, params: params ?? [] });
+        if (sql.includes('UPDATE users')) {
+          throw new Error('DB update error');
+        }
+        return { rows: [], rowCount: 0 };
+      });
+      const mockPool = createMockPool([
+        {
+          rows: [{ id: 'user-1', password_hash: passwordHash, is_active: 1 }],
+          rowCount: 1,
+        },
+      ]);
+      mockPool.connect = vi.fn(async () => mockClient);
+      (service as any).pool = mockPool;
+
+      await expect(
+        service.changePassword('user-1', 'tenant-1', 'old-password', 'newpass123')
+      ).rejects.toThrow('DB update error');
+
+      const rollbackCall = mockClient.calls.find((c) => c.sql === 'ROLLBACK');
+      expect(rollbackCall).toBeDefined();
+    });
+  });
 });
