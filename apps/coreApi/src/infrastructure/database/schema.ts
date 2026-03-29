@@ -311,13 +311,13 @@ export const backlogTasks = pgTable(
     backlogTasksTenantIdx: index('backlog_tasks_tenant_idx').on(table.tenantId),
     backlogTasksTenantStatusIdx: index('backlog_tasks_tenant_status_idx').on(
       table.tenantId,
-      table.status,
+      table.status
     ),
     backlogTasksTenantSprintIdx: index('backlog_tasks_tenant_sprint_idx').on(
       table.tenantId,
-      table.sprintId,
+      table.sprintId
     ),
-  }),
+  })
 );
 
 export const backlogSprints = pgTable(
@@ -339,7 +339,7 @@ export const backlogSprints = pgTable(
     backlogSprintsTenantIdx: index('backlog_sprints_tenant_idx').on(table.tenantId),
     backlogSprintsTenantStatusIdx: index('backlog_sprints_tenant_status_idx').on(
       table.tenantId,
-      table.status,
+      table.status
     ),
-  }),
+  })
 );
