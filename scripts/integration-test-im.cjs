@@ -8,8 +8,8 @@ const http = require('http');
 const https = require('https');
 const { io } = require('socket.io-client');
 
-const API_BASE = 'http://localhost:3001';
-const SOCKET_URL = 'http://localhost:3001';
+const API_BASE = 'http://localhost:11451';
+const SOCKET_URL = 'http://localhost:11451';
 
 // Test results storage
 const testResults = [];
@@ -64,7 +64,7 @@ async function testAuthentication() {
     const response = await httpRequest(
       {
         hostname: 'localhost',
-        port: 3001,
+        port: 11451,
         path: '/api/v1/auth/dev-token',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -141,7 +141,7 @@ async function testConversationAPI(token) {
   try {
     const response = await httpRequest({
       hostname: 'localhost',
-      port: 3001,
+      port: 11451,
       path: '/api/v1/console/conversations',
       method: 'GET',
       headers: { Authorization: `Bearer ${token}` },
@@ -170,7 +170,7 @@ async function testCreateConversation(token) {
     const response = await httpRequest(
       {
         hostname: 'localhost',
-        port: 3001,
+        port: 11451,
         path: '/api/v1/console/conversations',
         method: 'POST',
         headers: {

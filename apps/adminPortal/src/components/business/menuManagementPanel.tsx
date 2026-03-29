@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/dialog';
+import { DataTable, type DataColumn } from '@/components/ui/dataTable';
 import { useToast } from '@/components/ui/toast';
 import { useApiClient } from '@/hooks/useApiClient';
 import { MenuItem } from '@nodeadmin/shared-types';
+import { NavIcon } from '@/app/layout/navIcon';
 import { MenuFormDialog } from './menuFormDialog';
 
 interface TreeNode {
@@ -17,9 +19,6 @@ interface TreeNode {
 }
 
 function buildTree(menus: MenuItem[]): TreeNode[] {
-  const menuMap = new Map<string, MenuItem>();
-  menus.forEach((menu) => menuMap.set(menu.id, menu));
-
   const rootMenus = menus.filter((m) => !m.parent_id);
   const result: TreeNode[] = [];
 
@@ -94,6 +93,67 @@ export function MenuManagementPanel(): JSX.Element {
   const menus = menusQuery.data ?? [];
   const treeNodes = buildTree(menus);
 
+  const columns: DataColumn<TreeNode>[] = [
+    {
+      header: t({ id: 'menus.colName' }),
+      cell: (node) => (
+        <div className="flex items-center gap-2" style={{ paddingLeft: `${node.level * 20}px` }}>
+          <NavIcon name={node.menu.icon} />
+          <span className="font-medium">{node.menu.name}</span>
+        </div>
+      ),
+    },
+    {
+      header: t({ id: 'menus.colPath' }),
+      cell: (node) => <span className="font-mono text-xs text-muted-foreground">{node.menu.path}</span>,
+      className: 'hidden sm:table-cell',
+    },
+    {
+      header: t({ id: 'menus.colSort' }),
+      cell: (node) => <span className="text-muted-foreground">{node.menu.sort_order}</span>,
+      className: 'w-16 text-center',
+    },
+    {
+      header: t({ id: 'menus.colVisible' }),
+      cell: (node) => (
+        <Badge variant={node.menu.is_visible ? 'default' : 'secondary'}>
+          {node.menu.is_visible ? t({ id: 'menus.visible' }) : t({ id: 'menus.hidden' })}
+        </Badge>
+      ),
+      className: 'w-20 text-center',
+    },
+    {
+      header: t({ id: 'menus.colActions' }),
+      cell: (node) => (
+        <div className="flex items-center gap-3">
+          <button
+            className="text-sm text-primary hover:underline"
+            onClick={() => openEditDialog(node.menu)}
+            type="button"
+          >
+            {t({ id: 'menus.edit' })}
+          </button>
+          <button
+            className="text-sm text-primary hover:underline"
+            onClick={() => openCreateChildDialog(node.menu.id)}
+            type="button"
+          >
+            {t({ id: 'menus.createChild' })}
+          </button>
+          <button
+            className="text-sm text-destructive hover:underline"
+            disabled={deleteMutation.isPending}
+            onClick={() => openDeleteConfirm(node.menu)}
+            type="button"
+          >
+            {t({ id: 'menus.delete' })}
+          </button>
+        </div>
+      ),
+      className: 'text-right',
+    },
+  ];
+
   return (
     <section className="h-full overflow-y-auto">
       <Card className="p-4">
@@ -107,95 +167,21 @@ export function MenuManagementPanel(): JSX.Element {
           </Button>
         </CardHeader>
 
-        {menusQuery.isLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, index) => (
-              <div
-                className="flex animate-pulse items-center gap-4 rounded-md border border-border p-3"
-                key={`menu-skeleton-${index}`}
-              >
-                <div className="h-4 w-1/3 rounded bg-muted" />
-                <div className="h-4 w-1/4 rounded bg-muted" />
-                <div className="h-4 w-1/6 rounded bg-muted" />
-              </div>
-            ))}
-          </div>
-        ) : null}
-
-        {menusQuery.isError ? (
-          <div className="py-8 text-center">
-            <p className="text-sm text-destructive">{t({ id: 'menus.loadFailed' })}</p>
-            <button
-              className="mt-2 text-xs text-primary hover:underline"
-              onClick={() => menusQuery.refetch()}
-              type="button"
-            >
-              {t({ id: 'common.retry' })}
-            </button>
-          </div>
-        ) : null}
-
-        {!menusQuery.isLoading && !menusQuery.isError && menus.length === 0 ? (
-          <div className="py-8 text-center text-sm text-muted-foreground">
-            {t({ id: 'menus.empty' })}
-          </div>
-        ) : null}
-
-        {!menusQuery.isLoading && !menusQuery.isError && menus.length > 0 && (
-          <div className="space-y-1">
-            {treeNodes.map((node) => (
-              <div
-                className="flex items-center gap-2 rounded-md border border-border p-2 hover:bg-muted/50"
-                key={node.id}
-                style={{ paddingLeft: `${node.level * 24 + 8}px` }}
-              >
-                <div className="flex-1 grid-cols-12 gap-2 text-sm">
-                  <div className="col-span-3 font-medium">{node.menu.name}</div>
-                  <div className="col-span-3 text-muted-foreground">{node.menu.path}</div>
-                  <div className="col-span-2 text-muted-foreground">{node.menu.icon}</div>
-                  <div className="col-span-1 text-muted-foreground">{node.menu.sort_order}</div>
-                  <div className="col-span-1">
-                    <Badge variant={node.menu.is_visible ? 'default' : 'secondary'}>
-                      {node.menu.is_visible
-                        ? t({ id: 'menus.visible' })
-                        : t({ id: 'menus.hidden' })}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => openEditDialog(node.menu)}
-                    type="button"
-                  >
-                    {t({ id: 'menus.edit' })}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => openCreateChildDialog(node.menu.id)}
-                    type="button"
-                  >
-                    {t({ id: 'menus.createChild' })}
-                  </Button>
-                  <Button
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    disabled={deleteMutation.isPending}
-                    onClick={() => openDeleteConfirm(node.menu)}
-                    size="sm"
-                    type="button"
-                  >
-                    {t({ id: 'menus.delete' })}
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <DataTable<TreeNode>
+          columns={columns}
+          data={treeNodes}
+          emptyMessage={t({ id: 'menus.empty' })}
+          errorMessage={t({ id: 'menus.loadFailed' })}
+          isError={menusQuery.isError}
+          isLoading={menusQuery.isLoading}
+          onRetry={() => menusQuery.refetch()}
+          retryLabel={t({ id: 'common.retry' })}
+          rowKey={(node) => node.id}
+        />
       </Card>
 
       <MenuFormDialog
+        key={editingMenu?.id ?? 'create'}
         menu={editingMenu}
         menus={menus}
         onClose={closeDialog}

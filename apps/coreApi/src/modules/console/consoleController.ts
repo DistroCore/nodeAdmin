@@ -1,7 +1,12 @@
-import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
 import { AuditLogService } from '../../infrastructure/audit/auditLogService';
+import { ConnectionRegistry } from '../../infrastructure/connectionRegistry';
 import { ConversationRepository } from '../../infrastructure/database/conversationRepository';
+import { DatabaseService } from '../../infrastructure/database/databaseService';
+import { TenantsService } from '../tenants/tenantsService';
+import { CurrentUser } from '../auth/currentUser.decorator';
+import type { AuthIdentity } from '../auth/authIdentity';
 
 const eventLoopLagHistogram = monitorEventLoopDelay({
   resolution: 20,
@@ -9,10 +14,19 @@ const eventLoopLagHistogram = monitorEventLoopDelay({
 eventLoopLagHistogram.enable();
 
 interface ConversationListResponse {
-  conversationId: string;
-  title: string;
-  lastMessageAt: string | null;
+  id: string;
+  name: string;
+  lastMessagePreview: string;
   unreadCount: number;
+}
+
+function formatUptime(seconds: number): string {
+  const d = Math.floor(seconds / 86_400);
+  const h = Math.floor((seconds % 86_400) / 3_600);
+  const m = Math.floor((seconds % 3_600) / 60);
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
 }
 
 @Controller()
@@ -47,68 +61,99 @@ export class MetricsController {
 export class ConsoleController {
   constructor(
     private readonly auditLogService: AuditLogService,
-    private readonly conversationRepository: ConversationRepository
+    private readonly connectionRegistry: ConnectionRegistry,
+    private readonly conversationRepository: ConversationRepository,
+    private readonly databaseService: DatabaseService,
+    private readonly tenantsService: TenantsService,
   ) {}
 
   @Get('overview')
-  getOverview() {
+  async getOverview() {
+    const tenants = await this.tenantsService.list();
+    const activeCount = tenants.filter((t: any) => t.is_active).length;
+    const onlineConnections = this.connectionRegistry.totalCount();
+
+    let totalUsers = 0;
+    try {
+      if (this.databaseService.drizzle) {
+        const result = await this.databaseService.drizzle.execute(
+          { sql: 'SELECT COUNT(*)::int AS count FROM users' } as any,
+        );
+        totalUsers = Number(result.rows?.[0]?.count ?? 0);
+      }
+    } catch {
+      // DB not available — keep 0
+    }
+
     return {
       stats: [
-        { label: 'Online connections', value: '1,284' },
-        { label: 'Active tenants', value: '37' },
-        { label: 'Messages per minute', value: '42,900' },
-        { label: 'Release success rate', value: '99.92%' },
+        { label: 'overview.stat.totalUsers', value: String(totalUsers) },
+        { label: 'overview.stat.activeTenants', value: String(activeCount) },
+        { label: 'overview.stat.totalTenants', value: String(tenants.length) },
+        { label: 'overview.stat.onlineConnections', value: String(onlineConnections) },
+        { label: 'overview.stat.uptime', value: formatUptime(process.uptime()) },
       ],
       todos: [],
     };
   }
 
   @Get('tenants')
-  getTenants() {
-    return {
-      rows: [
-        {
-          key: 'tenant-cn-001',
-          name: 'East Region Business Unit',
-          roleCount: 12,
-          status: 'active',
-        },
-        {
-          key: 'tenant-cn-002',
-          name: 'South Region Business Unit',
-          roleCount: 9,
-          status: 'active',
-        },
-        { key: 'tenant-cn-003', name: 'Overseas Business Unit', roleCount: 7, status: 'review' },
-      ],
-    };
+  async getTenants() {
+    const tenants = await this.tenantsService.list();
+
+    const tenantsWithRoles = await Promise.all(
+      tenants.map(async (t: any) => {
+        let roleCount = 0;
+        try {
+          if (this.databaseService.drizzle) {
+            const result = await this.databaseService.drizzle.execute(
+              { sql: 'SELECT COUNT(*)::int AS count FROM roles WHERE tenant_id = $1', bindings: [t.id] } as any,
+            );
+            roleCount = Number(result.rows?.[0]?.count ?? 0);
+          }
+        } catch {
+          // DB not available
+        }
+
+        return {
+          key: t.id,
+          name: t.name,
+          roleCount,
+          status: t.is_active ? 'active' : 'inactive',
+        };
+      }),
+    );
+
+    return { rows: tenantsWithRoles };
   }
 
   @Get('release-checks')
   getReleaseChecks() {
     return {
       checks: [
-        { done: true, title: 'CoreApi build passes' },
-        { done: true, title: 'AdminPortal build passes' },
-        { done: true, title: 'Outbox + Kafka integration verified' },
-        { done: false, title: 'Phase 2: 10k concurrent load test passes' },
-        { done: false, title: 'Phase 2: Cross-tenant penetration test passes' },
+        { done: !!process.env.DATABASE_URL, title: 'Database (PostgreSQL) configured' },
+        { done: !!process.env.REDIS_URL, title: 'Redis configured' },
+        { done: !!process.env.KAFKA_BROKERS, title: 'Kafka configured' },
+        { done: !!process.env.JWT_ACCESS_SECRET, title: 'JWT secrets configured' },
+        { done: !!process.env.FRONTEND_ORIGINS, title: 'CORS origins configured' },
       ],
     };
   }
 
   @Get('conversations')
   async getConversations(
-    @Query('tenantId') tenantId = 'tenant-demo'
-  ): Promise<ConversationListResponse[]> {
+    @Query('tenantId') tenantId = 'default',
+  ): Promise<{ rows: ConversationListResponse[] }> {
     const rows = await this.conversationRepository.listByTenant(tenantId, 50);
 
-    return rows.map((row) => ({
-      conversationId: row.conversationId,
-      title: row.title,
-      lastMessageAt: row.lastMessageAt?.toISOString() ?? null,
-      unreadCount: 0, // TODO: implement unread count in Phase 2
-    }));
+    return {
+      rows: rows.map((row) => ({
+        id: row.conversationId,
+        name: row.title,
+        lastMessagePreview: row.lastMessageAt?.toISOString() ?? '',
+        unreadCount: 0, // TODO: implement unread count in Phase 2
+      })),
+    };
   }
 
   @Get('permissions')
@@ -120,16 +165,16 @@ export class ConsoleController {
             .map((role) => role.trim())
             .filter(Boolean)
         : [];
-    const isAdmin = roles.includes('tenant:admin');
+    const isAdmin = roles.includes('admin') || roles.includes('super-admin');
 
     return {
       permissions: {
         'im:send': isAdmin || roles.includes('im:operator'),
-        'im:view': isAdmin || roles.includes('im:operator') || roles.includes('tenant:viewer'),
+        'im:view': isAdmin || roles.includes('im:operator') || roles.includes('viewer'),
         'overview:view': true,
         'release:view': isAdmin || roles.includes('release:viewer'),
         'settings:view': isAdmin,
-        'tenant:view': isAdmin || roles.includes('tenant:viewer'),
+        'tenant:view': isAdmin || roles.includes('viewer'),
       },
       roles,
     };
@@ -137,22 +182,41 @@ export class ConsoleController {
 
   @Get('audit-logs')
   async getAuditLogs(
-    @Query('limit') limitRaw?: string,
-    @Query('offset') offsetRaw?: string,
-    @Query('tenantId') tenantId?: string
-  ): Promise<{ rows: Awaited<ReturnType<AuditLogService['listByTenant']>> }> {
-    if (!tenantId || tenantId.trim().length === 0) {
-      throw new BadRequestException('tenantId query parameter is required.');
-    }
+    @CurrentUser() identity: AuthIdentity,
+    @Query('page') pageRaw?: string,
+    @Query('pageSize') pageSizeRaw?: string,
+    @Query('userId') userId?: string,
+    @Query('action') action?: string,
+    @Query('targetType') targetType?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const parsedPage = Number(pageRaw);
+    const page = Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
 
-    const parsedLimit = Number(limitRaw);
-    const limit = Number.isInteger(parsedLimit) && parsedLimit > 0 ? parsedLimit : 50;
+    const parsedPageSize = Number(pageSizeRaw);
+    const pageSize = Number.isInteger(parsedPageSize) && parsedPageSize > 0
+      ? Math.min(parsedPageSize, 100)
+      : 20;
 
-    const parsedOffset = Number(offsetRaw);
-    const offset = Number.isInteger(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
+    const { items, total } = await this.auditLogService.listByFilter(
+      {
+        tenantId: identity.tenantId,
+        userId: userId || undefined,
+        action: action || undefined,
+        targetType: targetType || undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+      },
+      page,
+      pageSize,
+    );
 
     return {
-      rows: await this.auditLogService.listByTenant(tenantId, Math.min(limit, 200), offset),
+      items,
+      page,
+      pageSize,
+      total,
     };
   }
 }

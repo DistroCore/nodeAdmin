@@ -66,6 +66,24 @@ export class ConnectionRegistry {
     return this.countByTenantId.get(tenantId) ?? 0;
   }
 
+  /** Returns the total number of active connections across all tenants. */
+  totalCount(): number {
+    let total = 0;
+    for (const count of this.countByTenantId.values()) {
+      total += count;
+    }
+    return total;
+  }
+
+  /** Returns the total active WebSocket connections across all tenants. */
+  totalConnections(): number {
+    let total = 0;
+    for (const count of this.countByTenantId.values()) {
+      total += count;
+    }
+    return total;
+  }
+
   private decrementTenant(tenantId: string): void {
     const current = this.countByTenantId.get(tenantId) ?? 0;
     if (current <= 1) {

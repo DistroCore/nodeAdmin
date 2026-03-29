@@ -3,7 +3,7 @@ const { Client } = require('pg');
 const { io } = require('socket.io-client');
 const { Kafka } = require('kafkajs');
 
-const defaultBaseUrl = 'http://127.0.0.1:3001';
+const defaultBaseUrl = 'http://127.0.0.1:11451';
 const baseUrl = (process.env.CORE_API_BASE_URL || defaultBaseUrl).trim();
 const socketUrl = (process.env.CORE_API_SOCKET_URL || baseUrl).trim();
 const databaseUrl = (

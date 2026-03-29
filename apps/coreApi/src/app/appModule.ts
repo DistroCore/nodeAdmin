@@ -1,7 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { OutboxPublisherService } from '../infrastructure/outbox/outboxPublisherService';
+import { AuditInterceptor } from '../infrastructure/audit/auditInterceptor';
+import { InfrastructureModule } from '../infrastructure/infrastructureModule';
 import { AuthModule } from '../modules/auth/authModule';
+import { JwtAuthGuard } from '../modules/auth/jwtAuthGuard';
 import { ConsoleModule } from '../modules/console/consoleModule';
 import { HealthModule } from '../modules/health/healthModule';
 import { ImModule } from '../modules/im/imModule';
@@ -14,8 +18,9 @@ import { UsersModule } from '../modules/users/usersModule';
 @Module({
   imports: [
     ConfigModule.forRoot({ cache: true, isGlobal: true }),
-    HealthModule,
+    InfrastructureModule,
     AuthModule,
+    HealthModule,
     ImModule,
     ConsoleModule,
     UsersModule,
@@ -24,6 +29,10 @@ import { UsersModule } from '../modules/users/usersModule';
     MenusModule,
     TenantsModule,
   ],
-  providers: [OutboxPublisherService],
+  providers: [
+    OutboxPublisherService,
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
+  ],
 })
 export class AppModule {}

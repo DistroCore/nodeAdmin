@@ -21,17 +21,10 @@ const statBgClasses = [
   'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400',
   'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400',
   'bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400',
+  'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400',
 ] as const;
 
-const statIconNames = ['bar', 'chat', 'users', 'rocket'] as const;
-
-// Mock trend data — replace with real API data when available
-const mockTrends = [
-  { direction: 'up' as const, value: '+12.5%' },
-  { direction: 'up' as const, value: '+3.2%' },
-  { direction: 'down' as const, value: '-1.8%' },
-  { direction: 'up' as const, value: '+8.1%' },
-];
+const statIconNames = ['bar', 'users', 'rocket', 'chat', 'settings'] as const;
 
 export function ManagementOverviewPanel(): JSX.Element {
   const { formatMessage: t } = useIntl();
@@ -48,13 +41,17 @@ export function ManagementOverviewPanel(): JSX.Element {
 
   const stats = overviewQuery.data?.stats ?? [];
   const todos = overviewQuery.data?.todos ?? [];
-  const isOverviewPending = overviewQuery.isLoading || overviewQuery.isError;
-  const isHealthPending = healthQuery.isLoading || healthQuery.isError;
+  const isOverviewPending = overviewQuery.isLoading;
+  const isHealthPending = healthQuery.isLoading;
 
-  const healthVersion = healthQuery.data ? `v${healthQuery.data.version}` : 'Unavailable';
+  const healthVersion = healthQuery.data
+    ? `v${healthQuery.data.version}`
+    : t({ id: 'overview.unavailable' });
   const healthStatus = healthQuery.data
     ? `${healthQuery.data.service} / ${healthQuery.data.status}`
-    : 'Unavailable';
+    : t({ id: 'overview.unavailable' });
+
+  const statCount = stats.length || 5;
 
   return (
     <section className="flex h-full flex-col gap-6 overflow-y-auto">
@@ -74,68 +71,56 @@ export function ManagementOverviewPanel(): JSX.Element {
         </CardHeader>
         <CardContent className="space-y-4">
           {isOverviewPending ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {Array.from({ length: 4 }).map((_, index) => (
+            <div
+              className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
+            >
+              {Array.from({ length: statCount }).map((_, index) => (
                 <div
                   className="rounded-lg border border-border p-4"
                   key={`overview-stat-skeleton-${index}`}
                 >
                   <div className="h-4 w-full animate-pulse rounded bg-muted" />
                   <div className="mt-2 h-6 w-2/3 animate-pulse rounded bg-muted" />
-                  <div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-muted" />
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {stats.map((stat, index) => {
-                const trend = mockTrends[index % mockTrends.length];
-                const isUp = trend.direction === 'up';
+          ) : null}
 
-                return (
-                  <div
-                    className="group rounded-lg border border-border p-4 transition-shadow hover:shadow-md"
-                    key={stat.label}
-                  >
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">{stat.label}</p>
-                      <div
-                        className={`flex h-8 w-8 items-center justify-center rounded-full ${statBgClasses[index % statBgClasses.length]}`}
-                      >
-                        <NavIcon name={statIconNames[index % statIconNames.length]} />
-                      </div>
-                    </div>
-                    <p className="mt-2 text-2xl font-bold">{stat.value}</p>
-                    <div className="mt-1 flex items-center gap-1 text-xs">
-                      <svg
-                        className={`h-3 w-3 ${isUp ? 'text-green-600' : 'text-red-600'}`}
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          clipRule="evenodd"
-                          d={
-                            isUp
-                              ? 'M5.293 9.707l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 8.414V16a1 1 0 11-2 0V8.414L6.707 11.12a1 1 0 01-1.414-1.414z'
-                              : 'M14.707 10.293l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 11.586V4a1 1 0 012 0v7.586l2.293-2.293a1 1 0 111.414 1.414z'
-                          }
-                          fillRule="evenodd"
-                        />
-                      </svg>
-                      <span className={isUp ? 'text-green-600' : 'text-red-600'}>
-                        {trend.value}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {t({ id: 'overview.trend.vsLastPeriod' })}
-                      </span>
+          {overviewQuery.isError ? (
+            <div className="rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3">
+              <p className="text-sm text-destructive">{t({ id: 'common.failed' })}</p>
+              <button
+                className="mt-1 text-xs text-primary hover:underline"
+                onClick={() => overviewQuery.refetch()}
+                type="button"
+              >
+                {t({ id: 'common.retry' })}
+              </button>
+            </div>
+          ) : null}
+
+          {!isOverviewPending && !overviewQuery.isError ? (
+            <div
+              className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
+            >
+              {stats.map((stat, index) => (
+                <div
+                  className="group rounded-lg border border-border p-4 transition-shadow hover:shadow-md"
+                  key={stat.label}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">{t({ id: stat.label })}</p>
+                    <div
+                      className={`flex h-8 w-8 items-center justify-center rounded-full ${statBgClasses[index % statBgClasses.length]}`}
+                    >
+                      <NavIcon name={statIconNames[index % statIconNames.length]} />
                     </div>
                   </div>
-                );
-              })}
+                  <p className="mt-2 text-2xl font-bold">{stat.value}</p>
+                </div>
+              ))}
             </div>
-          )}
-
-          {/* Health info with pulse */}
+          ) : null}
           <div className="rounded-md border border-border bg-muted/20 px-4 py-3">
             {isHealthPending ? (
               <div className="space-y-2">

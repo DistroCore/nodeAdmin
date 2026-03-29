@@ -2,6 +2,10 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 
+# API base URL — empty means same-origin (nginx proxies /api/ to coreapi)
+ARG VITE_CORE_API_BASE_URL=
+ENV VITE_CORE_API_BASE_URL=$VITE_CORE_API_BASE_URL
+
 # Copy all package files for workspace resolution
 COPY package.json package-lock.json* ./
 COPY apps/adminPortal/package.json ./apps/adminPortal/

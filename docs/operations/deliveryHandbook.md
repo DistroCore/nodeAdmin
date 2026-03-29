@@ -31,8 +31,8 @@
   - `npm run smoke:tls`
 
 ## LAN Access Notes
-- CoreApi listens on `0.0.0.0:3001`
-- AdminPortal dev server listens on `0.0.0.0:5173`
+- CoreApi listens on `0.0.0.0:11451`
+- AdminPortal dev server listens on `0.0.0.0:3000`
 - Ensure `FRONTEND_ORIGINS` includes both localhost and LAN origin
 
 Last updated: 2026-03-01

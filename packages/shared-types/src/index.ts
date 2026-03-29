@@ -26,6 +26,7 @@ export interface AuthIdentitySnapshot {
 }
 
 export type AppPermission =
+  | 'audit:view'
   | 'im:send'
   | 'im:view'
   | 'menus:manage'
@@ -109,4 +110,16 @@ export interface PaginatedResponse<T> {
   page: number;
   pageSize: number;
   total: number;
+}
+
+export interface AuditLogItem {
+  id: string;
+  tenantId: string;
+  userId: string;
+  action: string;
+  targetType: string | null;
+  targetId: string | null;
+  traceId: string;
+  context: Record<string, unknown> | null;
+  createdAt: string;
 }

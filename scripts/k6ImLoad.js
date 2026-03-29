@@ -13,7 +13,7 @@ import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
 // - Run all: npm run load:k6:smoke
 // - Run 5k only: docker compose --profile loadtest run --rm k6 run /scripts/k6ImLoad.js --tag scenario=5k
 
-const DEFAULT_CORE_API_BASE_URL = 'http://127.0.0.1:3001';
+const DEFAULT_CORE_API_BASE_URL = 'http://127.0.0.1:11451';
 const DEFAULT_TENANT_ID = 'tenant-demo';
 const TENANT_ADMIN_ROLE = 'tenant:admin';
 const TOKEN_REQUEST_HEADERS = {

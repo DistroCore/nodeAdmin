@@ -9,10 +9,10 @@ async function testFrontendEnv() {
   console.log('Testing frontend environment configuration...\n');
 
   // Test 1: Check if dev server is running
-  console.log('1. Checking if dev server is running on port 5173...');
+  console.log('1. Checking if dev server is running on port 3000...');
   try {
     await new Promise((resolve, reject) => {
-      const req = http.get('http://localhost:5173', (res) => {
+      const req = http.get('http://localhost:3000', (res) => {
         if (res.statusCode === 200) {
           console.log('   ✓ Dev server is running\n');
           resolve();
@@ -75,7 +75,7 @@ async function testFrontendEnv() {
 
   console.log('\n✓ Frontend environment configuration is correct!');
   console.log('\nNext steps:');
-  console.log('  - Open http://localhost:5173 in your browser');
+  console.log('  - Open http://localhost:3000 in your browser');
   console.log('  - Check browser console for any "Missing IM runtime config" errors');
   console.log('  - If error persists, try hard refresh (Ctrl+Shift+R)');
 }

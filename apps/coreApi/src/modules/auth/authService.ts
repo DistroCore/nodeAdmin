@@ -125,7 +125,7 @@ export class AuthService {
     password: string,
     tenantId: string,
     name?: string
-  ): Promise<{ userId: string; tokens: IssuedTokens }> {
+  ): Promise<{ name: string | null; roles: string[]; tokens: IssuedTokens; userId: string }> {
     if (!this.pool) throw new UnauthorizedException('Database not available.');
 
     const existing = await this.pool.query(
@@ -164,18 +164,18 @@ export class AuthService {
 
     const roles = await this.getUserRoles(userId, tenantId);
     const tokens = this.issueTokens({ roles, tenantId, userId });
-    return { userId, tokens };
+    return { name: name ?? null, roles, tokens, userId };
   }
 
   async login(
     email: string,
     password: string,
     tenantId: string
-  ): Promise<{ userId: string; tokens: IssuedTokens }> {
+  ): Promise<{ name: string | null; roles: string[]; tokens: IssuedTokens; userId: string }> {
     if (!this.pool) throw new UnauthorizedException('Database not available.');
 
     const result = await this.pool.query<UserRow>(
-      'SELECT id, email, password_hash, is_active FROM users WHERE tenant_id = $1 AND email = $2',
+      'SELECT id, email, password_hash, name, is_active FROM users WHERE tenant_id = $1 AND email = $2',
       [tenantId, email]
     );
 
@@ -195,7 +195,7 @@ export class AuthService {
 
     const roles = await this.getUserRoles(user.id, tenantId);
     const tokens = this.issueTokens({ roles, tenantId, userId: user.id });
-    return { userId: user.id, tokens };
+    return { name: user.name, roles, tokens, userId: user.id };
   }
 
   async refreshTokens(refreshToken: string): Promise<IssuedTokens> {

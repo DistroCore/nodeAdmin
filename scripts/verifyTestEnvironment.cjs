@@ -17,7 +17,7 @@ const http = require('node:http');
 
 const execAsync = promisify(exec);
 
-const CORE_API_BASE_URL = process.env.CORE_API_BASE_URL || 'http://127.0.0.1:3001';
+const CORE_API_BASE_URL = process.env.CORE_API_BASE_URL || 'http://127.0.0.1:11451';
 const PGBOUNCER_HOST = process.env.PGBOUNCER_HOST || '127.0.0.1';
 const PGBOUNCER_PORT = process.env.PGBOUNCER_PORT || '6432';
 

@@ -895,16 +895,16 @@ Expected: 看到 18 条权限记录
 Run: `cd /home/hahage/Code/nodeAdmin && npm run dev:api`
 
 测试注册：
-Run: `curl -X POST http://localhost:3001/api/v1/auth/register -H 'Content-Type: application/json' -d '{"email":"admin@test.com","password":"Test1234","tenantId":"default","name":"Admin User"}'`
+Run: `curl -X POST http://localhost:11451/api/v1/auth/register -H 'Content-Type: application/json' -d '{"email":"admin@test.com","password":"Test1234","tenantId":"default","name":"Admin User"}'`
 Expected: 返回 accessToken, refreshToken, identity
 
 测试登录：
-Run: `curl -X POST http://localhost:3001/api/v1/auth/login -H 'Content-Type: application/json' -d '{"email":"admin@test.com","password":"Test1234","tenantId":"default"}'`
+Run: `curl -X POST http://localhost:11451/api/v1/auth/login -H 'Content-Type: application/json' -d '{"email":"admin@test.com","password":"Test1234","tenantId":"default"}'`
 Expected: 返回 accessToken, refreshToken
 
 测试刷新：
 Run: 使用上一步的 refreshToken:
-`curl -X POST http://localhost:3001/api/v1/auth/refresh -H 'Content-Type: application/json' -d '{"refreshToken":"<token>"}'`
+`curl -X POST http://localhost:11451/api/v1/auth/refresh -H 'Content-Type: application/json' -d '{"refreshToken":"<token>"}'`
 Expected: 返回新的 accessToken, refreshToken
 
 - [ ] **Step 5: Commit (如有调整)**

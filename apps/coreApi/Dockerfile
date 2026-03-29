@@ -29,6 +29,6 @@ COPY --from=builder /app/apps/coreApi/package.json ./apps/coreApi/package.json
 COPY --from=builder /app/apps/coreApi/Dist ./apps/coreApi/Dist
 COPY --from=builder /app/packages/shared-types ./packages/shared-types
 
-EXPOSE 3001
+EXPOSE 11451
 
 CMD ["node", "apps/coreApi/Dist/main.js"]

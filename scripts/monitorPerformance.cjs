@@ -19,7 +19,7 @@ const HTTP_TIMEOUT_MS = readPositiveIntEnv('MONITOR_HTTP_TIMEOUT_MS', 1500);
 const REDIS_TIMEOUT_MS = readPositiveIntEnv('MONITOR_REDIS_TIMEOUT_MS', 1500);
 
 const coreApiBaseUrl = trimTrailingSlash(
-  readStringEnv('CORE_API_BASE_URL', 'http://127.0.0.1:3001')
+  readStringEnv('CORE_API_BASE_URL', 'http://127.0.0.1:11451')
 );
 const preferredMetricsPath = normalizePath(
   readStringEnv('MONITOR_METRICS_PATH', '/api/v1/metrics')

@@ -5,14 +5,7 @@ import { type RoleItem } from '@nodeadmin/shared-types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { DataTable } from '@/components/ui/dataTable';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast';
 import { useApiClient } from '@/hooks/useApiClient';
@@ -65,110 +58,67 @@ export function RoleManagementPanel(): JSX.Element {
           </Button>
         </CardHeader>
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t({ id: 'roles.colName' })}</TableHead>
-              <TableHead>{t({ id: 'roles.colDescription' })}</TableHead>
-              <TableHead>{t({ id: 'roles.colSystem' })}</TableHead>
-              <TableHead>{t({ id: 'roles.colPermissions' })}</TableHead>
-              <TableHead>{t({ id: 'roles.colActions' })}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rolesQuery.isLoading
-              ? Array.from({ length: 3 }).map((_, index) => (
-                  <TableRow className="hover:bg-muted/50" key={`role-skeleton-${index}`}>
-                    <TableCell>
-                      <div className="h-4 w-full animate-pulse rounded bg-muted" />
-                    </TableCell>
-                    <TableCell>
-                      <div className="h-4 w-full animate-pulse rounded bg-muted" />
-                    </TableCell>
-                    <TableCell>
-                      <div className="h-4 w-full animate-pulse rounded bg-muted" />
-                    </TableCell>
-                    <TableCell>
-                      <div className="h-4 w-full animate-pulse rounded bg-muted" />
-                    </TableCell>
-                    <TableCell>
-                      <div className="h-4 w-full animate-pulse rounded bg-muted" />
-                    </TableCell>
-                  </TableRow>
-                ))
-              : null}
-
-            {rolesQuery.isError ? (
-              <TableRow className="hover:bg-transparent">
-                <TableCell className="py-8 text-center" colSpan={5}>
-                  <p className="text-sm text-destructive">{t({ id: 'roles.loadFailed' })}</p>
+        <DataTable<RoleItem>
+          columns={[
+            { header: t({ id: 'roles.colName' }), cell: (role) => <span className="font-medium">{role.name}</span> },
+            { header: t({ id: 'roles.colDescription' }), cell: (role) => role.description },
+            {
+              header: t({ id: 'roles.colSystem' }),
+              cell: (role) =>
+                role.is_system ? (
+                  <Badge variant="secondary">{t({ id: 'roles.yes' })}</Badge>
+                ) : (
+                  <Badge variant="outline">{t({ id: 'roles.no' })}</Badge>
+                ),
+            },
+            { header: t({ id: 'roles.colPermissions' }), cell: (role) => role.permissions.length },
+            {
+              header: t({ id: 'roles.colActions' }),
+              cell: (role) => (
+                <div className="flex gap-2">
                   <button
-                    className="mt-2 text-xs text-primary hover:underline"
-                    onClick={() => rolesQuery.refetch()}
+                    className="text-sm text-primary hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed"
+                    disabled={Boolean(role.is_system)}
+                    onClick={() => setEditRole(role)}
+                    title={role.is_system ? t({ id: 'roles.systemRole' }) : undefined}
                     type="button"
                   >
-                    {t({ id: 'common.retry' })}
+                    {t({ id: 'roles.edit' })}
                   </button>
-                </TableCell>
-              </TableRow>
-            ) : null}
-
-            {!rolesQuery.isLoading && !rolesQuery.isError && roles.length === 0 ? (
-              <TableRow className="hover:bg-transparent">
-                <TableCell className="py-8 text-center text-sm text-muted-foreground" colSpan={5}>
-                  {t({ id: 'roles.empty' })}
-                </TableCell>
-              </TableRow>
-            ) : null}
-
-            {!rolesQuery.isLoading && !rolesQuery.isError
-              ? roles.map((role) => (
-                  <TableRow className="hover:bg-muted/50" key={role.id}>
-                    <TableCell className="font-medium">{role.name}</TableCell>
-                    <TableCell>{role.description}</TableCell>
-                    <TableCell>
-                      {role.is_system ? (
-                        <Badge variant="secondary">{t({ id: 'roles.yes' })}</Badge>
-                      ) : (
-                        <Badge variant="outline">{t({ id: 'roles.no' })}</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>{role.permissions.length}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <button
-                          className="text-sm text-primary hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed"
-                          disabled={Boolean(role.is_system)}
-                          onClick={() => setEditRole(role)}
-                          title={role.is_system ? t({ id: 'roles.systemRoleLocked' }) : undefined}
-                          type="button"
-                        >
-                          {t({ id: 'roles.edit' })}
-                        </button>
-                        <button
-                          className="text-sm text-destructive hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed"
-                          disabled={Boolean(role.is_system)}
-                          onClick={() => setDeleteRole(role)}
-                          title={role.is_system ? t({ id: 'roles.systemRoleLocked' }) : undefined}
-                          type="button"
-                        >
-                          {t({ id: 'roles.delete' })}
-                        </button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              : null}
-          </TableBody>
-        </Table>
+                  <button
+                    className="text-sm text-destructive hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed"
+                    disabled={Boolean(role.is_system)}
+                    onClick={() => setDeleteRole(role)}
+                    title={role.is_system ? t({ id: 'roles.systemRole' }) : undefined}
+                    type="button"
+                  >
+                    {t({ id: 'roles.delete' })}
+                  </button>
+                </div>
+              ),
+            },
+          ]}
+          data={roles}
+          emptyMessage={t({ id: 'roles.empty' })}
+          errorMessage={t({ id: 'roles.loadFailed' })}
+          isError={rolesQuery.isError}
+          isLoading={rolesQuery.isLoading}
+          onRetry={() => rolesQuery.refetch()}
+          retryLabel={t({ id: 'common.retry' })}
+          rowKey={(role) => role.id}
+        />
       </Card>
 
       <RoleFormDialog
+        key={editRole?.id ?? 'create'}
         onClose={() => {
           setCreateFormOpen(false);
           setEditRole(undefined);
         }}
-        onSaved={() => rolesQuery.refetch()}
+        onSaved={() => {
+          rolesQuery.refetch();
+          toast.success(t({ id: 'roles.saveSuccess' }));
+        }}
         open={createFormOpen || !!editRole}
         role={editRole}
       />

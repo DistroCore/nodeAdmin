@@ -5,7 +5,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { io } = require('socket.io-client');
 
-const DEFAULT_BASE_URL = 'http://127.0.0.1:3001';
+const DEFAULT_BASE_URL = 'http://127.0.0.1:11451';
 const DEFAULT_TENANT_ID = 'tenant-demo';
 const DEFAULT_MAX_CONNECTIONS = 5000;
 const DEFAULT_RAMP_DURATION_SEC = 30;

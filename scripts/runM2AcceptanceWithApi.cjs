@@ -6,7 +6,7 @@ async function run() {
     AUTH_ENABLE_DEV_TOKEN_ISSUE: process.env.AUTH_ENABLE_DEV_TOKEN_ISSUE || 'true',
     DATABASE_URL:
       process.env.DATABASE_URL || 'postgres://nodeadmin:nodeadmin@localhost:55432/nodeadmin',
-    FRONTEND_ORIGINS: process.env.FRONTEND_ORIGINS || 'http://localhost:5173',
+    FRONTEND_ORIGINS: process.env.FRONTEND_ORIGINS || 'http://localhost:3000',
     JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || 'dev-access-secret-please-change',
     JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret-please-change',
     KAFKA_BROKERS: process.env.KAFKA_BROKERS || 'localhost:9092',
@@ -14,7 +14,7 @@ async function run() {
     OUTBOX_POLL_INTERVAL_MS: process.env.OUTBOX_POLL_INTERVAL_MS || '500',
     OUTBOX_PUBLISHER_ENABLED: process.env.OUTBOX_PUBLISHER_ENABLED || 'true',
     OUTBOX_TOPIC: process.env.OUTBOX_TOPIC || 'im.events',
-    PORT: process.env.PORT || '3001',
+    PORT: process.env.PORT || '11451',
   };
 
   console.log('[M2] Spawning CoreApi process...');
@@ -46,7 +46,7 @@ async function run() {
     }
 
     try {
-      const response = await fetch('http://127.0.0.1:3001/api/v1/health');
+      const response = await fetch('http://127.0.0.1:11451/api/v1/health');
       if (response.ok) {
         console.log(`[M2] CoreApi ready after attempt ${attempt}`);
         break;

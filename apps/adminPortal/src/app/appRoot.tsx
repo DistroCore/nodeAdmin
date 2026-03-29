@@ -1,4 +1,3 @@
-import { useIntl } from 'react-intl';
 import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { LoginPage } from '@/components/business/loginPage';
 import { ManagementOverviewPanel } from '@/components/business/managementOverviewPanel';
@@ -8,8 +7,11 @@ import { NotFoundPage } from '@/components/business/notFoundPage';
 import { RegisterPage } from '@/components/business/registerPage';
 import { ReleaseControlPanel } from '@/components/business/releaseControlPanel';
 import { RoleManagementPanel } from '@/components/business/roleManagementPanel';
+import { SettingsPanel } from '@/components/business/settingsPanel';
+import { ProfilePanel } from '@/components/business/profilePanel';
 import { TenantControlPanel } from '@/components/business/tenantControlPanel';
 import { UserManagementPanel } from '@/components/business/userManagementPanel';
+import { AuditLogPanel } from '@/components/business/auditLogPanel';
 import { AppLayout } from './layout/appLayout';
 import { AuthGuard } from './authGuard';
 import { ModuleErrorBoundary } from './moduleErrorBoundary';
@@ -25,8 +27,6 @@ function RouteModule({ children }: { children: JSX.Element }): JSX.Element {
 }
 
 export function AppRoot(): JSX.Element {
-  const { formatMessage: t } = useIntl();
-
   return (
     <Routes>
       {/* Public routes */}
@@ -93,6 +93,16 @@ export function AppRoot(): JSX.Element {
                 <Route
                   element={
                     <RouteModule>
+                      <RequirePermission permission="audit:view">
+                        <AuditLogPanel />
+                      </RequirePermission>
+                    </RouteModule>
+                  }
+                  path="/audit"
+                />
+                <Route
+                  element={
+                    <RouteModule>
                       <RequirePermission permission="menus:view">
                         <MenuManagementPanel />
                       </RequirePermission>
@@ -108,7 +118,7 @@ export function AppRoot(): JSX.Element {
                       </RequirePermission>
                     </RouteModule>
                   }
-                  path="/tenant"
+                  path="/tenants"
                 />
                 <Route
                   element={
@@ -124,15 +134,19 @@ export function AppRoot(): JSX.Element {
                   element={
                     <RouteModule>
                       <RequirePermission permission="settings:view">
-                        <section className="h-full overflow-y-auto">
-                          <div className="rounded-md border border-border bg-card p-4 text-sm text-muted-foreground">
-                            {t({ id: 'settings.reserved' })}
-                          </div>
-                        </section>
+                        <SettingsPanel />
                       </RequirePermission>
                     </RouteModule>
                   }
                   path="/settings"
+                />
+                <Route
+                  element={
+                    <RouteModule>
+                      <ProfilePanel />
+                    </RouteModule>
+                  }
+                  path="/profile"
                 />
                 <Route element={<NotFoundPage />} path="*" />
               </Routes>

@@ -8,8 +8,8 @@ import { randomString } from 'https://jslib.k6.io/k6-utils/1.2.0/index.js';
 // Enhanced K6 load test with end-to-end traceId tracking and custom Prometheus metrics
 // This script tests the full IM message flow: HTTP auth → WebSocket connect → send message → receive broadcast
 
-const DEFAULT_CORE_API_BASE_URL = 'http://127.0.0.1:3001';
-const DEFAULT_WS_BASE_URL = 'ws://127.0.0.1:3001';
+const DEFAULT_CORE_API_BASE_URL = 'http://127.0.0.1:11451';
+const DEFAULT_WS_BASE_URL = 'ws://127.0.0.1:11451';
 const DEFAULT_TENANT_ID = 'tenant-demo';
 const TENANT_ADMIN_ROLE = 'tenant:admin';
 

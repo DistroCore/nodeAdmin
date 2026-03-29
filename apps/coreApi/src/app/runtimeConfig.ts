@@ -104,7 +104,7 @@ function readBooleanEnv(name: string, defaultValue: boolean): boolean {
 }
 
 function readPort(): number {
-  const rawPort = process.env.PORT ?? '3001';
+  const rawPort = process.env.PORT ?? '11451';
   const port = Number(rawPort);
 
   if (!Number.isInteger(port) || port <= 0 || port > 65535) {

@@ -56,7 +56,7 @@ After running `npm run load:k6`, the JSON summary is saved to:
 - `reports/k6/k6-summary.json`
 
 ## Prerequisites
-- CoreApi running on port 3001
+- CoreApi running on port 11451
 - Docker infrastructure online (`npm run infra:up`)
 - For full baseline: also start Kafka (`npm run infra:up:kafka`)
 

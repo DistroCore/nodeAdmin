@@ -17,8 +17,8 @@ import {
 import { className } from '@/lib/className';
 import { useApiClient } from '@/hooks/useApiClient';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { useMessageStore } from '@/stores/useMessageStore';
 import { usePermissionStore } from '@/stores/usePermissionStore';
+import { useMessageStore } from '@/stores/useMessageStore';
 import { useSocketStore } from '@/stores/useSocketStore';
 import { useUiStore } from '@/stores/useUiStore';
 
@@ -57,11 +57,6 @@ interface ConversationListResponse {
   }>;
 }
 
-interface PermissionResponse {
-  permissions: Record<string, boolean>;
-  roles: string[];
-}
-
 type RequiredImEnvKey = 'VITE_IM_CONVERSATION_ID' | 'VITE_IM_TENANT_ID' | 'VITE_IM_USER_ID';
 type TypingMap = Record<string, number>;
 
@@ -77,14 +72,14 @@ function toRequiredEnvValue(name: RequiredImEnvKey): string {
 function readRolesFromEnv(): string[] {
   const rolesRaw = (import.meta.env.VITE_IM_ROLES as string | undefined)?.trim();
   if (!rolesRaw) {
-    return ['tenant:admin'];
+    return ['admin'];
   }
 
   const roles = rolesRaw
     .split(',')
     .map((role) => role.trim())
     .filter((role) => role.length > 0);
-  return roles.length > 0 ? roles : ['tenant:admin'];
+  return roles.length > 0 ? roles : ['admin'];
 }
 
 function renderMessageBody(message: ImSocketMessage): JSX.Element {
@@ -137,11 +132,11 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
   const resetMessages = useMessageStore((state) => state.resetMessages);
   const upsertMessage = useMessageStore((state) => state.upsertMessage);
   const accessToken = useAuthStore((state) => state.accessToken);
+  const authTenantId = useAuthStore((state) => state.tenantId);
+  const authUserId = useAuthStore((state) => state.userId);
   const setAccessToken = useAuthStore((state) => state.setAccessToken);
   const setTenantId = useAuthStore((state) => state.setTenantId);
   const setUserId = useAuthStore((state) => state.setUserId);
-  const setPermissionsFromRoles = usePermissionStore((state) => state.setPermissionsFromRoles);
-  const setPermissionSnapshot = usePermissionStore((state) => state.setPermissionSnapshot);
   const canViewIm = usePermissionStore((state) => state.hasPermission('im:view'));
   const canSendMessage = usePermissionStore((state) => state.hasPermission('im:send'));
 
@@ -173,30 +168,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
     return () => observer.disconnect();
   }, []);
 
-  const conversationQuery = useQuery({
-    queryFn: () => apiClient.get<ConversationListResponse>('/api/v1/console/conversations'),
-    queryKey: ['console-conversations'],
-  });
-
   const configuredRoles = useMemo(() => readRolesFromEnv(), []);
-  const roleQueryParam = configuredRoles.join(',');
-  const permissionQuery = useQuery({
-    enabled: roleQueryParam.length > 0,
-    queryFn: () =>
-      apiClient.get<PermissionResponse>(
-        `/api/v1/console/permissions?roles=${encodeURIComponent(roleQueryParam)}`
-      ),
-    queryKey: ['console-permissions', roleQueryParam],
-  });
-
-  useEffect(() => {
-    if (permissionQuery.data?.roles) {
-      setPermissionsFromRoles(permissionQuery.data.roles);
-    }
-    if (permissionQuery.data?.permissions) {
-      setPermissionSnapshot(permissionQuery.data.permissions);
-    }
-  }, [permissionQuery.data, setPermissionSnapshot, setPermissionsFromRoles]);
 
   const imConfig = useMemo<RuntimeImConfig | null>(() => {
     try {
@@ -208,13 +180,36 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
         userId: toRequiredEnvValue('VITE_IM_USER_ID'),
       };
     } catch {
-      return null;
+      // Fallback: use auth store values from logged-in session
+      const tenantId = authTenantId;
+      const userId = authUserId;
+      if (!tenantId || !userId) return null;
+      return {
+        conversationId: conversationIdOverride?.trim() || 'default',
+        tenantId,
+        userId,
+      };
     }
-  }, [conversationIdOverride]);
+  }, [conversationIdOverride, authTenantId, authUserId]);
+
+  const conversationQuery = useQuery({
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (imConfig?.tenantId) {
+        params.set('tenantId', imConfig.tenantId);
+      } else if (authTenantId) {
+        params.set('tenantId', authTenantId);
+      }
+      const qs = params.toString();
+      const url = `/api/v1/console/conversations${qs ? `?${qs}` : ''}`;
+      return apiClient.get<ConversationListResponse>(url);
+    },
+    queryKey: ['console-conversations', imConfig?.tenantId ?? authTenantId],
+  });
 
   useEffect(() => {
     if (!imConfig) {
-      setBootError('Missing IM runtime config. Please check VITE_IM_* variables.');
+      setBootError('Missing IM runtime config. Please set VITE_IM_* env vars or log in first.');
     }
   }, [imConfig]);
 
@@ -267,7 +262,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
       return envSocketUrl;
     }
 
-    return `http://${window.location.hostname}:3001`;
+    return `http://${window.location.hostname}:11451`;
   }, []);
 
   useEffect(() => {
@@ -275,7 +270,6 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
       return;
     }
 
-    setPermissionsFromRoles(configuredRoles);
     setTenantId(imConfig.tenantId);
     setUserId(imConfig.userId);
 
@@ -303,7 +297,6 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
 
         if (!disposed) {
           setAccessToken(payload.accessToken);
-          setPermissionsFromRoles(payload.identity.roles);
           setBootError(null);
         }
       } catch (error) {
@@ -326,7 +319,6 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
     imConfig,
     setAccessToken,
     setConnectionState,
-    setPermissionsFromRoles,
     setTenantId,
     setUserId,
   ]);

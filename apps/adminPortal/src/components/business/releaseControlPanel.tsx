@@ -59,8 +59,15 @@ export function ReleaseControlPanel(): JSX.Element {
             : null}
 
           {releaseQuery.isError ? (
-            <li className="rounded-md border border-border px-3 py-2 text-sm text-destructive">
-              {t({ id: 'release.loadFailed' })}
+            <li className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
+              <p className="text-sm text-destructive">{t({ id: 'release.loadFailed' })}</p>
+              <button
+                className="mt-1 text-xs text-primary hover:underline"
+                onClick={() => releaseQuery.refetch()}
+                type="button"
+              >
+                {t({ id: 'common.retry' })}
+              </button>
             </li>
           ) : null}
 

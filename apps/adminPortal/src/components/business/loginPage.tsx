@@ -3,7 +3,8 @@ import { useIntl } from 'react-intl';
 import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { FormField } from '@/components/ui/formField';
+import { Select } from '@/components/ui/select';
 import { type AppLocale } from '@/i18n';
 import { ApiClient } from '@/lib/apiClient';
 import { setAuthFromLogin } from '@/stores/useAuthStore';
@@ -32,7 +33,7 @@ export function LoginPage(): JSX.Element {
   useEffect(() => {
     const apiBaseUrl =
       (import.meta.env.VITE_CORE_API_BASE_URL as string | undefined)?.trim() ??
-      `http://${window.location.hostname}:3001`;
+      `http://${window.location.hostname}:11451`;
     new ApiClient({ baseUrl: apiBaseUrl })
       .get<TenantItem[]>('/api/v1/tenants')
       .then(setTenants)
@@ -48,7 +49,7 @@ export function LoginPage(): JSX.Element {
     try {
       const apiBaseUrl =
         (import.meta.env.VITE_CORE_API_BASE_URL as string | undefined)?.trim() ??
-        `http://${window.location.hostname}:3001`;
+        `http://${window.location.hostname}:11451`;
       const client = new ApiClient({ baseUrl: apiBaseUrl });
       const data = await client.post<{
         accessToken: string;
@@ -107,8 +108,7 @@ export function LoginPage(): JSX.Element {
               {error}
             </div>
           ) : null}
-          <div className="space-y-2">
-            <Label htmlFor="login-email">{t({ id: 'auth.email' })}</Label>
+          <FormField label={t({ id: 'auth.email' })} htmlFor="login-email">
             <Input
               autoComplete="email"
               id="login-email"
@@ -117,9 +117,8 @@ export function LoginPage(): JSX.Element {
               type="email"
               value={email}
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="login-password">{t({ id: 'auth.password' })}</Label>
+          </FormField>
+          <FormField label={t({ id: 'auth.password' })} htmlFor="login-password">
             <div className="relative">
               <Input
                 autoComplete="current-password"
@@ -172,22 +171,14 @@ export function LoginPage(): JSX.Element {
                 )}
               </button>
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="login-tenant">{t({ id: 'auth.tenantId' })}</Label>
+          </FormField>
+          <FormField label={t({ id: 'auth.tenantId' })} htmlFor="login-tenant">
             {tenants.length > 0 ? (
-              <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                id="login-tenant"
-                onChange={(e) => setTenantId(e.target.value)}
+              <Select
+                onChange={setTenantId}
+                options={tenants.map((t) => ({ value: t.id, label: `${t.name} (${t.slug})` }))}
                 value={tenantId}
-              >
-                {tenants.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} ({t.slug})
-                  </option>
-                ))}
-              </select>
+              />
             ) : (
               <Input
                 autoComplete="organization"
@@ -197,7 +188,7 @@ export function LoginPage(): JSX.Element {
                 value={tenantId}
               />
             )}
-          </div>
+          </FormField>
           <button
             className="h-10 w-full rounded-md bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             disabled={loading}

@@ -17,7 +17,18 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',
-    port: 5173,
+    port: 3000,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:11451',
+        changeOrigin: true,
+      },
+      '/socket.io': {
+        target: 'http://localhost:11451',
+        ws: true,
+        changeOrigin: true,
+      },
+    },
   },
   resolve: {
     alias: {
