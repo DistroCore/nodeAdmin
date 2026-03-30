@@ -20,6 +20,7 @@ interface RuntimeConfig {
     pollIntervalMs: number;
   };
   redis: {
+    clusterNodes: string[];
     url: string | null;
     connectTimeout: number;
     commandTimeout: number;
@@ -166,6 +167,7 @@ export const runtimeConfig: RuntimeConfig = {
     wsMessagesPerSecond: readPositiveInt('WS_RATE_LIMIT_PER_SECOND', 10),
   },
   redis: {
+    clusterNodes: readOptionalCsvEnv('REDIS_CLUSTER_NODES'),
     url: process.env.REDIS_URL?.trim() || null,
     connectTimeout: readPositiveInt('REDIS_CONNECT_TIMEOUT', 10000),
     commandTimeout: readPositiveInt('REDIS_COMMAND_TIMEOUT', 5000),

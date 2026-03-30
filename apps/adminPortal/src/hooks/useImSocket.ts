@@ -187,10 +187,14 @@ export function useImSocket(options: UseImSocketOptions): {
     conversationId,
     onConnectionStateChange,
     onConversationHistory,
+    onMessageDeleted,
+    onMessageEdited,
     onMessageReceived,
+    onPresenceChanged,
+    onPresenceStatusChanged,
+    onReadReceiptUpdated,
     onTypingChanged,
     socketUrl,
-    onPresenceChanged,
   ]);
 
   const emitTyping = useCallback((payload: { conversationId: string; isTyping: boolean }) => {

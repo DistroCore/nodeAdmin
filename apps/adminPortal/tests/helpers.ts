@@ -19,7 +19,7 @@ export async function login(page: Page) {
           try {
               const body = await response.text();
               console.log('Error Body:', body);
-          } catch (e) {
+          } catch {
               console.log('Could not read error body');
           }
       }

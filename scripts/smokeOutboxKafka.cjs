@@ -15,6 +15,8 @@ const kafkaBrokers = (process.env.KAFKA_BROKERS || 'localhost:9092')
   .filter(Boolean);
 const outboxTopic = (process.env.OUTBOX_TOPIC || 'im.events').trim();
 const dlqTopic = (process.env.OUTBOX_DLQ_TOPIC || 'im.events.dlq').trim();
+const outboxPartitions = Number(process.env.OUTBOX_TOPIC_PARTITIONS || 6);
+const dlqPartitions = Number(process.env.OUTBOX_DLQ_TOPIC_PARTITIONS || 6);
 const tenantId = (process.env.SMOKE_TENANT_ID || 'tenant-demo').trim();
 const userId = (process.env.SMOKE_USER_ID || 'smoke-outbox-user').trim();
 const conversationId = (process.env.SMOKE_CONVERSATION_ID || 'conversation-outbox').trim();
@@ -49,16 +51,40 @@ async function ensureTopics(kafka) {
   const admin = kafka.admin();
   await admin.connect();
   try {
-    await admin.createTopics({
-      topics: [
-        { topic: outboxTopic, numPartitions: 1, replicationFactor: 1 },
-        { topic: dlqTopic, numPartitions: 1, replicationFactor: 1 },
-      ],
-      waitForLeaders: true,
-    });
+    await ensureTopic(admin, outboxTopic, outboxPartitions);
+    await ensureTopic(admin, dlqTopic, dlqPartitions);
   } finally {
     await admin.disconnect();
   }
+}
+
+async function ensureTopic(admin, topic, targetPartitions) {
+  const existingTopics = await admin.listTopics();
+
+  if (!existingTopics.includes(topic)) {
+    await admin.createTopics({
+      topics: [{ topic, numPartitions: targetPartitions, replicationFactor: 1 }],
+      waitForLeaders: true,
+    });
+    return;
+  }
+
+  const metadata = await admin.fetchTopicMetadata({
+    topics: [topic],
+  });
+  const existingTopic = metadata.topics.find((item) => item.name === topic);
+  if (!existingTopic) {
+    throw new Error(`Topic metadata missing after creation: ${topic}`);
+  }
+
+  if (existingTopic.partitions.length >= targetPartitions) {
+    return;
+  }
+
+  await admin.createPartitions({
+    topicPartitions: [{ topic, count: targetPartitions }],
+    validateOnly: false,
+  });
 }
 
 function wait(ms) {

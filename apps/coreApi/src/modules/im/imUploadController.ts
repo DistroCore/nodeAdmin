@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Logger, Post, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Controller, Logger, Post, Req } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { FastifyRequest } from 'fastify';
 import { randomUUID } from 'node:crypto';

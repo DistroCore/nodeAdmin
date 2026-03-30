@@ -11,7 +11,7 @@ import {
 } from '@nestjs/websockets';
 import { Logger, OnModuleDestroy, UseGuards, ValidationPipe } from '@nestjs/common';
 import { createAdapter } from '@socket.io/redis-adapter';
-import { createClient, RedisClientType } from 'redis';
+import { createClient, createCluster, RedisClientType, RedisClusterType } from 'redis';
 import { Server, Socket } from 'socket.io';
 import { runtimeConfig } from '../../app/runtimeConfig';
 import { AuditLogService } from '../../infrastructure/audit/auditLogService';
@@ -50,10 +50,10 @@ export class ImGateway
 {
   private readonly logger = new Logger(ImGateway.name);
 
-  private redisPubClient: RedisClientType | null = null;
-  private redisSubClient: RedisClientType | null = null;
-  private redisPubPool: RedisClientType[] = [];
-  private redisSubPool: RedisClientType[] = [];
+  private redisPubClient: RedisPubSubClient | null = null;
+  private redisSubClient: RedisPubSubClient | null = null;
+  private redisPubPool: RedisPubSubClient[] = [];
+  private redisSubPool: RedisPubSubClient[] = [];
   private static readonly REDIS_POOL_SIZE = 10;
 
   private readonly redisCircuitBreaker = new CircuitBreaker({
@@ -77,15 +77,14 @@ export class ImGateway
   ) {}
 
   async afterInit(server: Server): Promise<void> {
-    if (!runtimeConfig.redis.url) {
-      this.logger.warn('Redis URL not configured, running in single-node mode');
+    if (!runtimeConfig.redis.url && runtimeConfig.redis.clusterNodes.length === 0) {
+      this.logger.warn('Redis is not configured, running in single-node mode');
       return;
     }
 
     try {
       await this.redisCircuitBreaker.execute(async () => {
-        const redisConfig = {
-          url: runtimeConfig.redis.url || undefined,
+        const redisDefaults = {
           socket: {
             connectTimeout: runtimeConfig.redis.connectTimeout,
             keepAlive: true,
@@ -101,6 +100,39 @@ export class ImGateway
           enableOfflineQueue: true,
           maxRetriesPerRequest: 3,
           pingInterval: runtimeConfig.redis.pingInterval,
+        };
+
+        if (runtimeConfig.redis.clusterNodes.length > 0) {
+          const clusterConfig = {
+            defaults: redisDefaults,
+            rootNodes: runtimeConfig.redis.clusterNodes.map((url) => ({ url })),
+          };
+
+          this.redisPubClient = createCluster(clusterConfig) as RedisPubSubClient;
+          this.redisSubClient = createCluster(clusterConfig) as RedisPubSubClient;
+
+          await this.redisPubClient.connect();
+          await this.redisSubClient.connect();
+
+          for (let i = 0; i < ImGateway.REDIS_POOL_SIZE; i++) {
+            const pubClient = createCluster(clusterConfig) as RedisPubSubClient;
+            const subClient = createCluster(clusterConfig) as RedisPubSubClient;
+            await pubClient.connect();
+            await subClient.connect();
+            this.redisPubPool.push(pubClient);
+            this.redisSubPool.push(subClient);
+          }
+
+          server.adapter(createAdapter(this.redisPubClient as any, this.redisSubClient as any));
+          this.logger.log(
+            `Socket.IO Redis cluster adapter connected with pool size ${ImGateway.REDIS_POOL_SIZE}: ${runtimeConfig.redis.clusterNodes.join(', ')}`
+          );
+          return;
+        }
+
+        const redisConfig = {
+          ...redisDefaults,
+          url: runtimeConfig.redis.url || undefined,
         };
 
         this.redisPubClient = createClient(redisConfig);
@@ -415,7 +447,7 @@ export class ImGateway
     )
     payload: PresenceStatusDto
   ): { ok: true } {
-    const identity = this.requireIdentity(client);
+    this.requireIdentity(client);
     const context = this.conversationService.getContext(client.id);
     if (!context) {
       throw new WsException('Please join a conversation before setting presence status.');
@@ -474,3 +506,5 @@ export class ImGateway
     await this.server.close();
   }
 }
+
+type RedisPubSubClient = RedisClientType | RedisClusterType;

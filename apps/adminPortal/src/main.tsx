@@ -9,6 +9,14 @@ import { useUiStore } from './stores/useUiStore';
 import { AppRoot } from './app/appRoot';
 import './styles/globals.css';
 
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(err => {
+      console.error('SW registration failed:', err);
+    });
+  });
+}
+
 const queryClient = new QueryClient();
 
 function LocalizedApp(): JSX.Element {

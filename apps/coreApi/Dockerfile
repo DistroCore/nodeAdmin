@@ -15,19 +15,13 @@ COPY packages/shared-types/ ./packages/shared-types/
 COPY apps/coreApi/ ./apps/coreApi/
 RUN npm run build -w coreApi
 
-# ── Production dependency stage ──
-FROM base AS prod-deps
-COPY package.json package-lock.json* ./
-COPY apps/coreApi/package.json ./apps/coreApi/
-COPY packages/shared-types/package.json ./packages/shared-types/
-RUN npm ci --omit=dev --ignore-scripts
-
 # ── Runtime stage ──
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/coreApi/node_modules ./apps/coreApi/node_modules
 COPY --from=builder /app/apps/coreApi/package.json ./apps/coreApi/package.json
 COPY --from=builder /app/apps/coreApi/dist ./apps/coreApi/dist
 COPY --from=builder /app/packages/shared-types ./packages/shared-types

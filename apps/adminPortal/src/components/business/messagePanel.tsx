@@ -33,7 +33,7 @@ interface MessagePanelProps {
 const maxSendAttempts = 3;
 const ackTimeoutMs = 2000;
 const retryDelayMs = 300;
-const virtualRowHeightPx = 92;
+const virtualRowHeightPx = 100; // Increased for bubble layout
 const virtualOverscan = 8;
 const typingExpirationMs = 3000;
 
@@ -97,9 +97,9 @@ function readRolesFromEnv(): string[] {
   return roles.length > 0 ? roles : ['admin'];
 }
 
-function renderMessageBody(message: ImSocketMessage, t: (id: { id: string }) => string): JSX.Element {
+function renderMessageBody(message: ImSocketMessage, t: (id: { id: string }) => string, isMe: boolean): JSX.Element {
   if (message.deletedAt) {
-    return <p className="text-sm italic text-muted-foreground">{t({ id: 'im.messageDeleted' })}</p>;
+    return <p className="text-sm italic opacity-70">{t({ id: 'im.messageDeleted' })}</p>;
   }
 
   if (message.messageType === 'image') {
@@ -108,7 +108,7 @@ function renderMessageBody(message: ImSocketMessage, t: (id: { id: string }) => 
         {message.metadata?.url ? (
           <img
             alt={message.metadata.fileName || 'image'}
-            className="max-h-48 rounded-md border border-border object-contain"
+            className="max-h-48 rounded-md border border-black/10 object-contain"
             src={message.metadata.url}
           />
         ) : null}
@@ -123,7 +123,10 @@ function renderMessageBody(message: ImSocketMessage, t: (id: { id: string }) => 
         <p className="font-medium">{message.metadata?.fileName || t({ id: 'im.attachedFile' })}</p>
         {message.metadata?.url ? (
           <a
-            className="text-primary underline"
+            className={className(
+              'underline',
+              isMe ? 'text-primary-foreground' : 'text-primary'
+            )}
             href={message.metadata.url}
             rel="noreferrer"
             target="_blank"
@@ -131,16 +134,16 @@ function renderMessageBody(message: ImSocketMessage, t: (id: { id: string }) => 
             {t({ id: 'im.openFile' })}
           </a>
         ) : null}
-        <p className="break-all text-muted-foreground">{message.content}</p>
+        <p className="break-all opacity-80">{message.content}</p>
       </div>
     );
   }
 
   if (message.messageType === 'system') {
-    return <p className="text-sm italic text-muted-foreground">{message.content}</p>;
+    return <p className="text-xs italic text-muted-foreground text-center w-full my-2">{message.content}</p>;
   }
 
-  return <p className="break-all text-sm">{message.content}</p>;
+  return <p className="break-all text-sm leading-relaxed">{message.content}</p>;
 }
 
 export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX.Element {
@@ -170,7 +173,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
   const [typingUsers, setTypingUsers] = useState<TypingMap>({});
   const [offlineQueueCount, setOfflineQueueCount] = useState(0);
   const [presenceMembers, setPresenceMembers] = React.useState<Set<string>>(new Set());
-  const [presenceStatusMap, setPresenceStatusMap] = React.useState<Map<string, ImPresenceStatus>>(new Map());
+  const [, setPresenceStatusMap] = React.useState<Map<string, ImPresenceStatus>>(new Map());
   const [myPresenceStatus, setMyPresenceStatus] = useState<ImPresenceStatus>('online');
   const [viewportHeight, setViewportHeight] = useState(320);
   const [pendingImage, setPendingImage] = useState<PendingImage | null>(null);
@@ -428,7 +431,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
     [upsertMessage]
   );
 
-  const { emitDelete, emitEdit, emitMarkAsRead, emitSetPresenceStatus, emitTyping, emitWithAck } = useImSocket({
+  const { emitDelete, emitEdit, emitSetPresenceStatus, emitTyping, emitWithAck } = useImSocket({
     accessToken,
     conversationId: imConfig?.conversationId ?? '',
     onConnectionStateChange: setConnectionState,
@@ -834,11 +837,11 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
         </ul>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-4 min-h-0">
-        <header className="flex shrink-0 items-center justify-between">
+      <div className="flex min-w-0 flex-1 flex-col gap-4 min-h-0 bg-background/50">
+        <header className="flex shrink-0 items-center justify-between px-3 py-2 border-b bg-card md:rounded-t-lg">
           <div className="flex items-center gap-2">
             <button
-              className="flex h-8 w-8 items-center justify-center rounded-md border border-border hover:bg-accent"
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-border hover:bg-accent md:hidden"
               onClick={toggleConversationPanel}
               type="button"
             >
@@ -853,38 +856,24 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
               </svg>
             </button>
             <div>
-              <h2 className="text-base font-semibold">{t({ id: 'im.conversation' })}</h2>
-              <div className="text-sm text-gray-500">
+              <h2 className="text-sm font-semibold md:text-base">{t({ id: 'im.conversation' })}</h2>
+              <div className="text-[10px] text-muted-foreground md:text-xs">
                 {t({ id: 'im.online' }, { count: presenceMembers.size })}
-                {presenceMembers.size > 0 ? (
-                  <span className="ml-2">
-                    {Array.from(presenceMembers).map((userId) => {
-                      const status = presenceStatusMap.get(userId) ?? 'online';
-                      const statusColor = status === 'online' ? 'bg-green-500' : status === 'away' ? 'bg-yellow-500' : 'bg-red-500';
-                      return (
-                        <span key={userId} className="mr-1 inline-flex items-center gap-0.5" title={`${userId} — ${status}`}>
-                          <span className={`inline-block h-2 w-2 rounded-full ${statusColor}`} />
-                          <span className="text-xs">{userId.slice(0, 6)}</span>
-                        </span>
-                      );
-                    })}
-                  </span>
-                ) : null}
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {offlineQueueCount > 0 ? (
-              <Badge variant="secondary">
+              <Badge variant="secondary" className="text-[10px]">
                 {t({ id: 'im.offlineQueue' }, { count: offlineQueueCount })}
               </Badge>
             ) : null}
-            <Badge variant={connectionState === 'connected' ? 'default' : 'secondary'}>
+            <Badge variant={connectionState === 'connected' ? 'default' : 'secondary'} className="text-[10px]">
               {connectionLabel}
             </Badge>
             {connectionState === 'connected' ? (
               <select
-                className="rounded border border-border bg-transparent px-1 py-0.5 text-xs"
+                className="rounded border border-border bg-transparent px-1 py-0.5 text-[10px] outline-none"
                 value={myPresenceStatus}
                 onChange={(e) => {
                   const next = e.target.value as ImPresenceStatus;
@@ -900,17 +889,9 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
           </div>
         </header>
 
-        {bootError ? <p className="text-xs text-red-600">{bootError}</p> : null}
-        {sendLabel ? <p className="text-xs text-muted-foreground">{sendLabel}</p> : null}
-        {typingUsersLabel ? (
-          <p className="text-xs text-muted-foreground">
-            {t({ id: 'im.typing' }, { users: typingUsersLabel })}
-          </p>
-        ) : null}
-
         <div
           className={className(
-            'min-h-0 flex-1 overflow-y-auto rounded-md bg-muted p-3 transition-colors',
+            'min-h-0 flex-1 overflow-y-auto p-3 transition-colors space-y-4',
             dragOver && 'ring-2 ring-primary/50 bg-primary/5'
           )}
           onDragOver={handleDragOver}
@@ -925,20 +906,88 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
           ref={messageViewportRef}
         >
           <div style={{ height: topSpacerHeight }} />
-          <ul className="flex flex-col gap-2">
-            {virtualItems.map((message) => (
-              <li
-                className="group rounded-md bg-card p-2"
-                key={message.messageId}
-                style={{ minHeight: virtualRowHeightPx - 8 }}
-              >
-                <div className="mb-1 flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold">{message.userId}</p>
-                  <div className="flex items-center gap-1">
-                    {!message.deletedAt && message.userId === imConfig?.userId && canSendMessage && (
-                      <>
+          <ul className="flex flex-col gap-4">
+            {virtualItems.map((message) => {
+              const isMe = message.userId === imConfig?.userId;
+              const isSystem = message.messageType === 'system';
+
+              if (isSystem) {
+                return (
+                  <li key={message.messageId} className="flex justify-center">
+                    <span className="rounded-full bg-muted px-3 py-1 text-[10px] text-muted-foreground italic">
+                      {message.content}
+                    </span>
+                  </li>
+                );
+              }
+
+              return (
+                <li
+                  className={className(
+                    'flex flex-col max-w-[85%] md:max-w-[75%]',
+                    isMe ? 'ml-auto items-end' : 'mr-auto items-start'
+                  )}
+                  key={message.messageId}
+                >
+                  <div className="mb-1 flex items-center gap-2 px-1">
+                    {!isMe && <span className="text-[10px] font-bold opacity-70">{message.userId}</span>}
+                    <span className="text-[10px] opacity-50">{message.createdAt}</span>
+                  </div>
+                  
+                  <div
+                    className={className(
+                      'relative group rounded-2xl px-4 py-2 shadow-sm text-sm',
+                      isMe 
+                        ? 'bg-primary text-primary-foreground rounded-tr-none' 
+                        : 'bg-card border border-border text-card-foreground rounded-tl-none'
+                    )}
+                  >
+                    {editingMessageId === message.messageId ? (
+                      <div className="flex flex-col gap-2 min-w-[200px]">
+                        <textarea
+                          autoFocus
+                          className="w-full bg-transparent border-none resize-none focus:outline-none text-sm"
+                          rows={2}
+                          onChange={(e) => setEditContent(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              if (editContent.trim()) {
+                                emitEdit({
+                                  conversationId: message.conversationId,
+                                  content: editContent.trim(),
+                                  messageId: message.messageId,
+                                });
+                              }
+                              setEditingMessageId(null);
+                            }
+                            if (e.key === 'Escape') {
+                              setEditingMessageId(null);
+                            }
+                          }}
+                          value={editContent}
+                        />
+                        <div className="flex justify-end gap-2 border-t border-white/20 pt-2">
+                          <button 
+                            className="text-[10px] opacity-80 hover:opacity-100" 
+                            onClick={() => setEditingMessageId(null)}
+                          >
+                            {t({ id: 'common.cancel' })}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      renderMessageBody(message, t, isMe)
+                    )}
+
+                    {/* Actions on hover */}
+                    {!message.deletedAt && isMe && canSendMessage && (
+                      <div className={className(
+                        "absolute top-0 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100",
+                        isMe ? "-left-12 pr-2" : "-right-12 pl-2"
+                      )}>
                         <button
-                          className="rounded p-0.5 text-xs text-muted-foreground opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100"
+                          className="rounded-full bg-muted p-1.5 text-muted-foreground hover:bg-accent"
                           onClick={() => {
                             setEditingMessageId(message.messageId);
                             setEditContent(message.content);
@@ -946,12 +995,12 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                           title={t({ id: 'im.editMessage' })}
                           type="button"
                         >
-                          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                             <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </button>
                         <button
-                          className="rounded p-0.5 text-xs text-destructive opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100"
+                          className="rounded-full bg-muted p-1.5 text-destructive hover:bg-destructive/10"
                           onClick={() => {
                             if (window.confirm(t({ id: 'im.deleteConfirm' }))) {
                               emitDelete({
@@ -963,127 +1012,129 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                           title={t({ id: 'im.deleteMessage' })}
                           type="button"
                         >
-                          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                             <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </button>
-                      </>
+                      </div>
                     )}
-                    <Badge variant={message.messageType === 'system' ? 'secondary' : 'default'}>
-                      {t({ id: `im.type.${message.messageType}` })}
-                    </Badge>
                   </div>
-                </div>
-                {editingMessageId === message.messageId ? (
-                  <div className="flex gap-2">
-                    <Input
-                      autoFocus
-                      className="flex-1 text-sm"
-                      onChange={(e) => setEditContent(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          if (editContent.trim()) {
-                            emitEdit({
-                              conversationId: message.conversationId,
-                              content: editContent.trim(),
-                              messageId: message.messageId,
-                            });
-                          }
-                          setEditingMessageId(null);
-                        }
-                        if (e.key === 'Escape') {
-                          setEditingMessageId(null);
-                        }
-                      }}
-                      value={editContent}
-                    />
-                    <Button
-                      onClick={() => setEditingMessageId(null)}
-                      size="sm"
-                      variant="secondary"
-                    >
-                      {t({ id: 'common.cancel' })}
-                    </Button>
-                  </div>
-                ) : (
-                  renderMessageBody(message, t)
-                )}
-                <div className="mt-2 flex items-center justify-between">
-                  <p className="text-xs text-muted-foreground">
-                    {message.createdAt}
-                    {message.editedAt ? <span className="ml-1 italic">{t({ id: 'im.edited' })}</span> : null}
-                  </p>
-                  {message.userId === imConfig?.userId ? (
-                    <button
-                      className="text-[10px] text-muted-foreground hover:underline"
-                      onClick={() => {
-                        emitMarkAsRead({
-                          conversationId: message.conversationId,
-                          lastReadMessageId: message.messageId,
-                        });
-                      }}
-                      type="button"
-                    >
-                      {t({ id: 'im.markAsRead' })}
-                    </button>
-                  ) : null}
-                </div>
-              </li>
-            ))}
+                  
+                  {message.editedAt && !message.deletedAt && (
+                    <span className="mt-1 text-[10px] opacity-40 italic">{t({ id: 'im.edited' })}</span>
+                  )}
+                </li>
+              );
+            })}
           </ul>
           <div style={{ height: bottomSpacerHeight }} />
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-3">
-          <label className="text-xs">
-            {t({ id: 'im.messageType' })}
-            <select
-              className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              onChange={(event) => setMessageType(event.target.value as ImMessageType)}
-              value={messageType}
-            >
-              <option value="text">{t({ id: 'im.type.text' })}</option>
-              <option value="image">{t({ id: 'im.type.image' })}</option>
-              <option value="file">{t({ id: 'im.type.file' })}</option>
-              <option value="system">{t({ id: 'im.type.system' })}</option>
-            </select>
-          </label>
-          {(messageType === 'image' || messageType === 'file') && (
-            <>
-              <label className="text-xs">
-                {t({ id: 'im.assetUrl' })}
+        {/* Typing and Send Label */}
+        {(typingUsersLabel || sendLabel || bootError) && (
+          <div className="px-4 py-1 text-[10px] animate-pulse">
+            {bootError && <span className="text-destructive mr-2">{bootError}</span>}
+            {sendLabel && <span className="text-muted-foreground mr-2">{sendLabel}</span>}
+            {typingUsersLabel && (
+              <span className="text-primary italic">
+                {t({ id: 'im.typing' }, { users: typingUsersLabel })}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Input Area */}
+        <div className="p-3 border-t bg-card md:rounded-b-lg">
+          <div className="flex flex-col gap-2">
+            {/* Options for mobile - more compact */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+              <select
+                className="h-8 rounded-md border border-input bg-background px-2 text-[10px] outline-none"
+                onChange={(event) => setMessageType(event.target.value as ImMessageType)}
+                value={messageType}
+              >
+                <option value="text">{t({ id: 'im.type.text' })}</option>
+                <option value="image">{t({ id: 'im.type.image' })}</option>
+                <option value="file">{t({ id: 'im.type.file' })}</option>
+                <option value="system">{t({ id: 'im.type.system' })}</option>
+              </select>
+              
+              <Button
+                disabled={!canSendMessage || uploading}
+                onClick={() => fileInputRef.current?.click()}
+                size="sm"
+                variant="ghost"
+                className="h-8 gap-1 text-[10px] px-2"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                {t({ id: 'im.attachImage' })}
+              </Button>
+            </div>
+
+            {(messageType === 'image' || messageType === 'file') && (
+              <div className="grid grid-cols-1 gap-2 mb-2 md:grid-cols-2">
                 <Input
-                  className="mt-1"
+                  className="h-8 text-xs"
                   onChange={(event) => setAssetUrl(event.target.value)}
                   placeholder={t({ id: 'im.assetUrlPlaceholder' })}
                   value={assetUrl}
                 />
-              </label>
-              <label className="text-xs">
-                {t({ id: 'im.fileName' })}
                 <Input
-                  className="mt-1"
+                  className="h-8 text-xs"
                   onChange={(event) => setFileName(event.target.value)}
                   placeholder={t({ id: 'im.fileNamePlaceholder' })}
                   value={fileName}
                 />
-              </label>
-            </>
-          )}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Input
+                className="flex-1 h-11 md:h-10 text-sm rounded-2xl px-4"
+                onBlur={stopTyping}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  setContent(nextValue);
+                  if (!canSendMessage || !imConfig) return;
+                  emitTyping({ conversationId: imConfig.conversationId, isTyping: true });
+                  if (typingIdleTimerRef.current !== null) window.clearTimeout(typingIdleTimerRef.current);
+                  typingIdleTimerRef.current = window.setTimeout(() => {
+                    emitTyping({ conversationId: imConfig.conversationId, isTyping: false });
+                  }, 1200);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    void sendMessage();
+                  }
+                }}
+                onPaste={handlePaste}
+                placeholder={t({ id: 'im.inputPlaceholder' })}
+                value={content}
+              />
+              <Button
+                disabled={!canSendMessage || sendState === 'sending' || sendState === 'retrying'}
+                onClick={() => void sendMessage()}
+                className="h-11 md:h-10 rounded-2xl px-6"
+                variant="default"
+              >
+                {t({ id: 'im.send' })}
+              </Button>
+            </div>
+          </div>
         </div>
 
-        {pendingImage ? (
+        {pendingImage && (
           <ImagePreviewOverlay
             fileName={pendingImage.file.name}
             objectUrl={pendingImage.objectUrl}
             onCancel={cancelPendingImage}
-            onConfirm={() => {
-              void uploadAndSendImage();
-            }}
+            onConfirm={() => void uploadAndSendImage()}
             uploading={uploading}
           />
-        ) : null}
+        )}
 
         <input
           accept="image/png,image/jpeg,image/gif,image/webp"
@@ -1097,79 +1148,9 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
           type="file"
         />
 
-        <div className="flex gap-2">
-          <Button
-            disabled={!canSendMessage || uploading}
-            onClick={() => fileInputRef.current?.click()}
-            size="icon"
-            title={t({ id: 'im.attachImage' })}
-            type="button"
-            variant="ghost"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </Button>
-          <Input
-            className="flex-1"
-            onBlur={() => {
-              stopTyping();
-            }}
-            onChange={(event) => {
-              const nextValue = event.target.value;
-              setContent(nextValue);
-
-              if (!canSendMessage || !imConfig) {
-                return;
-              }
-
-              emitTyping({
-                conversationId: imConfig.conversationId,
-                isTyping: true,
-              });
-
-              if (typingIdleTimerRef.current !== null) {
-                window.clearTimeout(typingIdleTimerRef.current);
-              }
-
-              typingIdleTimerRef.current = window.setTimeout(() => {
-                emitTyping({
-                  conversationId: imConfig.conversationId,
-                  isTyping: false,
-                });
-              }, 1200);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                void sendMessage();
-              }
-            }}
-            onPaste={(event) => {
-              const file = extractImageFile(event.clipboardData);
-              if (file) {
-                event.preventDefault();
-                handleImageCaptured(file);
-              }
-            }}
-            placeholder={t({ id: 'im.inputPlaceholder' })}
-            value={content}
-          />
-          <Button
-            disabled={!canSendMessage || sendState === 'sending' || sendState === 'retrying'}
-            onClick={() => {
-              void sendMessage();
-            }}
-            type="button"
-            variant="default"
-          >
-            {t({ id: 'im.send' })}
-          </Button>
-        </div>
-
-        {!canSendMessage ? (
-          <p className="text-xs text-muted-foreground">{t({ id: 'im.readonly' })}</p>
-        ) : null}
+        {!canSendMessage && (
+          <p className="text-[10px] text-muted-foreground px-4 pb-2">{t({ id: 'im.readonly' })}</p>
+        )}
       </div>
     </section>
   );

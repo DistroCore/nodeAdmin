@@ -11,6 +11,11 @@ const DEFAULT_MAX_CONNECTIONS = 5000;
 const DEFAULT_RAMP_DURATION_SEC = 30;
 const DEFAULT_HOLD_DURATION_SEC = 60;
 const DEFAULT_WORKER_COUNT = 10;
+const DEFAULT_TARGET_MODE = 'single-node';
+const DEFAULT_MIN_CONNECTION_SUCCESS_RATE = 0.99;
+const DEFAULT_MAX_MESSAGE_LOSS_RATE = 0.01;
+const DEFAULT_MAX_ERROR_RATE = 0.01;
+const DEFAULT_MAX_P95_LATENCY_MS = 250;
 
 const CONNECT_TIMEOUT_MS = 10_000;
 const SEND_TIMEOUT_MS = 5_000;
@@ -27,6 +32,14 @@ const runtimeConfig = {
   maxConnections: readPositiveIntEnv('MAX_CONNECTIONS', DEFAULT_MAX_CONNECTIONS),
   rampDurationSec: readPositiveIntEnv('RAMP_DURATION', DEFAULT_RAMP_DURATION_SEC),
   holdDurationSec: readPositiveIntEnv('HOLD_DURATION', DEFAULT_HOLD_DURATION_SEC),
+  targetMode: readStringEnv('TARGET_MODE', DEFAULT_TARGET_MODE),
+  minConnectionSuccessRate: readFractionEnv(
+    'MIN_CONNECTION_SUCCESS_RATE',
+    DEFAULT_MIN_CONNECTION_SUCCESS_RATE
+  ),
+  maxMessageLossRate: readFractionEnv('MAX_MESSAGE_LOSS_RATE', DEFAULT_MAX_MESSAGE_LOSS_RATE),
+  maxErrorRate: readFractionEnv('MAX_ERROR_RATE', DEFAULT_MAX_ERROR_RATE),
+  maxP95LatencyMs: readPositiveIntEnv('MAX_P95_LATENCY_MS', DEFAULT_MAX_P95_LATENCY_MS),
 };
 
 runtimeConfig.socketUrl =
@@ -62,6 +75,20 @@ function readPositiveIntEnv(name, fallback) {
 
   const parsedValue = Number.parseInt(rawValue, 10);
   if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
+    return fallback;
+  }
+
+  return parsedValue;
+}
+
+function readFractionEnv(name, fallback) {
+  const rawValue = process.env[name];
+  if (typeof rawValue !== 'string') {
+    return fallback;
+  }
+
+  const parsedValue = Number.parseFloat(rawValue);
+  if (!Number.isFinite(parsedValue) || parsedValue < 0) {
     return fallback;
   }
 
@@ -435,24 +462,50 @@ function buildFinalReport(config, aggregate, shutdownReason) {
     0
   );
   const totalRequests = aggregate.connectionAttempts + aggregate.totalMessagesSent;
+  const connectionSuccessRate = safeRate(
+    aggregate.successfulConnections,
+    aggregate.connectionAttempts
+  );
+  const messageLossRate = safeRate(totalMessagesLost, aggregate.totalMessagesSent);
+  const errorRate = safeRate(aggregate.totalErrors, totalRequests);
+
+  const validation = {
+    targetMode: config.targetMode,
+    thresholds: {
+      maxErrorRate: config.maxErrorRate,
+      maxMessageLossRate: config.maxMessageLossRate,
+      maxP95LatencyMs: config.maxP95LatencyMs,
+      minConnectionSuccessRate: config.minConnectionSuccessRate,
+      targetConnections: config.maxConnections,
+    },
+    checks: {
+      connectionSuccessRate: connectionSuccessRate >= config.minConnectionSuccessRate,
+      errorRate: errorRate <= config.maxErrorRate,
+      messageLossRate: messageLossRate <= config.maxMessageLossRate,
+      p95Latency: latencySummary.p95 <= config.maxP95LatencyMs,
+      targetConnectionsReached: aggregate.successfulConnections >= config.maxConnections,
+    },
+  };
 
   return {
     summary: {
+      targetMode: config.targetMode,
       totalConnections: config.maxConnections,
       totalConnectionAttempts: aggregate.connectionAttempts,
       successfulConnections: aggregate.successfulConnections,
       failedConnections: aggregate.failedConnections,
-      connectionSuccessRate: safeRate(
-        aggregate.successfulConnections,
-        aggregate.connectionAttempts
-      ),
+      connectionSuccessRate,
       totalMessagesSent: aggregate.totalMessagesSent,
       totalMessagesReceived: aggregate.totalMessagesReceived,
-      messageLossRate: safeRate(totalMessagesLost, aggregate.totalMessagesSent),
-      errorRate: safeRate(aggregate.totalErrors, totalRequests),
+      messageLossRate,
+      errorRate,
       shutdownReason,
     },
     latency: latencySummary,
+    validation: {
+      ...validation,
+      passed: Object.values(validation.checks).every(Boolean),
+    },
     errors: Array.from(aggregate.errors.entries())
       .map(([type, count]) => ({ count, type }))
       .sort((leftItem, rightItem) => rightItem.count - leftItem.count),
@@ -465,6 +518,7 @@ function printHumanReadableSummary(report, reportPath) {
 
   process.stdout.write('\n=== WebSocket Load Test Summary ===\n');
   process.stdout.write(`Total Connections Target : ${summary.totalConnections}\n`);
+  process.stdout.write(`Target Mode             : ${summary.targetMode}\n`);
   process.stdout.write(`Connection Attempts      : ${summary.totalConnectionAttempts}\n`);
   process.stdout.write(`Successful Connections   : ${summary.successfulConnections}\n`);
   process.stdout.write(`Failed Connections       : ${summary.failedConnections}\n`);
@@ -479,6 +533,9 @@ function printHumanReadableSummary(report, reportPath) {
   process.stdout.write(`Error Rate               : ${(summary.errorRate * 100).toFixed(2)}%\n`);
   process.stdout.write(
     `Latency P50/P95/P99/Max  : ${latency.p50.toFixed(2)} / ${latency.p95.toFixed(2)} / ${latency.p99.toFixed(2)} / ${latency.max.toFixed(2)} ms\n`
+  );
+  process.stdout.write(
+    `Validation              : ${report.validation.passed ? 'PASS' : 'FAIL'} ${JSON.stringify(report.validation.checks)}\n`
   );
   process.stdout.write(`Shutdown Reason          : ${summary.shutdownReason}\n`);
   process.stdout.write(`JSON Report              : ${reportPath}\n`);
