@@ -1,8 +1,9 @@
 const defaultBaseUrl = 'http://127.0.0.1:11451';
 const baseUrl = (process.env.CORE_API_BASE_URL || defaultBaseUrl).trim();
 
-async function getJson(path) {
-  const response = await fetch(`${baseUrl}${path}`);
+async function getJson(path, token) {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const response = await fetch(`${baseUrl}${path}`, { headers });
   if (!response.ok) {
     throw new Error(`GET ${path} failed with ${response.status}`);
   }
@@ -33,9 +34,9 @@ async function run() {
     tenantId: 'tenant-demo',
     userId: 'm1-acceptance-user',
   });
-  const overview = await getJson('/api/v1/console/overview');
-  const tenants = await getJson('/api/v1/console/tenants');
-  const releaseChecks = await getJson('/api/v1/console/release-checks');
+  const overview = await getJson('/api/v1/console/overview', devToken.accessToken);
+  const tenants = await getJson('/api/v1/console/tenants', devToken.accessToken);
+  const releaseChecks = await getJson('/api/v1/console/release-checks', devToken.accessToken);
 
   const summary = {
     checks: {

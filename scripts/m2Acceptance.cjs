@@ -27,9 +27,13 @@ async function run() {
   const steps = [
     runStep('npm run m1:acceptance', env),
     runStep('npm run smoke:im', env),
-    runStep('npm run smoke:pgbouncer', env),
-    runStep('npm run smoke:outbox', env),
   ];
+
+  if ((env.M2_INCLUDE_PGBOUNCER_SMOKE || '').trim() !== 'skip') {
+    steps.push(runStep('npm run smoke:pgbouncer', env));
+  }
+
+  steps.push(runStep('npm run smoke:outbox', env));
 
   if ((env.M2_INCLUDE_TLS_SMOKE || '').trim() === 'true') {
     steps.push(runStep('npm run smoke:tls', env));

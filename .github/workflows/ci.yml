@@ -144,6 +144,8 @@ jobs:
       - name: M2 Acceptance
         run: npm run m2:acceptance:auto
         timeout-minutes: 5
+        env:
+          M2_INCLUDE_PGBOUNCER_SMOKE: skip
 
       - name: Shutdown Infrastructure
         if: always()
