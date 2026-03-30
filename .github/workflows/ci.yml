@@ -66,6 +66,7 @@ jobs:
 
       - name: Wait for Services
         run: |
+          # Wait for TCP ports
           for port in 55432 56379 9092; do
             echo "Waiting for port $port..."
             for i in $(seq 1 30); do
@@ -75,6 +76,16 @@ jobs:
               fi
               sleep 1
             done
+          done
+          # Wait for PostgreSQL to accept connections
+          echo "Waiting for PostgreSQL to accept connections..."
+          for i in $(seq 1 30); do
+            if node -e "const{Client}=require('pg');const c=new Client('postgres://nodeadmin:nodeadmin@localhost:55432/nodeadmin');c.connect().then(()=>c.end().then(()=>process.exit(0))).catch(()=>process.exit(1))" 2>/dev/null; then
+              echo "PostgreSQL accepting connections"
+              break
+            fi
+            echo "  retry $i/30..."
+            sleep 2
           done
 
       - name: Apply Migrations
@@ -104,6 +115,7 @@ jobs:
 
       - name: Wait for Services
         run: |
+          # Wait for TCP ports
           for port in 55432 56379 9092; do
             echo "Waiting for port $port..."
             for i in $(seq 1 30); do
@@ -113,6 +125,16 @@ jobs:
               fi
               sleep 1
             done
+          done
+          # Wait for PostgreSQL to accept connections
+          echo "Waiting for PostgreSQL to accept connections..."
+          for i in $(seq 1 30); do
+            if node -e "const{Client}=require('pg');const c=new Client('postgres://nodeadmin:nodeadmin@localhost:55432/nodeadmin');c.connect().then(()=>c.end().then(()=>process.exit(0))).catch(()=>process.exit(1))" 2>/dev/null; then
+              echo "PostgreSQL accepting connections"
+              break
+            fi
+            echo "  retry $i/30..."
+            sleep 2
           done
 
       - name: Apply Migrations
