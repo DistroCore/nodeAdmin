@@ -30,7 +30,9 @@ async function run() {
 
   try {
     await Promise.all(
-      sockets.map((socket) => emitWithAck(socket, 'joinConversation', { conversationId }, 'joinConversation'))
+      sockets.map((socket) =>
+        emitWithAck(socket, 'joinConversation', { conversationId }, 'joinConversation')
+      )
     );
 
     const receiverNode2 = waitForEvent(

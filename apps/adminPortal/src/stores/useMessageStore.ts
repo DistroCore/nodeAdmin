@@ -30,7 +30,7 @@ export const useMessageStore = create<MessageState>((set) => ({
       const index = state.messages.findIndex(
         (currentMessage) => currentMessage.messageId === message.messageId
       );
-      
+
       let nextMessages: ChatMessageState[];
       if (index !== -1) {
         // Update existing message
@@ -42,9 +42,7 @@ export const useMessageStore = create<MessageState>((set) => ({
       }
 
       return {
-        messages: nextMessages.sort(
-          (left, right) => left.sequenceId - right.sequenceId
-        ),
+        messages: nextMessages.sort((left, right) => left.sequenceId - right.sequenceId),
       };
     }),
 }));

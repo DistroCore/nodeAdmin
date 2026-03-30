@@ -8,7 +8,9 @@ test.describe('Menus Management', () => {
   });
 
   test('lists menus', async ({ page }) => {
-    await expect(page.getByRole('main').getByRole('heading', { name: /Menu Management/i })).toBeVisible();
+    await expect(
+      page.getByRole('main').getByRole('heading', { name: /Menu Management/i })
+    ).toBeVisible();
     await page.waitForTimeout(1000);
     await expect(page.getByRole('table')).toBeVisible();
 

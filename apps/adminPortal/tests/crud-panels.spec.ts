@@ -7,7 +7,10 @@ import { expect, test } from '@playwright/test';
 
 const API_BASE = process.env.API_BASE_URL || 'http://127.0.0.1:11451';
 
-async function authenticate(page: import('@playwright/test').Page, request: import('@playwright/test').APIRequestContext): Promise<void> {
+async function authenticate(
+  page: import('@playwright/test').Page,
+  request: import('@playwright/test').APIRequestContext
+): Promise<void> {
   const tokenResponse = await request.post(`${API_BASE}/api/v1/auth/dev-token`);
   if (!tokenResponse.ok()) {
     throw new Error(`dev-token failed: ${tokenResponse.status()}`);
@@ -15,14 +18,17 @@ async function authenticate(page: import('@playwright/test').Page, request: impo
   const tokenData = await tokenResponse.json();
   await page.goto('/login');
   await page.evaluate((auth) => {
-    localStorage.setItem('nodeadmin_auth', JSON.stringify({
-      accessToken: auth.accessToken,
-      refreshToken: auth.refreshToken,
-      tenantId: auth.identity.tenantId,
-      userId: auth.identity.userId,
-      userName: 'Test User',
-      userRoles: auth.identity.roles ?? [],
-    }));
+    localStorage.setItem(
+      'nodeadmin_auth',
+      JSON.stringify({
+        accessToken: auth.accessToken,
+        refreshToken: auth.refreshToken,
+        tenantId: auth.identity.tenantId,
+        userId: auth.identity.userId,
+        userName: 'Test User',
+        userRoles: auth.identity.roles ?? [],
+      })
+    );
   }, tokenData);
 }
 
@@ -39,9 +45,18 @@ test.describe('users panel', () => {
     await page.waitForTimeout(1500);
 
     // Page should render — either users are listed or empty state
-    const hasContent = await page.getByRole('heading', { level: 1 }).isVisible().catch(() => false);
-    const hasTable = await page.getByRole('table').isVisible().catch(() => false);
-    const hasEmptyState = await page.getByText(/no users|empty/i).isVisible().catch(() => false);
+    const hasContent = await page
+      .getByRole('heading', { level: 1 })
+      .isVisible()
+      .catch(() => false);
+    const hasTable = await page
+      .getByRole('table')
+      .isVisible()
+      .catch(() => false);
+    const hasEmptyState = await page
+      .getByText(/no users|empty/i)
+      .isVisible()
+      .catch(() => false);
     expect(hasContent || hasTable || hasEmptyState).toBeTruthy();
   });
 
@@ -60,9 +75,11 @@ test.describe('users panel', () => {
     if (await createButton.isVisible().catch(() => false)) {
       await createButton.click();
       // Dialog should appear
-      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 3000 }).catch(() => {
-        // Some implementations may not use role="dialog"
-      });
+      await expect(page.getByRole('dialog'))
+        .toBeVisible({ timeout: 3000 })
+        .catch(() => {
+          // Some implementations may not use role="dialog"
+        });
     }
   });
 });
@@ -79,8 +96,14 @@ test.describe('roles panel', () => {
     await page.goto('/roles');
     await page.waitForTimeout(1500);
 
-    const hasContent = await page.getByRole('heading', { level: 1 }).isVisible().catch(() => false);
-    const hasTable = await page.getByRole('table').isVisible().catch(() => false);
+    const hasContent = await page
+      .getByRole('heading', { level: 1 })
+      .isVisible()
+      .catch(() => false);
+    const hasTable = await page
+      .getByRole('table')
+      .isVisible()
+      .catch(() => false);
     expect(hasContent || hasTable).toBeTruthy();
   });
 });
@@ -97,8 +120,14 @@ test.describe('menus panel', () => {
     await page.goto('/menus');
     await page.waitForTimeout(1500);
 
-    const hasContent = await page.getByRole('heading', { level: 1 }).isVisible().catch(() => false);
-    const hasTable = await page.getByRole('table').isVisible().catch(() => false);
+    const hasContent = await page
+      .getByRole('heading', { level: 1 })
+      .isVisible()
+      .catch(() => false);
+    const hasTable = await page
+      .getByRole('table')
+      .isVisible()
+      .catch(() => false);
     expect(hasContent || hasTable).toBeTruthy();
   });
 });
@@ -115,8 +144,14 @@ test.describe('tenants panel', () => {
     await page.goto('/tenants');
     await page.waitForTimeout(1500);
 
-    const hasContent = await page.getByRole('heading', { level: 1 }).isVisible().catch(() => false);
-    const hasTable = await page.getByRole('table').isVisible().catch(() => false);
+    const hasContent = await page
+      .getByRole('heading', { level: 1 })
+      .isVisible()
+      .catch(() => false);
+    const hasTable = await page
+      .getByRole('table')
+      .isVisible()
+      .catch(() => false);
     expect(hasContent || hasTable).toBeTruthy();
   });
 });
@@ -133,8 +168,14 @@ test.describe('audit log panel', () => {
     await page.goto('/audit');
     await page.waitForTimeout(1500);
 
-    const hasContent = await page.getByRole('heading', { level: 1 }).isVisible().catch(() => false);
-    const hasTable = await page.getByRole('table').isVisible().catch(() => false);
+    const hasContent = await page
+      .getByRole('heading', { level: 1 })
+      .isVisible()
+      .catch(() => false);
+    const hasTable = await page
+      .getByRole('table')
+      .isVisible()
+      .catch(() => false);
     expect(hasContent || hasTable).toBeTruthy();
   });
 });
@@ -152,7 +193,10 @@ test.describe('settings panel', () => {
     await page.waitForTimeout(1500);
 
     // Settings should show theme toggle, language switch, session info
-    const hasContent = await page.getByRole('heading', { level: 1 }).isVisible().catch(() => false);
+    const hasContent = await page
+      .getByRole('heading', { level: 1 })
+      .isVisible()
+      .catch(() => false);
     expect(hasContent).toBeTruthy();
   });
 });

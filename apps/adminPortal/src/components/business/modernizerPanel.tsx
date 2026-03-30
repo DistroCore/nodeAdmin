@@ -60,7 +60,22 @@ export function ModernizerPanel(): JSX.Element {
           <Button size="sm" onClick={handleRunAnalysis} disabled={analysisQuery.isFetching}>
             {analysisQuery.isFetching ? (
               <>
-                <svg className="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                <svg className="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    fill="none"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
                 {t({ id: 'modernizer.running' })}
               </>
             ) : (
@@ -82,7 +97,9 @@ export function ModernizerPanel(): JSX.Element {
               <div className="text-2xl font-bold text-destructive">
                 {summary.byCategory['console-log'] ?? 0}
               </div>
-              <div className="text-xs text-muted-foreground">{t({ id: 'modernizer.summary.consoleLog' })}</div>
+              <div className="text-xs text-muted-foreground">
+                {t({ id: 'modernizer.summary.consoleLog' })}
+              </div>
             </div>
             <div className="rounded-lg border p-3 text-center">
               <div className="text-2xl font-bold text-yellow-600">
@@ -96,7 +113,9 @@ export function ModernizerPanel(): JSX.Element {
               <div className="text-2xl font-bold text-blue-600">
                 {(summary.byCategory['todo'] ?? 0) + (summary.byCategory['unused-import'] ?? 0)}
               </div>
-              <div className="text-xs text-muted-foreground">{t({ id: 'modernizer.summary.todoUnused' })}</div>
+              <div className="text-xs text-muted-foreground">
+                {t({ id: 'modernizer.summary.todoUnused' })}
+              </div>
             </div>
           </div>
         )}

@@ -8,8 +8,12 @@ test.describe('Profile', () => {
   });
 
   test('displays user profile information', async ({ page }) => {
-    await expect(page.getByRole('main').getByRole('heading', { name: /My Profile/i })).toBeVisible();
-    await expect(page.getByRole('main').getByRole('heading', { name: /Account Information/i })).toBeVisible();
+    await expect(
+      page.getByRole('main').getByRole('heading', { name: /My Profile/i })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('main').getByRole('heading', { name: /Account Information/i })
+    ).toBeVisible();
     await expect(page.getByText(/User Name/i)).toBeVisible();
     await expect(page.getByRole('main').getByText(/Admin/i, { exact: true })).toBeVisible();
   });

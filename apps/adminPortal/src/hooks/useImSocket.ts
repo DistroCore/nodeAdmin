@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import type { ImMessage, ImMessageType, ImPresenceStatus, MessageMetadata } from '@nodeadmin/shared-types';
+import type {
+  ImMessage,
+  ImMessageType,
+  ImPresenceStatus,
+  MessageMetadata,
+} from '@nodeadmin/shared-types';
 import { SocketConnectionState } from '@/stores/useSocketStore';
 
 export type ImSocketMessage = ImMessage;
@@ -245,14 +250,11 @@ export function useImSocket(options: UseImSocketOptions): {
     []
   );
 
-  const emitDelete = useCallback(
-    (payload: { conversationId: string; messageId: string }) => {
-      const socket = socketRef.current;
-      if (!socket) return;
-      socket.emit('deleteMessage', payload);
-    },
-    []
-  );
+  const emitDelete = useCallback((payload: { conversationId: string; messageId: string }) => {
+    const socket = socketRef.current;
+    if (!socket) return;
+    socket.emit('deleteMessage', payload);
+  }, []);
 
   const emitMarkAsRead = useCallback(
     (payload: { conversationId: string; lastReadMessageId: string }) => {
@@ -263,14 +265,11 @@ export function useImSocket(options: UseImSocketOptions): {
     []
   );
 
-  const emitSetPresenceStatus = useCallback(
-    (status: ImPresenceStatus) => {
-      const socket = socketRef.current;
-      if (!socket) return;
-      socket.emit('setPresenceStatus', { status });
-    },
-    []
-  );
+  const emitSetPresenceStatus = useCallback((status: ImPresenceStatus) => {
+    const socket = socketRef.current;
+    if (!socket) return;
+    socket.emit('setPresenceStatus', { status });
+  }, []);
 
   return {
     emitDelete,

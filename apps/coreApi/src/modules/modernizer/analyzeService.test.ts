@@ -94,7 +94,7 @@ describe('AnalyzeService', () => {
 
   it('detects the missing-validation analysis category', () => {
     mockSourceFiles({
-      '/fake/project/src/controller.ts': "@Body() payload: RawPayload\n",
+      '/fake/project/src/controller.ts': '@Body() payload: RawPayload\n',
     });
 
     const result = service.analyze('/fake/project');

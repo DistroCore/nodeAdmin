@@ -115,7 +115,10 @@ export function MenuManagementPanel(): JSX.Element {
             {
               header: t({ id: 'menus.colName' }),
               cell: (node) => (
-                <div className="flex items-center gap-2" style={{ paddingLeft: `${node.level * 20}px` }}>
+                <div
+                  className="flex items-center gap-2"
+                  style={{ paddingLeft: `${node.level * 20}px` }}
+                >
                   <NavIcon name={node.menu.icon} />
                   <span className="font-medium">{node.menu.name}</span>
                 </div>
@@ -123,7 +126,9 @@ export function MenuManagementPanel(): JSX.Element {
             },
             {
               header: t({ id: 'menus.colPath' }),
-              cell: (node) => <span className="font-mono text-xs text-muted-foreground">{node.menu.path}</span>,
+              cell: (node) => (
+                <span className="font-mono text-xs text-muted-foreground">{node.menu.path}</span>
+              ),
               className: 'hidden md:table-cell',
             },
             {

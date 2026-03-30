@@ -206,7 +206,9 @@ describe('RolesService', () => {
 
       await service.remove('t-1', 'r-1');
 
-      expect(mockClient.calls.some((call) => call.sql === 'DELETE FROM role_menus WHERE role_id = $1')).toBe(true);
+      expect(
+        mockClient.calls.some((call) => call.sql === 'DELETE FROM role_menus WHERE role_id = $1')
+      ).toBe(true);
     });
 
     it('should delete role and related records in transaction', async () => {
@@ -328,7 +330,11 @@ describe('RolesService', () => {
       const result = await service.removeMany('t-1', ['r-1', 'r-2', 'r-1']);
 
       expect(result).toEqual({ deletedCount: 2 });
-      expect(mockClient.calls.some((call) => call.sql === 'DELETE FROM role_menus WHERE role_id = ANY($1)')).toBe(true);
+      expect(
+        mockClient.calls.some(
+          (call) => call.sql === 'DELETE FROM role_menus WHERE role_id = ANY($1)'
+        )
+      ).toBe(true);
       expect(mockClient.calls.some((call) => call.sql === 'COMMIT')).toBe(true);
     });
   });

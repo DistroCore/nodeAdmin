@@ -72,7 +72,10 @@ function createServer(): { roomTarget: MockSocketTarget; server: MockServer } {
   return { roomTarget, server };
 }
 
-function createClient(identity?: AuthIdentity): { client: MockSocketClient; roomTarget: MockSocketTarget } {
+function createClient(identity?: AuthIdentity): {
+  client: MockSocketClient;
+  roomTarget: MockSocketTarget;
+} {
   const roomTarget = {
     emit: vi.fn(),
   };

@@ -97,7 +97,11 @@ function readRolesFromEnv(): string[] {
   return roles.length > 0 ? roles : ['admin'];
 }
 
-function renderMessageBody(message: ImSocketMessage, t: (id: { id: string }) => string, isMe: boolean): JSX.Element {
+function renderMessageBody(
+  message: ImSocketMessage,
+  t: (id: { id: string }) => string,
+  isMe: boolean
+): JSX.Element {
   if (message.deletedAt) {
     return <p className="text-sm italic opacity-70">{t({ id: 'im.messageDeleted' })}</p>;
   }
@@ -123,10 +127,7 @@ function renderMessageBody(message: ImSocketMessage, t: (id: { id: string }) => 
         <p className="font-medium">{message.metadata?.fileName || t({ id: 'im.attachedFile' })}</p>
         {message.metadata?.url ? (
           <a
-            className={className(
-              'underline',
-              isMe ? 'text-primary-foreground' : 'text-primary'
-            )}
+            className={className('underline', isMe ? 'text-primary-foreground' : 'text-primary')}
             href={message.metadata.url}
             rel="noreferrer"
             target="_blank"
@@ -140,7 +141,11 @@ function renderMessageBody(message: ImSocketMessage, t: (id: { id: string }) => 
   }
 
   if (message.messageType === 'system') {
-    return <p className="text-xs italic text-muted-foreground text-center w-full my-2">{message.content}</p>;
+    return (
+      <p className="text-xs italic text-muted-foreground text-center w-full my-2">
+        {message.content}
+      </p>
+    );
   }
 
   return <p className="break-all text-sm leading-relaxed">{message.content}</p>;
@@ -503,24 +508,21 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
     };
   }, [connectionState, emitWithAck, imConfig, readOfflineQueue, writeOfflineQueue]);
 
-  const extractImageFile = useCallback(
-    (dataTransfer: DataTransfer): File | null => {
-      const items = dataTransfer.items;
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        if (item.type.startsWith('image/')) {
-          const file = item.getAsFile();
-          if (file) return file;
-        }
+  const extractImageFile = useCallback((dataTransfer: DataTransfer): File | null => {
+    const items = dataTransfer.items;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) return file;
       }
-      if (dataTransfer.files && dataTransfer.files.length > 0) {
-        const file = dataTransfer.files[0];
-        if (file.type.startsWith('image/')) return file;
-      }
-      return null;
-    },
-    []
-  );
+    }
+    if (dataTransfer.files && dataTransfer.files.length > 0) {
+      const file = dataTransfer.files[0];
+      if (file.type.startsWith('image/')) return file;
+    }
+    return null;
+  }, []);
 
   const handleImageCaptured = useCallback((file: File) => {
     const objectUrl = URL.createObjectURL(file);
@@ -598,10 +600,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
       const formData = new FormData();
       formData.append('file', pendingImage.file);
 
-      const result = await apiClient.post<UploadResponse>(
-        '/api/v1/im/upload',
-        formData
-      );
+      const result = await apiClient.post<UploadResponse>('/api/v1/im/upload', formData);
 
       const nonce = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
       const payload: ImSendMessagePayload = {
@@ -638,9 +637,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
       URL.revokeObjectURL(pendingImage.objectUrl);
       setPendingImage(null);
     } catch (err) {
-      setBootError(
-        err instanceof Error ? err.message : 'Image upload failed.'
-      );
+      setBootError(err instanceof Error ? err.message : 'Image upload failed.');
       setSendState('failed');
     } finally {
       setUploading(false);
@@ -870,7 +867,10 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                 {t({ id: 'im.offlineQueue' }, { count: offlineQueueCount })}
               </Badge>
             ) : null}
-            <Badge variant={connectionState === 'connected' ? 'default' : 'secondary'} className="text-[10px]">
+            <Badge
+              variant={connectionState === 'connected' ? 'default' : 'secondary'}
+              className="text-[10px]"
+            >
               {connectionLabel}
             </Badge>
             {connectionState === 'connected' ? (
@@ -933,15 +933,17 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                   key={message.messageId}
                 >
                   <div className="mb-1 flex items-center gap-2 px-1">
-                    {!isMe && <span className="text-[10px] font-bold opacity-70">{message.userId}</span>}
+                    {!isMe && (
+                      <span className="text-[10px] font-bold opacity-70">{message.userId}</span>
+                    )}
                     <span className="text-[10px] opacity-50">{message.createdAt}</span>
                   </div>
-                  
+
                   <div
                     className={className(
                       'relative group rounded-2xl px-4 py-2 shadow-sm text-sm',
-                      isMe 
-                        ? 'bg-primary text-primary-foreground rounded-tr-none' 
+                      isMe
+                        ? 'bg-primary text-primary-foreground rounded-tr-none'
                         : 'bg-card border border-border text-card-foreground rounded-tl-none'
                     )}
                   >
@@ -971,8 +973,8 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                           value={editContent}
                         />
                         <div className="flex justify-end gap-2 border-t border-white/20 pt-2">
-                          <button 
-                            className="text-[10px] opacity-80 hover:opacity-100" 
+                          <button
+                            className="text-[10px] opacity-80 hover:opacity-100"
                             onClick={() => setEditingMessageId(null)}
                           >
                             {t({ id: 'common.cancel' })}
@@ -985,10 +987,12 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
 
                     {/* Actions on hover */}
                     {!message.deletedAt && isMe && canSendMessage && (
-                      <div className={className(
-                        "absolute top-0 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100",
-                        isMe ? "-left-12 pr-2" : "-right-12 pl-2"
-                      )}>
+                      <div
+                        className={className(
+                          'absolute top-0 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100',
+                          isMe ? '-left-12 pr-2' : '-right-12 pl-2'
+                        )}
+                      >
                         <button
                           aria-label={t({ id: 'im.editMessage' })}
                           className="rounded-full bg-muted p-1.5 text-muted-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -999,8 +1003,19 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                           title={t({ id: 'im.editMessage' })}
                           type="button"
                         >
-                          <svg aria-hidden="true" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                            <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" strokeLinecap="round" strokeLinejoin="round" />
+                          <svg
+                            aria-hidden="true"
+                            className="h-3 w-3"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
                           </svg>
                         </button>
                         <button
@@ -1017,16 +1032,29 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                           title={t({ id: 'im.deleteMessage' })}
                           type="button"
                         >
-                          <svg aria-hidden="true" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                            <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeLinecap="round" strokeLinejoin="round" />
+                          <svg
+                            aria-hidden="true"
+                            className="h-3 w-3"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
                           </svg>
                         </button>
                       </div>
                     )}
                   </div>
-                  
+
                   {message.editedAt && !message.deletedAt && (
-                    <span className="mt-1 text-[10px] opacity-40 italic">{t({ id: 'im.edited' })}</span>
+                    <span className="mt-1 text-[10px] opacity-40 italic">
+                      {t({ id: 'im.edited' })}
+                    </span>
                   )}
                 </li>
               );
@@ -1064,7 +1092,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                 <option value="file">{t({ id: 'im.type.file' })}</option>
                 <option value="system">{t({ id: 'im.type.system' })}</option>
               </select>
-              
+
               <Button
                 disabled={!canSendMessage || uploading}
                 onClick={() => fileInputRef.current?.click()}
@@ -1072,8 +1100,18 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                 variant="ghost"
                 className="h-8 gap-1 text-[10px] px-2"
               >
-                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" />
+                <svg
+                  className="h-3.5 w-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
                 {t({ id: 'im.attachImage' })}
               </Button>
@@ -1105,7 +1143,8 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                   setContent(nextValue);
                   if (!canSendMessage || !imConfig) return;
                   emitTyping({ conversationId: imConfig.conversationId, isTyping: true });
-                  if (typingIdleTimerRef.current !== null) window.clearTimeout(typingIdleTimerRef.current);
+                  if (typingIdleTimerRef.current !== null)
+                    window.clearTimeout(typingIdleTimerRef.current);
                   typingIdleTimerRef.current = window.setTimeout(() => {
                     emitTyping({ conversationId: imConfig.conversationId, isTyping: false });
                   }, 1200);

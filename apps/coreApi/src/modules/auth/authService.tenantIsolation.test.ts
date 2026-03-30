@@ -83,9 +83,9 @@ describe('AuthService tenant isolation', () => {
 
     (service as unknown as { pool: typeof mockPool }).pool = mockPool;
 
-    await expect(
-      service.login('shared@example.com', 'TenantBP@ss2', 'tenant-a')
-    ).rejects.toThrow('Invalid email or password.');
+    await expect(service.login('shared@example.com', 'TenantBP@ss2', 'tenant-a')).rejects.toThrow(
+      'Invalid email or password.'
+    );
 
     expect(mockPool.query).toHaveBeenCalledWith(
       expect.stringContaining('WHERE tenant_id = $1 AND email = $2'),

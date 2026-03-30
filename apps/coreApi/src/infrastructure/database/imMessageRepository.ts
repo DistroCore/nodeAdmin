@@ -245,12 +245,7 @@ export class ImMessageRepository implements OnModuleDestroy {
     content: string
   ): Promise<StoredMessage | null> {
     if (!this.pool) {
-      return this.inMemoryStore.updateContent(
-        tenantId,
-        '',
-        messageId,
-        content
-      );
+      return this.inMemoryStore.updateContent(tenantId, '', messageId, content);
     }
 
     return this.runWithTenant(tenantId, async (client) => {
@@ -271,10 +266,7 @@ export class ImMessageRepository implements OnModuleDestroy {
     });
   }
 
-  async softDelete(
-    tenantId: string,
-    messageId: string
-  ): Promise<StoredMessage | null> {
+  async softDelete(tenantId: string, messageId: string): Promise<StoredMessage | null> {
     if (!this.pool) {
       return this.inMemoryStore.softDelete(tenantId, '', messageId);
     }

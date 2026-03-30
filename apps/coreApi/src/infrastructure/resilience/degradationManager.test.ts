@@ -130,10 +130,7 @@ describe('DegradationManager', () => {
 
       const restored = manager.restoreExpired(1000);
 
-      expect(restored).toEqual([
-        DegradationFeature.REDIS_ADAPTER,
-        DegradationFeature.AUDIT_LOG,
-      ]);
+      expect(restored).toEqual([DegradationFeature.REDIS_ADAPTER, DegradationFeature.AUDIT_LOG]);
       expect(manager.isDegraded(DegradationFeature.REDIS_ADAPTER)).toBe(false);
       expect(manager.isDegraded(DegradationFeature.AUDIT_LOG)).toBe(false);
     });

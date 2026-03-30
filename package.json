@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "build": "npm run build -w coreApi && npm run build -w adminPortal",
+    "ci:local": "node scripts/ci-local.cjs",
     "dev:api": "npm run dev -w coreApi",
     "dev:web": "npm run dev -w adminPortal",
     "generate:crud": "npx ts-node apps/coreApi/src/cli/index.ts",

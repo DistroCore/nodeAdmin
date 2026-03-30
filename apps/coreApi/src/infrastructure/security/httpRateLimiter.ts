@@ -34,10 +34,7 @@ export class HttpRateLimiter {
         allowed: false,
         limit,
         remaining: 0,
-        retryAfterSeconds: Math.max(
-          1,
-          Math.ceil((windowMs - (now - existing.startedAtMs)) / 1000)
-        ),
+        retryAfterSeconds: Math.max(1, Math.ceil((windowMs - (now - existing.startedAtMs)) / 1000)),
       };
     }
 
@@ -47,10 +44,7 @@ export class HttpRateLimiter {
       allowed: true,
       limit,
       remaining: Math.max(limit - existing.count, 0),
-      retryAfterSeconds: Math.max(
-        1,
-        Math.ceil((windowMs - (now - existing.startedAtMs)) / 1000)
-      ),
+      retryAfterSeconds: Math.max(1, Math.ceil((windowMs - (now - existing.startedAtMs)) / 1000)),
     };
   }
 }

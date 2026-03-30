@@ -22,10 +22,8 @@ export function ProfilePanel(): JSX.Element {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const changePasswordMutation = useMutation({
-    mutationFn: (payload: {
-      currentPassword: string;
-      newPassword: string;
-    }) => apiClient.post<{ success: boolean }>('/api/v1/auth/change-password', payload),
+    mutationFn: (payload: { currentPassword: string; newPassword: string }) =>
+      apiClient.post<{ success: boolean }>('/api/v1/auth/change-password', payload),
     onSuccess: () => {
       toast.success(t({ id: 'profile.passwordChangeSuccess' }));
       setCurrentPassword('');

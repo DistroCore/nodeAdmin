@@ -9,7 +9,9 @@ test.describe('Tenants Management', () => {
   });
 
   test('lists tenants', async ({ page }) => {
-    await expect(page.getByRole('main').getByRole('heading', { name: /Tenant Management/i })).toBeVisible();
+    await expect(
+      page.getByRole('main').getByRole('heading', { name: /Tenant Management/i })
+    ).toBeVisible();
     await page.waitForTimeout(1000);
     await expect(page.getByRole('table')).toBeVisible();
 

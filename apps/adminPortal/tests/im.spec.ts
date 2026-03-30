@@ -9,12 +9,16 @@ test.describe('IM Chat', () => {
   });
 
   test('renders IM panel with conversation header', async ({ page }) => {
-    await expect(page.getByRole('main').getByRole('heading', { name: /conversation/i })).toBeVisible();
+    await expect(
+      page.getByRole('main').getByRole('heading', { name: /conversation/i })
+    ).toBeVisible();
   });
 
   test('shows connection status badge', async ({ page }) => {
     // Connection status is displayed as a badge (connected, reconnecting, disconnected)
-    const statusBadge = page.locator('header').locator('text=/connected|reconnecting|disconnected/i');
+    const statusBadge = page
+      .locator('header')
+      .locator('text=/connected|reconnecting|disconnected/i');
     await expect(statusBadge).toBeVisible({ timeout: 5000 });
   });
 
@@ -115,7 +119,8 @@ test.describe('IM Chat — conversation list', () => {
     // Conversation list should show either conversations or empty state
     const conversationList = page.locator('aside ul li');
     const loadingText = page.getByText(/loading conversations/i);
-    const emptyOrLoaded = (await conversationList.count()) > 0 || (await loadingText.isVisible().catch(() => false));
+    const emptyOrLoaded =
+      (await conversationList.count()) > 0 || (await loadingText.isVisible().catch(() => false));
 
     expect(emptyOrLoaded || (await page.locator('aside').isVisible())).toBeTruthy();
   });
@@ -203,11 +208,14 @@ test.describe('IM Chat — message editing and deletion', () => {
 
       // Edit and delete buttons should appear on hover for own messages
       const editButton = firstMessage.locator('button[title*="edit" i], button[title*="Edit"]');
-      const deleteButton = firstMessage.locator('button[title*="delete" i], button[title*="Delete"]');
+      const deleteButton = firstMessage.locator(
+        'button[title*="delete" i], button[title*="Delete"]'
+      );
 
       // At least one action button should be visible if this is our own message
-      const hasActions = (await editButton.isVisible().catch(() => false))
-        || (await deleteButton.isVisible().catch(() => false));
+      const hasActions =
+        (await editButton.isVisible().catch(() => false)) ||
+        (await deleteButton.isVisible().catch(() => false));
       // It's ok if no actions — means the messages aren't ours
       expect(typeof hasActions).toBe('boolean');
     }

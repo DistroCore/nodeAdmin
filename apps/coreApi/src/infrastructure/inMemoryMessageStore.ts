@@ -18,7 +18,10 @@ export interface StoredMessage {
   userId: string;
 }
 
-export type PendingMessage = Omit<StoredMessage, 'messageType' | 'metadata' | 'sequenceId' | 'deletedAt' | 'editedAt'> & {
+export type PendingMessage = Omit<
+  StoredMessage,
+  'messageType' | 'metadata' | 'sequenceId' | 'deletedAt' | 'editedAt'
+> & {
   messageType?: ImMessageType;
   metadata?: MessageMetadata | null;
 };
@@ -103,11 +106,7 @@ export class InMemoryMessageStore {
     return msg;
   }
 
-  softDelete(
-    tenantId: string,
-    conversationId: string,
-    messageId: string
-  ): StoredMessage | null {
+  softDelete(tenantId: string, conversationId: string, messageId: string): StoredMessage | null {
     const streamKey = this.toStreamKey(tenantId, conversationId);
     const messageById = this.messageByIdByStream.get(streamKey);
     if (!messageById) return null;

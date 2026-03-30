@@ -74,10 +74,7 @@ describe('HealthController', () => {
     })
     class TestHealthModule {}
 
-    app = await NestFactory.create<NestFastifyApplication>(
-      TestHealthModule,
-      new FastifyAdapter()
-    );
+    app = await NestFactory.create<NestFastifyApplication>(TestHealthModule, new FastifyAdapter());
     app.setGlobalPrefix('api/v1');
     await app.init();
 
@@ -149,10 +146,7 @@ describe('HealthController', () => {
     })
     class TestHealthModule {}
 
-    app = await NestFactory.create<NestFastifyApplication>(
-      TestHealthModule,
-      new FastifyAdapter()
-    );
+    app = await NestFactory.create<NestFastifyApplication>(TestHealthModule, new FastifyAdapter());
     app.setGlobalPrefix('api/v1');
     await app.init();
 

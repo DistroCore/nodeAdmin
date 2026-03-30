@@ -191,7 +191,9 @@ export class RolesService {
     try {
       await client.query('BEGIN');
       await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [tenantId]);
-      await client.query('DELETE FROM role_permissions WHERE role_id = ANY($1)', [normalizedRoleIds]);
+      await client.query('DELETE FROM role_permissions WHERE role_id = ANY($1)', [
+        normalizedRoleIds,
+      ]);
       await client.query('DELETE FROM role_menus WHERE role_id = ANY($1)', [normalizedRoleIds]);
       await client.query('DELETE FROM user_roles WHERE role_id = ANY($1)', [normalizedRoleIds]);
       const result = await client.query(

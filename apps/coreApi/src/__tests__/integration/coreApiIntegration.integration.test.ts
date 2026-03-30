@@ -142,10 +142,9 @@ describe.sequential('CoreApi integration', () => {
 
   it('covers IM websocket join and message delivery', async () => {
     const senderToken = await context.issueDevToken(context.uniqueId('im-sender'), ['im:operator']);
-    const receiverToken = await context.issueDevToken(
-      context.uniqueId('im-receiver'),
-      ['im:operator']
-    );
+    const receiverToken = await context.issueDevToken(context.uniqueId('im-receiver'), [
+      'im:operator',
+    ]);
     const conversationId = context.uniqueId('conversation');
     const messageId = context.uniqueId('message');
     const traceId = context.uniqueId('trace');
@@ -312,7 +311,9 @@ describe.sequential('CoreApi integration', () => {
       .set('Authorization', `Bearer ${tenantAdminToken}`);
 
     expect(listResponse.status).toBe(200);
-    expect(listResponse.body.items.some((item: { email: string }) => item.email === email)).toBe(true);
+    expect(listResponse.body.items.some((item: { email: string }) => item.email === email)).toBe(
+      true
+    );
   });
 
   it('covers permissions + roles by assigning seeded permissions to a new role', async () => {
@@ -349,9 +350,9 @@ describe.sequential('CoreApi integration', () => {
       .set('Authorization', `Bearer ${adminToken}`);
 
     expect(roleResponse.status).toBe(200);
-    expect(roleResponse.body.permissions.map((permission: { id: string }) => permission.id)).toEqual(
-      expect.arrayContaining(permissionIds)
-    );
+    expect(
+      roleResponse.body.permissions.map((permission: { id: string }) => permission.id)
+    ).toEqual(expect.arrayContaining(permissionIds));
   });
 });
 

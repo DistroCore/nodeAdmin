@@ -40,12 +40,19 @@ export function RoleFormDialog({ onClose, onSaved, open, role }: RoleFormDialogP
 
   const permissionsQuery = useQuery({
     queryFn: () =>
-      apiClient.get<PaginatedResponse<PermissionItem>>(`/api/v1/permissions?limit=200&tenantId=${tenantId ?? 'default'}`),
+      apiClient.get<PaginatedResponse<PermissionItem>>(
+        `/api/v1/permissions?limit=200&tenantId=${tenantId ?? 'default'}`
+      ),
     queryKey: ['permissions', tenantId],
   });
 
   const saveMutation = useMutation({
-    mutationFn: async (data: { name: string; description: string; permissionIds: string[]; tenantId: string }) => {
+    mutationFn: async (data: {
+      name: string;
+      description: string;
+      permissionIds: string[];
+      tenantId: string;
+    }) => {
       if (isEdit && role) {
         await apiClient.patch(`/api/v1/roles/${role.id}?tenantId=${data.tenantId}`, data);
       } else {
@@ -70,7 +77,12 @@ export function RoleFormDialog({ onClose, onSaved, open, role }: RoleFormDialogP
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    saveMutation.mutate({ name, description, permissionIds: selectedPermissionIds, tenantId: tenantId ?? 'default' });
+    saveMutation.mutate({
+      name,
+      description,
+      permissionIds: selectedPermissionIds,
+      tenantId: tenantId ?? 'default',
+    });
   };
 
   const handleClose = () => {
@@ -147,7 +159,22 @@ export function RoleFormDialog({ onClose, onSaved, open, role }: RoleFormDialogP
           <Button disabled={saveMutation.isPending} type="submit">
             {saveMutation.isPending ? (
               <>
-                <svg className="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                <svg className="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    fill="none"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
                 {t({ id: 'common.saving' })}
               </>
             ) : (

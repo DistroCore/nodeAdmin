@@ -79,18 +79,14 @@ describe('BacklogService', () => {
 
   describe('findTaskById', () => {
     it('should throw NotFoundException when pool is null', async () => {
-      await expect(service.findTaskById('tenant-1', 'task-1')).rejects.toThrow(
-        'Task not found'
-      );
+      await expect(service.findTaskById('tenant-1', 'task-1')).rejects.toThrow('Task not found');
     });
 
     it('should throw NotFoundException when task does not exist', async () => {
       const mockPool = createMockPool([{ rows: [], rowCount: 0 }]);
       (service as any).pool = mockPool;
 
-      await expect(service.findTaskById('tenant-1', 'task-1')).rejects.toThrow(
-        'Task not found'
-      );
+      await expect(service.findTaskById('tenant-1', 'task-1')).rejects.toThrow('Task not found');
     });
 
     it('should return task when found', async () => {
@@ -107,9 +103,9 @@ describe('BacklogService', () => {
 
   describe('createTask', () => {
     it('should throw when pool is null', async () => {
-      await expect(
-        service.createTask('tenant-1', { title: 'Task' })
-      ).rejects.toThrow('Database not available');
+      await expect(service.createTask('tenant-1', { title: 'Task' })).rejects.toThrow(
+        'Database not available'
+      );
     });
 
     it('should create task and return it via findTaskById', async () => {
@@ -147,9 +143,9 @@ describe('BacklogService', () => {
       mockPool.connect = vi.fn(async () => mockClient);
       (service as any).pool = mockPool;
 
-      await expect(
-        service.createTask('tenant-1', { title: 'Fail' })
-      ).rejects.toThrow('DB insert error');
+      await expect(service.createTask('tenant-1', { title: 'Fail' })).rejects.toThrow(
+        'DB insert error'
+      );
 
       const rollbackCall = mockClient.calls.find((c) => c.sql === 'ROLLBACK');
       expect(rollbackCall).toBeDefined();
@@ -160,9 +156,9 @@ describe('BacklogService', () => {
 
   describe('updateTask', () => {
     it('should throw when pool is null', async () => {
-      await expect(
-        service.updateTask('tenant-1', 'task-1', { title: 'Updated' })
-      ).rejects.toThrow('Database not available');
+      await expect(service.updateTask('tenant-1', 'task-1', { title: 'Updated' })).rejects.toThrow(
+        'Database not available'
+      );
     });
 
     it('should update specified fields and return updated task', async () => {
@@ -203,9 +199,9 @@ describe('BacklogService', () => {
       mockPool.connect = vi.fn(async () => mockClient);
       (service as any).pool = mockPool;
 
-      await expect(
-        service.updateTask('tenant-1', 'task-1', { title: 'Fail' })
-      ).rejects.toThrow('DB update error');
+      await expect(service.updateTask('tenant-1', 'task-1', { title: 'Fail' })).rejects.toThrow(
+        'DB update error'
+      );
 
       const rollbackCall = mockClient.calls.find((c) => c.sql === 'ROLLBACK');
       expect(rollbackCall).toBeDefined();
@@ -251,9 +247,7 @@ describe('BacklogService', () => {
       mockPool.connect = vi.fn(async () => mockClient);
       (service as any).pool = mockPool;
 
-      await expect(service.removeTask('tenant-1', 'task-1')).rejects.toThrow(
-        'Task not found'
-      );
+      await expect(service.removeTask('tenant-1', 'task-1')).rejects.toThrow('Task not found');
     });
   });
 
@@ -330,9 +324,9 @@ describe('BacklogService', () => {
 
   describe('createSprint', () => {
     it('should throw when pool is null', async () => {
-      await expect(
-        service.createSprint('tenant-1', { name: 'Sprint 1' })
-      ).rejects.toThrow('Database not available');
+      await expect(service.createSprint('tenant-1', { name: 'Sprint 1' })).rejects.toThrow(
+        'Database not available'
+      );
     });
 
     it('should create sprint and return it via findSprintById', async () => {
@@ -356,7 +350,9 @@ describe('BacklogService', () => {
       });
       expect(result.name).toBe('New Sprint');
 
-      const insertCall = mockClient.calls.find((c) => c.sql.includes('INSERT INTO backlog_sprints'));
+      const insertCall = mockClient.calls.find((c) =>
+        c.sql.includes('INSERT INTO backlog_sprints')
+      );
       expect(insertCall).toBeDefined();
       expect(insertCall!.params).toContain('New Sprint');
       expect(insertCall!.params).toContain('Ship features');
@@ -375,9 +371,9 @@ describe('BacklogService', () => {
       mockPool.connect = vi.fn(async () => mockClient);
       (service as any).pool = mockPool;
 
-      await expect(
-        service.createSprint('tenant-1', { name: 'Fail' })
-      ).rejects.toThrow('DB insert error');
+      await expect(service.createSprint('tenant-1', { name: 'Fail' })).rejects.toThrow(
+        'DB insert error'
+      );
 
       const rollbackCall = mockClient.calls.find((c) => c.sql === 'ROLLBACK');
       expect(rollbackCall).toBeDefined();
@@ -431,9 +427,9 @@ describe('BacklogService', () => {
       mockPool.connect = vi.fn(async () => mockClient);
       (service as any).pool = mockPool;
 
-      await expect(
-        service.updateSprint('tenant-1', 'sprint-1', { name: 'Fail' })
-      ).rejects.toThrow('DB update error');
+      await expect(service.updateSprint('tenant-1', 'sprint-1', { name: 'Fail' })).rejects.toThrow(
+        'DB update error'
+      );
 
       const rollbackCall = mockClient.calls.find((c) => c.sql === 'ROLLBACK');
       expect(rollbackCall).toBeDefined();
@@ -491,18 +487,18 @@ describe('BacklogService', () => {
 
   describe('assignTasksToSprint', () => {
     it('should throw when pool is null', async () => {
-      await expect(
-        service.assignTasksToSprint('tenant-1', 'sprint-1', ['task-1'])
-      ).rejects.toThrow('Database not available');
+      await expect(service.assignTasksToSprint('tenant-1', 'sprint-1', ['task-1'])).rejects.toThrow(
+        'Database not available'
+      );
     });
 
     it('should throw NotFoundException if sprint does not exist', async () => {
       const mockPool = createMockPool([{ rows: [], rowCount: 0 }]);
       (service as any).pool = mockPool;
 
-      await expect(
-        service.assignTasksToSprint('tenant-1', 'sprint-x', ['task-1'])
-      ).rejects.toThrow('Sprint not found');
+      await expect(service.assignTasksToSprint('tenant-1', 'sprint-x', ['task-1'])).rejects.toThrow(
+        'Sprint not found'
+      );
     });
 
     it('should update tasks and return sprint tasks', async () => {
@@ -548,9 +544,9 @@ describe('BacklogService', () => {
       mockPool.connect = vi.fn(async () => mockClient);
       (service as any).pool = mockPool;
 
-      await expect(
-        service.assignTasksToSprint('tenant-1', 'sprint-1', ['task-1'])
-      ).rejects.toThrow('DB update error');
+      await expect(service.assignTasksToSprint('tenant-1', 'sprint-1', ['task-1'])).rejects.toThrow(
+        'DB update error'
+      );
 
       const rollbackCall = mockClient.calls.find((c) => c.sql === 'ROLLBACK');
       expect(rollbackCall).toBeDefined();

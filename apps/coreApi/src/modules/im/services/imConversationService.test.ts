@@ -61,7 +61,11 @@ describe('ImConversationService', () => {
       tenantId: identity.tenantId,
       userId: identity.userId,
     });
-    expect(messageRepository.getLatest).toHaveBeenCalledWith(identity.tenantId, 'conversation-1', 50);
+    expect(messageRepository.getLatest).toHaveBeenCalledWith(
+      identity.tenantId,
+      'conversation-1',
+      50
+    );
     expect(result).toEqual({
       context: {
         conversationId: 'conversation-1',

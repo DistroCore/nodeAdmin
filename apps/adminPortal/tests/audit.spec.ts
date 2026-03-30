@@ -8,7 +8,9 @@ test.describe('Audit Logs', () => {
   });
 
   test('lists audit logs and filters by action', async ({ page }) => {
-    await expect(page.getByRole('main').getByRole('heading', { name: /Audit Logs/i })).toBeVisible();
+    await expect(
+      page.getByRole('main').getByRole('heading', { name: /Audit Logs/i })
+    ).toBeVisible();
 
     // There should be at least the login log we just did
     await expect(page.getByText(/logged in/i).first()).toBeVisible();

@@ -6,10 +6,6 @@ interface SpinnerProps {
 
 export function Spinner({ className: customClassName }: SpinnerProps): JSX.Element {
   return (
-    <span
-      className={className('spinner', customClassName)}
-      role="status"
-      aria-label="loading"
-    />
+    <span className={className('spinner', customClassName)} role="status" aria-label="loading" />
   );
 }

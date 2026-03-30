@@ -9,7 +9,9 @@ test.describe('Users Management', () => {
   });
 
   test('lists users and can search', async ({ page }) => {
-    await expect(page.getByRole('main').getByRole('heading', { name: /User Management/i })).toBeVisible();
+    await expect(
+      page.getByRole('main').getByRole('heading', { name: /User Management/i })
+    ).toBeVisible();
     await page.waitForTimeout(1000);
     await expect(page.getByRole('table')).toBeVisible();
 
@@ -40,7 +42,7 @@ test.describe('Users Management', () => {
     // Select a role if any exist
     const roleCheckbox = page.getByLabel(/viewer/i);
     if (await roleCheckbox.isVisible()) {
-        await roleCheckbox.check();
+      await roleCheckbox.check();
     }
     await page.getByRole('button', { name: /Save/i }).click();
 

@@ -192,7 +192,12 @@ describe('AuthController', () => {
         user as any
       );
 
-      expect(authService.changePassword).toHaveBeenCalledWith('user-1', 't-1', 'oldPass', 'newPass');
+      expect(authService.changePassword).toHaveBeenCalledWith(
+        'user-1',
+        't-1',
+        'oldPass',
+        'newPass'
+      );
       expect(result).toEqual({ success: true });
     });
 

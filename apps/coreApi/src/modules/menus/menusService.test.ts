@@ -439,7 +439,9 @@ describe('MenusService', () => {
       await service.getUserMenus('tenant-b', 'u-1');
 
       expect(mockPool.query).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE r.tenant_id = $1 AND ur.user_id = $2 AND m.is_visible = true'),
+        expect.stringContaining(
+          'WHERE r.tenant_id = $1 AND ur.user_id = $2 AND m.is_visible = true'
+        ),
         ['tenant-b', 'u-1']
       );
     });

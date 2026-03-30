@@ -90,7 +90,7 @@ export class ConsoleController {
         totalConversations = Number(conversationsResult.rows?.[0]?.count ?? 0);
 
         const messagesResult = await this.databaseService.drizzle.execute({
-          sql: "SELECT COUNT(*)::int AS count FROM messages WHERE created_at >= CURRENT_DATE",
+          sql: 'SELECT COUNT(*)::int AS count FROM messages WHERE created_at >= CURRENT_DATE',
         } as any);
         todayMessages = Number(messagesResult.rows?.[0]?.count ?? 0);
       }

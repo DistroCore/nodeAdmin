@@ -9,7 +9,9 @@ test.describe('Roles Management', () => {
   });
 
   test('lists roles and identifies system roles', async ({ page }) => {
-    await expect(page.getByRole('main').getByRole('heading', { name: /Role Management/i })).toBeVisible();
+    await expect(
+      page.getByRole('main').getByRole('heading', { name: /Role Management/i })
+    ).toBeVisible();
     await page.waitForTimeout(1000);
     await expect(page.getByRole('table')).toBeVisible();
 
@@ -36,7 +38,7 @@ test.describe('Roles Management', () => {
     // Select some permissions
     const permissionCheckbox = page.getByRole('checkbox').first();
     if (await permissionCheckbox.isVisible()) {
-        await permissionCheckbox.check();
+      await permissionCheckbox.check();
     }
     await page.getByRole('button', { name: /Save/i }).click();
 

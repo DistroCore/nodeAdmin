@@ -71,9 +71,7 @@ export function ManagementOverviewPanel(): JSX.Element {
         </CardHeader>
         <CardContent className="space-y-4">
           {isOverviewPending ? (
-            <div
-              className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
-            >
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
               {Array.from({ length: statCount }).map((_, index) => (
                 <div
                   className="rounded-lg border border-border p-4"
@@ -100,9 +98,7 @@ export function ManagementOverviewPanel(): JSX.Element {
           ) : null}
 
           {!isOverviewPending && !overviewQuery.isError ? (
-            <div
-              className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
-            >
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
               {stats.map((stat, index) => (
                 <div
                   className="group rounded-lg border border-border p-4 transition-shadow hover:shadow-md"

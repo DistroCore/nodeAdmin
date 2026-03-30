@@ -90,10 +90,10 @@ function parseColumnDefinition(definition: string): ParsedColumn | null {
 
   const isPrimary = chainText.includes('.primaryKey()') || propertyName === 'id';
   const hasDefaultFn = chainText.includes('.$defaultFn(');
-  const hasDefault = hasDefaultFn || chainText.includes('.default(') || chainText.includes('.defaultNow(');
+  const hasDefault =
+    hasDefaultFn || chainText.includes('.default(') || chainText.includes('.defaultNow(');
   const isNullable = !chainText.includes('.notNull()');
-  const isAutoManaged =
-    AUTO_MANAGED_COLUMNS.has(propertyName) || (isPrimary && hasDefaultFn);
+  const isAutoManaged = AUTO_MANAGED_COLUMNS.has(propertyName) || (isPrimary && hasDefaultFn);
 
   return {
     drizzleType,
@@ -178,7 +178,10 @@ export function parseSchema(schemaPath: string): Map<string, ParsedTable> {
   return tables;
 }
 
-export function resolveTable(parsedTables: Map<string, ParsedTable>, entityInput: string): ParsedTable {
+export function resolveTable(
+  parsedTables: Map<string, ParsedTable>,
+  entityInput: string
+): ParsedTable {
   const singularCamel = toCamelCase(entityInput);
   const pluralCamel = pluralize(singularCamel);
   const singularPascal = toPascalCase(entityInput);

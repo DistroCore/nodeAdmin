@@ -107,7 +107,11 @@ describe('TenantsService', () => {
       ]);
       (service as any).pool = mockPool;
 
-      const result = await service.create({ name: 'Dormant Tenant', slug: 'dormant', isActive: false });
+      const result = await service.create({
+        name: 'Dormant Tenant',
+        slug: 'dormant',
+        isActive: false,
+      });
 
       expect(result.is_active).toBe(0);
       expect(mockPool.query).toHaveBeenNthCalledWith(
@@ -248,9 +252,17 @@ describe('TenantsService', () => {
       (service as any).pool = mockPool;
 
       await service.remove('t-1');
-      expect(mockClient.calls.some((call) => call.sql === 'DELETE FROM users WHERE tenant_id = $1')).toBe(true);
-      expect(mockClient.calls.some((call) => call.sql === 'DELETE FROM roles WHERE tenant_id = $1')).toBe(true);
-      expect(mockClient.calls.some((call) => call.sql === 'DELETE FROM tenants WHERE id = $1 RETURNING id')).toBe(true);
+      expect(
+        mockClient.calls.some((call) => call.sql === 'DELETE FROM users WHERE tenant_id = $1')
+      ).toBe(true);
+      expect(
+        mockClient.calls.some((call) => call.sql === 'DELETE FROM roles WHERE tenant_id = $1')
+      ).toBe(true);
+      expect(
+        mockClient.calls.some(
+          (call) => call.sql === 'DELETE FROM tenants WHERE id = $1 RETURNING id'
+        )
+      ).toBe(true);
       expect(mockClient.calls.some((call) => call.sql === 'COMMIT')).toBe(true);
     });
 

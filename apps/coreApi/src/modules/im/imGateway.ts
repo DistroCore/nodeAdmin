@@ -389,11 +389,7 @@ export class ImGateway
       throw new WsException('Please join the matching conversation before deleting messages.');
     }
 
-    const deleted = await this.messageService.deleteMessage(
-      context,
-      payload.messageId,
-      identity
-    );
+    const deleted = await this.messageService.deleteMessage(context, payload.messageId, identity);
 
     const roomKey = this.conversationService.toRoomKey(context.tenantId, context.conversationId);
     this.server.to(roomKey).emit('messageDeleted', { message: deleted });

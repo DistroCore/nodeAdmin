@@ -74,7 +74,9 @@ describe('DocSyncService', () => {
 
     expect(markdown).toContain('**Total endpoints: 2**');
     expect(markdown).toContain('| GET | `/api/v1/users` | List users | UsersController |');
-    expect(markdown).toContain('| POST | `/api/v1/users/invite` | POST /users/invite | UsersController |');
+    expect(markdown).toContain(
+      '| POST | `/api/v1/users/invite` | POST /users/invite | UsersController |'
+    );
   });
 
   it('returns a fallback document when the source directory does not exist', () => {
@@ -149,15 +151,13 @@ describe('DocSyncService', () => {
       return [];
     });
 
-    vi.mocked(fs.readFileSync)
-      .mockReturnValueOnce(`
+    vi.mocked(fs.readFileSync).mockReturnValueOnce(`
         @Controller('zeta')
         export class BController {
           @Delete()
           remove() {}
         }
-      `)
-      .mockReturnValueOnce(`
+      `).mockReturnValueOnce(`
         @Controller('alpha')
         export class AController {
           @Post()
@@ -169,8 +169,12 @@ describe('DocSyncService', () => {
 
     const markdown = service.generateDocs('/fake/project');
     const alphaGetIndex = markdown.indexOf('| GET | `/api/v1/alpha` | GET /alpha | AController |');
-    const alphaPostIndex = markdown.indexOf('| POST | `/api/v1/alpha` | POST /alpha | AController |');
-    const zetaDeleteIndex = markdown.indexOf('| DELETE | `/api/v1/zeta` | DELETE /zeta | BController |');
+    const alphaPostIndex = markdown.indexOf(
+      '| POST | `/api/v1/alpha` | POST /alpha | AController |'
+    );
+    const zetaDeleteIndex = markdown.indexOf(
+      '| DELETE | `/api/v1/zeta` | DELETE /zeta | BController |'
+    );
 
     expect(alphaGetIndex).toBeGreaterThan(-1);
     expect(alphaPostIndex).toBeGreaterThan(alphaGetIndex);

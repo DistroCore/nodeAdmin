@@ -7,39 +7,113 @@ on:
       - develop
   pull_request:
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  verify:
+  # ── Parallel: Static Analysis ────────────────────────────────────────────
+  static:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
 
-      - name: Install
-        run: npm ci
+  # ── Parallel: Unit Tests ─────────────────────────────────────────────────
+  unit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:coreApi
 
-      - name: Format Check
-        run: npm run format:check
+  # ── Parallel: Build ──────────────────────────────────────────────────────
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
 
-      - name: Lint
-        run: npm run lint
+  # ── Sequential: Integration Tests (needs infra) ──────────────────────────
+  integration:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
 
-      - name: Unit Test
-        run: npm run test:coreApi
-
-      - name: Build
-        run: npm run build
-
-      - name: Start Infra (Kafka Profile)
+      - name: Start Infrastructure
         run: npm run infra:up:kafka
 
-      - name: Wait for DB
-        run: sleep 5
+      - name: Wait for Services
+        run: |
+          for port in 55432 56379 9092; do
+            echo "Waiting for port $port..."
+            for i in $(seq 1 30); do
+              if nc -z localhost $port 2>/dev/null; then
+                echo "Port $port ready"
+                break
+              fi
+              sleep 1
+            done
+          done
+
+      - name: Apply Migrations
+        run: npm run db:migrate -w coreApi
+
+      - name: Integration Tests
+        run: npm run test:coreApi:integration
+
+      - name: Shutdown Infrastructure
+        if: always()
+        run: npm run infra:down
+
+  # ── Sequential: Acceptance Tests ─────────────────────────────────────────
+  acceptance:
+    needs: [integration]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Start Infrastructure
+        run: npm run infra:up:kafka
+
+      - name: Wait for Services
+        run: |
+          for port in 55432 56379 9092; do
+            echo "Waiting for port $port..."
+            for i in $(seq 1 30); do
+              if nc -z localhost $port 2>/dev/null; then
+                echo "Port $port ready"
+                break
+              fi
+              sleep 1
+            done
+          done
 
       - name: Apply Migrations
         run: npm run db:migrate -w coreApi
@@ -47,8 +121,7 @@ jobs:
       - name: M2 Acceptance
         run: npm run m2:acceptance:auto
         timeout-minutes: 5
-        continue-on-error: true
 
-      - name: Shutdown Infra
+      - name: Shutdown Infrastructure
         if: always()
         run: npm run infra:down

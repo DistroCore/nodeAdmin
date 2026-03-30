@@ -6,15 +6,17 @@ setupTestEnv();
 import { runtimeConfig } from '../../app/runtimeConfig';
 import { OutboxPublisherService } from './outboxPublisherService';
 
-function createOutboxRow(overrides?: Partial<{
-  aggregate_id: string;
-  created_at: Date;
-  event_type: string;
-  id: string;
-  payload: string;
-  retry_count: number;
-  tenant_id: string;
-}>) {
+function createOutboxRow(
+  overrides?: Partial<{
+    aggregate_id: string;
+    created_at: Date;
+    event_type: string;
+    id: string;
+    payload: string;
+    retry_count: number;
+    tenant_id: string;
+  }>
+) {
   return {
     aggregate_id: 'conversation-1',
     created_at: new Date('2026-03-30T10:00:00.000Z'),
@@ -304,7 +306,10 @@ function assignInternals(
   values: {
     intervalHandle?: NodeJS.Timeout | null;
     pool?: { connect?: () => Promise<unknown>; end?: () => Promise<void> } | null;
-    producer?: { disconnect: () => Promise<void>; send: (...args: unknown[]) => Promise<unknown> } | null;
+    producer?: {
+      disconnect: () => Promise<void>;
+      send: (...args: unknown[]) => Promise<unknown>;
+    } | null;
   }
 ): void {
   const target = service as unknown as {

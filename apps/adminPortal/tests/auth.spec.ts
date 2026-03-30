@@ -11,9 +11,9 @@ test.describe('Authentication Flow', () => {
 
     await page.getByLabel(/Email/i).fill('admin@nodeadmin.dev');
     await page.getByLabel(/Password/i).fill('Admin123456');
-    
+
     const tenantLocator = page.getByLabel(/Tenant ID/i);
-    const tagName = await tenantLocator.evaluate(el => el.tagName.toLowerCase());
+    const tagName = await tenantLocator.evaluate((el) => el.tagName.toLowerCase());
     if (tagName === 'select') {
       await tenantLocator.selectOption('default');
     } else {
@@ -38,7 +38,7 @@ test.describe('Authentication Flow', () => {
     await page.getByLabel(/Email/i).fill('wrong@example.com');
     await page.getByLabel(/Password/i).fill('wrongpassword');
     const tenantLocator = page.getByLabel(/Tenant ID/i);
-    const tagName = await tenantLocator.evaluate(el => el.tagName.toLowerCase());
+    const tagName = await tenantLocator.evaluate((el) => el.tagName.toLowerCase());
     if (tagName === 'select') {
       await tenantLocator.selectOption('default');
     } else {
@@ -62,7 +62,7 @@ test.describe('Authentication Flow', () => {
     await page.getByLabel(/^Password$/i).fill('Test123456!');
     await page.getByLabel(/Confirm Password/i).fill('Test123456!');
     const tenantLocator = page.getByLabel(/Tenant ID/i);
-    const tagName = await tenantLocator.evaluate(el => el.tagName.toLowerCase());
+    const tagName = await tenantLocator.evaluate((el) => el.tagName.toLowerCase());
     if (tagName === 'select') {
       await tenantLocator.selectOption('default');
     } else {

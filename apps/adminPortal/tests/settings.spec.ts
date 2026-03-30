@@ -29,7 +29,9 @@ test.describe('Settings', () => {
   });
 
   test('displays session information', async ({ page }) => {
-    await expect(page.getByRole('main').getByRole('heading', { name: /Session Info/i })).toBeVisible();
+    await expect(
+      page.getByRole('main').getByRole('heading', { name: /Session Info/i })
+    ).toBeVisible();
     await expect(page.getByText(/User ID/i)).toBeVisible();
     await expect(page.getByText(/Tenant ID/i)).toBeVisible();
     await expect(page.getByText(/default/i)).toBeVisible(); // Default tenant ID

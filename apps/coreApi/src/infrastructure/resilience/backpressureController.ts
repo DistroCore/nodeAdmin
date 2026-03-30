@@ -113,9 +113,7 @@ export class BackpressureController {
     this.logger.log('Backpressure controller reset');
   }
 
-  updateConfig(
-    updates: Partial<Omit<BackpressureConfig, 'name'>>
-  ): BackpressureConfig {
+  updateConfig(updates: Partial<Omit<BackpressureConfig, 'name'>>): BackpressureConfig {
     const nextConfig: BackpressureConfig = {
       ...this.config,
       ...updates,

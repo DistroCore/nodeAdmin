@@ -4,7 +4,7 @@ import { login } from './helpers';
 test.describe('Permission Enforcement', () => {
   test('admin user can access all pages', async ({ page }) => {
     await login(page);
-    
+
     const pages = [
       '/overview',
       '/users',
@@ -15,9 +15,9 @@ test.describe('Permission Enforcement', () => {
       '/release',
       '/settings',
       '/modernizer',
-      '/backlog'
+      '/backlog',
     ];
-    
+
     for (const p of pages) {
       await page.goto(p);
       await expect(page.getByText(/You do not have permission/i)).not.toBeVisible();
@@ -27,25 +27,25 @@ test.describe('Permission Enforcement', () => {
   });
 
   test('viewer role can access overview but NOT settings/release', async ({ page }) => {
-    // For this test, we need a viewer user. 
+    // For this test, we need a viewer user.
     // In this system, registration gives 'viewer' role by default.
     const timestamp = Date.now();
     const email = `viewer-${timestamp}@example.com`;
-    
+
     await page.goto('/register');
     await page.getByLabel(/Name/i).fill('Viewer User');
     await page.getByLabel(/Email/i).fill(email);
     await page.getByLabel(/^Password$/i).fill('Password123!');
     await page.getByLabel(/Confirm Password/i).fill('Password123!');
-    
+
     const tenantLocator = page.getByLabel(/Tenant ID/i);
-    const tagName = await tenantLocator.evaluate(el => el.tagName.toLowerCase());
+    const tagName = await tenantLocator.evaluate((el) => el.tagName.toLowerCase());
     if (tagName === 'select') {
       await tenantLocator.selectOption('default');
     } else {
       await tenantLocator.fill('default');
     }
-    
+
     await page.getByRole('button', { name: /Register/i }).click();
     await page.waitForURL(/\/overview/);
 
@@ -66,30 +66,33 @@ test.describe('Permission Enforcement', () => {
   test('navigation menu hides unauthorized items for viewer', async ({ page }) => {
     const timestamp = Date.now();
     const email = `viewer-nav-${timestamp}@example.com`;
-    
+
     await page.goto('/register');
     await page.getByLabel(/Name/i).fill('Viewer Nav');
     await page.getByLabel(/Email/i).fill(email);
     await page.getByLabel(/^Password$/i).fill('Password123!');
     await page.getByLabel(/Confirm Password/i).fill('Password123!');
-    
+
     const tenantLocator = page.getByLabel(/Tenant ID/i);
-    const tagName = await tenantLocator.evaluate(el => el.tagName.toLowerCase());
+    const tagName = await tenantLocator.evaluate((el) => el.tagName.toLowerCase());
     if (tagName === 'select') {
       await tenantLocator.selectOption('default');
     } else {
       await tenantLocator.fill('default');
     }
-    
+
     await page.getByRole('button', { name: /Register/i }).click();
     await page.waitForURL(/\/overview/);
 
-    const sidebar = page.locator('aside').filter({ hasText: /Node Admin/i }).first();
-    
+    const sidebar = page
+      .locator('aside')
+      .filter({ hasText: /Node Admin/i })
+      .first();
+
     // Viewer should see Overview, IM Operations, Backlog (depending on permissions)
     // But definitely should NOT see sensitive admin pages
     await expect(sidebar.getByText(/Overview/i)).toBeVisible();
-    
+
     // These should be hidden
     await expect(sidebar.getByText(/Settings/i)).not.toBeVisible();
     await expect(sidebar.getByText(/Release/i)).not.toBeVisible();

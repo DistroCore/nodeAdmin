@@ -1,9 +1,5 @@
 const CACHE_NAME = 'nodeadmin-v1';
-const ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-];
+const ASSETS = ['/', '/index.html', '/manifest.json'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

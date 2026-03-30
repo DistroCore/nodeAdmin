@@ -59,7 +59,10 @@ interface TenantAwarePool {
   client: TenantAwareClient;
   connect: ReturnType<typeof vi.fn>;
   currentTenant: string | null;
-  directQuery: (sqlText: string, params?: unknown[]) => Promise<{ rowCount: number; rows: Record<string, unknown>[] }>;
+  directQuery: (
+    sqlText: string,
+    params?: unknown[]
+  ) => Promise<{ rowCount: number; rows: Record<string, unknown>[] }>;
 }
 
 const TENANT_A = 'tenant-alpha';
@@ -97,7 +100,11 @@ describe('Multi-tenant isolation (mock)', () => {
       const rows = await repository.getLatest(TENANT_A, CONVERSATION_A, 10);
 
       expect(Array.isArray(rows)).toBe(true);
-      expect(pool.client.calls.some((call) => call.sql.includes(`SELECT set_config('app.current_tenant'`))).toBe(true);
+      expect(
+        pool.client.calls.some((call) =>
+          call.sql.includes(`SELECT set_config('app.current_tenant'`)
+        )
+      ).toBe(true);
       expect(
         pool.client.calls.some(
           (call) =>
@@ -177,9 +184,7 @@ describe('Multi-tenant isolation (mock)', () => {
 
   describe('repository layer tenant isolation', () => {
     it('AuditLogRepository.record stores the tenantId on insert', async () => {
-      const mockDb = createAuditLogDb([
-        createAuditLogRow({ id: 'audit-a', tenantId: TENANT_A }),
-      ]);
+      const mockDb = createAuditLogDb([createAuditLogRow({ id: 'audit-a', tenantId: TENANT_A })]);
       const repository = new AuditLogRepository(mockDb as never);
 
       await repository.record({
@@ -196,9 +201,7 @@ describe('Multi-tenant isolation (mock)', () => {
     });
 
     it('AuditLogRepository.findByFilter only returns rows from the requested tenant', async () => {
-      const mockDb = createAuditLogDb([
-        createAuditLogRow({ id: 'audit-a', tenantId: TENANT_A }),
-      ]);
+      const mockDb = createAuditLogDb([createAuditLogRow({ id: 'audit-a', tenantId: TENANT_A })]);
       const repository = new AuditLogRepository(mockDb as never);
 
       const rows = await repository.findByFilter({ tenantId: TENANT_A }, 1, 20);
@@ -246,9 +249,10 @@ describe('Multi-tenant isolation (mock)', () => {
     it('throws on cross-tenant conversation inserts', async () => {
       await expect(
         runWithTenant(pool, TENANT_A, (activePool) =>
-          activePool.directQuery("INSERT INTO conversations (tenant_id, id) VALUES ($1, 'malicious')", [
-            TENANT_B,
-          ])
+          activePool.directQuery(
+            "INSERT INTO conversations (tenant_id, id) VALUES ($1, 'malicious')",
+            [TENANT_B]
+          )
         )
       ).rejects.toThrow('Cross-tenant write blocked');
     });
@@ -337,9 +341,10 @@ describe('Multi-tenant isolation (mock)', () => {
   describe('outbox_events table CRUD isolation', () => {
     it('allows reads inside the current tenant namespace', async () => {
       const result = await runWithTenant(pool, TENANT_A, (activePool) =>
-        activePool.directQuery("SELECT id, payload FROM outbox_events WHERE tenant_id = $1 AND id = 'outbox-a'", [
-          TENANT_A,
-        ])
+        activePool.directQuery(
+          "SELECT id, payload FROM outbox_events WHERE tenant_id = $1 AND id = 'outbox-a'",
+          [TENANT_A]
+        )
       );
 
       expect(result.rowCount).toBe(1);
@@ -348,9 +353,10 @@ describe('Multi-tenant isolation (mock)', () => {
 
     it('returns no rows for cross-tenant outbox reads', async () => {
       const result = await runWithTenant(pool, TENANT_A, (activePool) =>
-        activePool.directQuery("SELECT id, payload FROM outbox_events WHERE tenant_id = $1 AND id = 'outbox-b'", [
-          TENANT_B,
-        ])
+        activePool.directQuery(
+          "SELECT id, payload FROM outbox_events WHERE tenant_id = $1 AND id = 'outbox-b'",
+          [TENANT_B]
+        )
       );
 
       expect(result.rowCount).toBe(0);
@@ -369,9 +375,10 @@ describe('Multi-tenant isolation (mock)', () => {
 
     it('blocks cross-tenant outbox updates', async () => {
       const result = await runWithTenant(pool, TENANT_A, (activePool) =>
-        activePool.directQuery("UPDATE outbox_events SET published_at = NOW() WHERE tenant_id = $1 AND id = 'outbox-b'", [
-          TENANT_B,
-        ])
+        activePool.directQuery(
+          "UPDATE outbox_events SET published_at = NOW() WHERE tenant_id = $1 AND id = 'outbox-b'",
+          [TENANT_B]
+        )
       );
 
       expect(result.rowCount).toBe(0);
@@ -379,9 +386,10 @@ describe('Multi-tenant isolation (mock)', () => {
 
     it('blocks cross-tenant outbox deletes', async () => {
       const result = await runWithTenant(pool, TENANT_A, (activePool) =>
-        activePool.directQuery("DELETE FROM outbox_events WHERE tenant_id = $1 AND id = 'outbox-b'", [
-          TENANT_B,
-        ])
+        activePool.directQuery(
+          "DELETE FROM outbox_events WHERE tenant_id = $1 AND id = 'outbox-b'",
+          [TENANT_B]
+        )
       );
 
       expect(result.rowCount).toBe(0);
@@ -391,9 +399,10 @@ describe('Multi-tenant isolation (mock)', () => {
   describe('audit_logs table CRUD isolation', () => {
     it('allows reads inside the current tenant namespace', async () => {
       const result = await runWithTenant(pool, TENANT_A, (activePool) =>
-        activePool.directQuery("SELECT id, action FROM audit_logs WHERE tenant_id = $1 AND id = 'audit-a'", [
-          TENANT_A,
-        ])
+        activePool.directQuery(
+          "SELECT id, action FROM audit_logs WHERE tenant_id = $1 AND id = 'audit-a'",
+          [TENANT_A]
+        )
       );
 
       expect(result.rowCount).toBe(1);
@@ -402,9 +411,10 @@ describe('Multi-tenant isolation (mock)', () => {
 
     it('returns no rows for cross-tenant audit-log reads', async () => {
       const result = await runWithTenant(pool, TENANT_A, (activePool) =>
-        activePool.directQuery("SELECT id, action FROM audit_logs WHERE tenant_id = $1 AND id = 'audit-b'", [
-          TENANT_B,
-        ])
+        activePool.directQuery(
+          "SELECT id, action FROM audit_logs WHERE tenant_id = $1 AND id = 'audit-b'",
+          [TENANT_B]
+        )
       );
 
       expect(result.rowCount).toBe(0);
@@ -423,9 +433,10 @@ describe('Multi-tenant isolation (mock)', () => {
 
     it('blocks cross-tenant audit-log updates', async () => {
       const result = await runWithTenant(pool, TENANT_A, (activePool) =>
-        activePool.directQuery("UPDATE audit_logs SET action = 'TAMPERED' WHERE tenant_id = $1 AND id = 'audit-b'", [
-          TENANT_B,
-        ])
+        activePool.directQuery(
+          "UPDATE audit_logs SET action = 'TAMPERED' WHERE tenant_id = $1 AND id = 'audit-b'",
+          [TENANT_B]
+        )
       );
 
       expect(result.rowCount).toBe(0);
@@ -454,17 +465,19 @@ function createMessageRepository(pool: TenantAwarePool): ImMessageRepository {
   return repository;
 }
 
-function createAuditLogRow(overrides?: Partial<{
-  action: string;
-  contextJson: string | null;
-  createdAt: Date;
-  id: string;
-  targetId: string | null;
-  targetType: string | null;
-  tenantId: string;
-  traceId: string;
-  userId: string;
-}>) {
+function createAuditLogRow(
+  overrides?: Partial<{
+    action: string;
+    contextJson: string | null;
+    createdAt: Date;
+    id: string;
+    targetId: string | null;
+    targetType: string | null;
+    tenantId: string;
+    traceId: string;
+    userId: string;
+  }>
+) {
   return {
     action: 'test.seed',
     contextJson: null,
@@ -659,7 +672,11 @@ function createTenantAwarePool(): TenantAwarePool {
       return selectByTenantAndId(state.conversations, holder.currentTenant, params);
     }
 
-    if (normalizedSql.includes('SELECT id FROM conversations WHERE tenant_id = $1 AND id = $2 FOR UPDATE')) {
+    if (
+      normalizedSql.includes(
+        'SELECT id FROM conversations WHERE tenant_id = $1 AND id = $2 FOR UPDATE'
+      )
+    ) {
       return selectByTenantAndId(state.conversations, holder.currentTenant, params);
     }
 
@@ -677,7 +694,11 @@ function createTenantAwarePool(): TenantAwarePool {
       return insertMessageRow(state.messages, holder.currentTenant, params);
     }
 
-    if (normalizedSql.includes('SELECT message_id, content FROM messages WHERE tenant_id = $1 AND message_id = $2')) {
+    if (
+      normalizedSql.includes(
+        'SELECT message_id, content FROM messages WHERE tenant_id = $1 AND message_id = $2'
+      )
+    ) {
       return selectByTenantAndMessageId(state.messages, holder.currentTenant, params);
     }
 
@@ -693,7 +714,9 @@ function createTenantAwarePool(): TenantAwarePool {
       return selectLatestMessages(state.messages, holder.currentTenant, params);
     }
 
-    if (normalizedSql.includes('SELECT content, conversation_id, created_at, deleted_at, edited_at')) {
+    if (
+      normalizedSql.includes('SELECT content, conversation_id, created_at, deleted_at, edited_at')
+    ) {
       return selectLatestMessages(state.messages, holder.currentTenant, params);
     }
 
@@ -701,7 +724,7 @@ function createTenantAwarePool(): TenantAwarePool {
       return updateMessageContent(state.messages, holder.currentTenant, params);
     }
 
-    if (normalizedSql.includes('UPDATE messages SET content = \'\', deleted_at = NOW()')) {
+    if (normalizedSql.includes("UPDATE messages SET content = '', deleted_at = NOW()")) {
       return softDeleteMessage(state.messages, holder.currentTenant, params);
     }
 
@@ -719,20 +742,54 @@ function createTenantAwarePool(): TenantAwarePool {
       return insertOutboxRow(state.outboxEvents, holder.currentTenant, params);
     }
 
-    if (normalizedSql.includes("SELECT id, payload FROM outbox_events WHERE tenant_id = $1 AND id = 'outbox-a'")) {
-      return selectFixedOutbox(state.outboxEvents, holder.currentTenant, String(params[0]), 'outbox-a');
+    if (
+      normalizedSql.includes(
+        "SELECT id, payload FROM outbox_events WHERE tenant_id = $1 AND id = 'outbox-a'"
+      )
+    ) {
+      return selectFixedOutbox(
+        state.outboxEvents,
+        holder.currentTenant,
+        String(params[0]),
+        'outbox-a'
+      );
     }
 
-    if (normalizedSql.includes("SELECT id, payload FROM outbox_events WHERE tenant_id = $1 AND id = 'outbox-b'")) {
-      return selectFixedOutbox(state.outboxEvents, holder.currentTenant, String(params[0]), 'outbox-b');
+    if (
+      normalizedSql.includes(
+        "SELECT id, payload FROM outbox_events WHERE tenant_id = $1 AND id = 'outbox-b'"
+      )
+    ) {
+      return selectFixedOutbox(
+        state.outboxEvents,
+        holder.currentTenant,
+        String(params[0]),
+        'outbox-b'
+      );
     }
 
-    if (normalizedSql.includes("UPDATE outbox_events SET published_at = NOW() WHERE tenant_id = $1 AND id = 'outbox-b'")) {
-      return updateFixedOutbox(state.outboxEvents, holder.currentTenant, String(params[0]), 'outbox-b');
+    if (
+      normalizedSql.includes(
+        "UPDATE outbox_events SET published_at = NOW() WHERE tenant_id = $1 AND id = 'outbox-b'"
+      )
+    ) {
+      return updateFixedOutbox(
+        state.outboxEvents,
+        holder.currentTenant,
+        String(params[0]),
+        'outbox-b'
+      );
     }
 
-    if (normalizedSql.includes("DELETE FROM outbox_events WHERE tenant_id = $1 AND id = 'outbox-b'")) {
-      return deleteFixedOutbox(state.outboxEvents, holder.currentTenant, String(params[0]), 'outbox-b');
+    if (
+      normalizedSql.includes("DELETE FROM outbox_events WHERE tenant_id = $1 AND id = 'outbox-b'")
+    ) {
+      return deleteFixedOutbox(
+        state.outboxEvents,
+        holder.currentTenant,
+        String(params[0]),
+        'outbox-b'
+      );
     }
 
     if (normalizedSql.includes('INSERT INTO message_reads')) {
@@ -740,11 +797,19 @@ function createTenantAwarePool(): TenantAwarePool {
       return { rowCount: 1, rows: [] };
     }
 
-    if (normalizedSql.includes("SELECT id, action FROM audit_logs WHERE tenant_id = $1 AND id = 'audit-a'")) {
+    if (
+      normalizedSql.includes(
+        "SELECT id, action FROM audit_logs WHERE tenant_id = $1 AND id = 'audit-a'"
+      )
+    ) {
       return selectFixedAudit(state.auditLogs, holder.currentTenant, String(params[0]), 'audit-a');
     }
 
-    if (normalizedSql.includes("SELECT id, action FROM audit_logs WHERE tenant_id = $1 AND id = 'audit-b'")) {
+    if (
+      normalizedSql.includes(
+        "SELECT id, action FROM audit_logs WHERE tenant_id = $1 AND id = 'audit-b'"
+      )
+    ) {
       return selectFixedAudit(state.auditLogs, holder.currentTenant, String(params[0]), 'audit-b');
     }
 
@@ -765,7 +830,11 @@ function createTenantAwarePool(): TenantAwarePool {
       return { rowCount: 1, rows: [] };
     }
 
-    if (normalizedSql.includes("UPDATE audit_logs SET action = 'TAMPERED' WHERE tenant_id = $1 AND id = 'audit-b'")) {
+    if (
+      normalizedSql.includes(
+        "UPDATE audit_logs SET action = 'TAMPERED' WHERE tenant_id = $1 AND id = 'audit-b'"
+      )
+    ) {
       return updateFixedAudit(state.auditLogs, holder.currentTenant, String(params[0]), 'audit-b');
     }
 
@@ -926,15 +995,13 @@ function insertTenantScopedRow<T extends { id: string; tenant_id: string }>(
   return { rowCount: 1, rows: [row] };
 }
 
-function insertMessageRow(
-  rows: MessageRecord[],
-  currentTenant: string | null,
-  params: unknown[]
-) {
+function insertMessageRow(rows: MessageRecord[], currentTenant: string | null, params: unknown[]) {
   const tenantId = String(params[0]);
   ensureTenantContext(currentTenant, tenantId);
 
-  const existing = rows.find((row) => row.tenant_id === tenantId && row.message_id === String(params[2]));
+  const existing = rows.find(
+    (row) => row.tenant_id === tenantId && row.message_id === String(params[2])
+  );
   if (existing) {
     return { rowCount: 0, rows: [] };
   }
@@ -1017,11 +1084,7 @@ function updateMessageContent(
   return { rowCount: 1, rows: [record] };
 }
 
-function softDeleteMessage(
-  rows: MessageRecord[],
-  currentTenant: string | null,
-  params: unknown[]
-) {
+function softDeleteMessage(rows: MessageRecord[], currentTenant: string | null, params: unknown[]) {
   const tenantId = String(params[0]);
   const messageId = String(params[1]);
 
@@ -1041,11 +1104,7 @@ function softDeleteMessage(
   return { rowCount: 1, rows: [record] };
 }
 
-function insertOutboxRow(
-  rows: OutboxRecord[],
-  currentTenant: string | null,
-  params: unknown[]
-) {
+function insertOutboxRow(rows: OutboxRecord[], currentTenant: string | null, params: unknown[]) {
   const tenantId = String(params[1]);
   ensureTenantContext(currentTenant, tenantId);
 

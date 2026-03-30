@@ -127,10 +127,7 @@ async function stopCoreApiServer(serverProcess: ChildProcess): Promise<void> {
   });
 }
 
-async function waitForHealth(
-  serverProcess: ChildProcess,
-  readLogs: () => string
-): Promise<void> {
+async function waitForHealth(serverProcess: ChildProcess, readLogs: () => string): Promise<void> {
   const deadline = Date.now() + 30000;
 
   while (Date.now() < deadline) {

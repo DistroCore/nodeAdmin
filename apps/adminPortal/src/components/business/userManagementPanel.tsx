@@ -103,8 +103,15 @@ export function UserManagementPanel(): JSX.Element {
 
         <DataTable<UserItem>
           columns={[
-            { header: t({ id: 'users.colEmail' }), cell: (user) => <span className="font-medium">{user.email}</span> },
-            { header: t({ id: 'users.colName' }), cell: (user) => user.name, className: 'hidden sm:table-cell' },
+            {
+              header: t({ id: 'users.colEmail' }),
+              cell: (user) => <span className="font-medium">{user.email}</span>,
+            },
+            {
+              header: t({ id: 'users.colName' }),
+              cell: (user) => user.name,
+              className: 'hidden sm:table-cell',
+            },
             {
               header: t({ id: 'users.colRoles' }),
               className: 'hidden md:table-cell',
@@ -112,7 +119,9 @@ export function UserManagementPanel(): JSX.Element {
                 user.roles.length > 0 ? (
                   <div className="flex flex-wrap gap-1">
                     {user.roles.map((role: { id: string; name: string }) => (
-                      <Badge key={role.id} variant="secondary">{role.name}</Badge>
+                      <Badge key={role.id} variant="secondary">
+                        {role.name}
+                      </Badge>
                     ))}
                   </div>
                 ) : (

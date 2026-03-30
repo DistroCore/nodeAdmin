@@ -29,7 +29,8 @@ export function AssignTasksDialog({
 
   // Fetch unassigned tasks or tasks assigned to this sprint
   const tasksQuery = useQuery({
-    queryFn: () => apiClient.get<PaginatedResponse<BacklogTask>>('/api/v1/backlog/tasks?pageSize=200'),
+    queryFn: () =>
+      apiClient.get<PaginatedResponse<BacklogTask>>('/api/v1/backlog/tasks?pageSize=200'),
     queryKey: ['backlog', 'tasks', 'all-for-assign'],
     enabled: open,
   });
@@ -90,7 +91,22 @@ export function AssignTasksDialog({
         <div className="max-h-80 space-y-2 overflow-y-auto rounded-md border p-3">
           {tasksQuery.isLoading ? (
             <div className="flex items-center justify-center py-4">
-              <svg className="h-6 w-6 animate-spin" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+              <svg className="h-6 w-6 animate-spin" viewBox="0 0 24 24">
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="none"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                />
+              </svg>
             </div>
           ) : tasks.length === 0 ? (
             <div className="text-center py-4 text-sm text-muted-foreground">
@@ -122,7 +138,22 @@ export function AssignTasksDialog({
           <Button disabled={assignMutation.isPending} type="submit">
             {assignMutation.isPending ? (
               <>
-                <svg className="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                <svg className="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    fill="none"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
                 {t({ id: 'common.saving' })}
               </>
             ) : (
