@@ -27,11 +27,13 @@ export function Header(): JSX.Element {
     <header className="flex h-14 items-center justify-between border-b bg-card px-4 md:px-6">
       <div className="flex items-center gap-3">
         <button
-          className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card transition-colors hover:bg-accent md:hidden"
+          aria-label={t({ id: 'menu.open' })}
+          className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring md:hidden"
           onClick={() => setMobileMenuOpen(true)}
           type="button"
         >
           <svg
+            aria-hidden="true"
             className="h-4 w-4"
             fill="none"
             stroke="currentColor"
@@ -47,7 +49,8 @@ export function Header(): JSX.Element {
       <div className="flex items-center gap-3">
         {/* Language toggle */}
         <button
-          className="flex h-9 items-center rounded-md border border-border bg-card px-2 text-xs font-medium transition-colors hover:bg-accent"
+          aria-label={t({ id: 'settings.language' })}
+          className="flex h-9 items-center rounded-md border border-border bg-card px-2 text-xs font-medium transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
           onClick={toggleLocale}
           type="button"
         >
@@ -56,16 +59,17 @@ export function Header(): JSX.Element {
 
         {/* Theme toggle */}
         <button
-          className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-base transition-colors hover:bg-accent"
+          aria-label={t({ id: 'theme.toggle' })}
+          className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-base transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           type="button"
         >
           {theme === 'dark' ? (
-            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+            <svg aria-hidden="true" className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 7a5 5 0 100 10 5 5 0 000-10zm0-5a1 1 0 011 1v1a1 1 0 01-2 0V3a1 1 0 011-1zm0 18a1 1 0 011 1v1a1 1 0 01-2 0v-1a1 1 0 011-1zM5.64 5.64a1 1 0 011.41 0l.71.71a1 1 0 01-1.41 1.41l-.71-.71a1 1 0 010-1.41zm12.02 12.02a1 1 0 011.41 0l.71.71a1 1 0 01-1.41 1.41l-.71-.71a1 1 0 010-1.41zM2 12a1 1 0 011-1h1a1 1 0 010 2H3a1 1 0 01-1-1zm18 0a1 1 0 011-1h1a1 1 0 010 2h-1a1 1 0 01-1-1zM5.64 18.36a1 1 0 010-1.41l.71-.71a1 1 0 011.41 1.41l-.71.71a1 1 0 01-1.41 0zm12.02-12.02a1 1 0 010-1.41l.71-.71a1 1 0 011.41 1.41l-.71.71a1 1 0 01-1.41 0z" />
             </svg>
           ) : (
-            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+            <svg aria-hidden="true" className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z" />
             </svg>
           )}

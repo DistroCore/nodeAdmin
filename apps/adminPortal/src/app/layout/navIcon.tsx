@@ -19,6 +19,7 @@ const paths: Record<string, string> = {
 export function NavIcon({ name }: { name: string }): JSX.Element {
   return (
     <svg
+      aria-hidden="true"
       className="h-5 w-5 shrink-0"
       fill="currentColor"
       viewBox="0 0 24 24"

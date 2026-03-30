@@ -150,12 +150,14 @@ export function Sidebar(): JSX.Element {
         </NavLink>
         <p className="mb-2 text-center text-xs text-muted-foreground">{t({ id: 'version' })}</p>
         <button
-          className="hidden md:flex h-9 w-full items-center justify-center rounded-md border border-border bg-card text-sm transition-colors hover:bg-accent"
+          aria-label={sidebarCollapsed ? t({ id: 'menu.open' }) : t({ id: 'settings.sidebarCollapsed' })}
+          className="hidden md:flex h-9 w-full items-center justify-center rounded-md border border-border bg-card text-sm transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
           onClick={toggleSidebar}
           type="button"
         >
           {sidebarCollapsed ? (
             <svg
+              aria-hidden="true"
               className="h-4 w-4"
               fill="none"
               stroke="currentColor"
@@ -166,6 +168,7 @@ export function Sidebar(): JSX.Element {
             </svg>
           ) : (
             <svg
+              aria-hidden="true"
               className="h-4 w-4"
               fill="none"
               stroke="currentColor"
