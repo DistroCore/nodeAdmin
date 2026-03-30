@@ -77,8 +77,13 @@ async function run() {
       continue;
     }
 
-    await applyMigration(client, migration);
-    console.log(`[db:migrate] applied ${migration.filename}`);
+    try {
+      await applyMigration(client, migration);
+      console.log(`[db:migrate] applied ${migration.filename}`);
+    } catch (error) {
+      error.message = `${migration.filename}: ${error.message}`;
+      throw error;
+    }
   }
 
   await client.end();
