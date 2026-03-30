@@ -24,10 +24,7 @@ function runStep(command, env) {
 
 async function run() {
   const env = { ...process.env };
-  const steps = [
-    runStep('npm run m1:acceptance', env),
-    runStep('npm run smoke:im', env),
-  ];
+  const steps = [runStep('npm run m1:acceptance', env), runStep('npm run smoke:im', env)];
 
   if ((env.M2_INCLUDE_PGBOUNCER_SMOKE || '').trim() !== 'skip') {
     steps.push(runStep('npm run smoke:pgbouncer', env));
