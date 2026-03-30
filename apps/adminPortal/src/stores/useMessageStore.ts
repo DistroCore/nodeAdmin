@@ -27,15 +27,22 @@ export const useMessageStore = create<MessageState>((set) => ({
     }),
   upsertMessage: (message) =>
     set((state) => {
-      const duplicated = state.messages.some(
+      const index = state.messages.findIndex(
         (currentMessage) => currentMessage.messageId === message.messageId
       );
-      if (duplicated) {
-        return state;
+      
+      let nextMessages: ChatMessageState[];
+      if (index !== -1) {
+        // Update existing message
+        nextMessages = [...state.messages];
+        nextMessages[index] = normalizeMessage(message);
+      } else {
+        // Add new message
+        nextMessages = [...state.messages, normalizeMessage(message)];
       }
 
       return {
-        messages: [...state.messages, normalizeMessage(message)].sort(
+        messages: nextMessages.sort(
           (left, right) => left.sequenceId - right.sequenceId
         ),
       };
