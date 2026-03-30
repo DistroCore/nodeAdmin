@@ -13,6 +13,6 @@ VALUES (
   'list',
   110,
   'backlog:view',
-  true
+  1
 )
 ON CONFLICT DO NOTHING;

@@ -80,12 +80,25 @@ export class ConsoleController {
     const onlineConnections = this.connectionRegistry.totalCount();
 
     let totalUsers = 0;
+    let totalConversations = 0;
+    let todayMessages = 0;
+
     try {
       if (this.databaseService.drizzle) {
-        const result = await this.databaseService.drizzle.execute({
+        const usersResult = await this.databaseService.drizzle.execute({
           sql: 'SELECT COUNT(*)::int AS count FROM users',
         } as any);
-        totalUsers = Number(result.rows?.[0]?.count ?? 0);
+        totalUsers = Number(usersResult.rows?.[0]?.count ?? 0);
+
+        const conversationsResult = await this.databaseService.drizzle.execute({
+          sql: 'SELECT COUNT(*)::int AS count FROM conversations',
+        } as any);
+        totalConversations = Number(conversationsResult.rows?.[0]?.count ?? 0);
+
+        const messagesResult = await this.databaseService.drizzle.execute({
+          sql: "SELECT COUNT(*)::int AS count FROM messages WHERE created_at >= CURRENT_DATE",
+        } as any);
+        todayMessages = Number(messagesResult.rows?.[0]?.count ?? 0);
       }
     } catch {
       // DB not available — keep 0
@@ -93,10 +106,10 @@ export class ConsoleController {
 
     return {
       stats: [
-        { label: 'overview.stat.totalUsers', value: String(totalUsers) },
+        { label: 'overview.stat.onlineUsers', value: String(onlineConnections) },
+        { label: 'overview.stat.totalConversations', value: String(totalConversations) },
+        { label: 'overview.stat.todayMessages', value: String(todayMessages) },
         { label: 'overview.stat.activeTenants', value: String(activeCount) },
-        { label: 'overview.stat.totalTenants', value: String(tenants.length) },
-        { label: 'overview.stat.onlineConnections', value: String(onlineConnections) },
         { label: 'overview.stat.uptime', value: formatUptime(process.uptime()) },
       ],
       todos: [],

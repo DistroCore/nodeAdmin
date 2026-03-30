@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { sql } from 'drizzle-orm';
 import { Kafka } from 'kafkajs';
 import { createClient } from 'redis';
 import { runtimeConfig } from '../../app/runtimeConfig';
@@ -76,9 +77,7 @@ export class HealthService {
     }
 
     try {
-      await drizzle.execute({
-        sql: 'SELECT 1',
-      } as never);
+      await drizzle.execute(sql`SELECT 1`);
 
       return {
         message: 'Database reachable.',

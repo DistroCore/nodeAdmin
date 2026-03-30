@@ -68,15 +68,19 @@ describe('HealthService', () => {
   });
 
   it('returns ok when database, redis, and kafka are all healthy', async () => {
+    const execute = vi.fn().mockResolvedValue({ rows: [{ '?column?': 1 }] });
     const databaseService = {
       drizzle: {
-        execute: vi.fn().mockResolvedValue({ rows: [{ '?column?': 1 }] }),
+        execute,
       },
     };
     const service = new HealthService(databaseService as never);
 
     const result = await service.getHealth();
 
+    expect(execute).toHaveBeenCalledTimes(1);
+    const statement = execute.mock.calls[0]?.[0] as { getSQL?: () => unknown } | undefined;
+    expect(statement?.getSQL).toBeTypeOf('function');
     expect(result.status).toBe('ok');
     expect(result.checks.database.status).toBe('ok');
     expect(result.checks.redis.status).toBe('ok');
