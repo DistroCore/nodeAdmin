@@ -10,6 +10,7 @@
     "build": "npm run build -w coreApi && npm run build -w adminPortal",
     "dev:api": "npm run dev -w coreApi",
     "dev:web": "npm run dev -w adminPortal",
+    "generate:crud": "npx ts-node apps/coreApi/src/cli/index.ts",
     "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,cjs,mjs,css,html}\" \"scripts/**/*.cjs\" \"*.cjs\"",
     "infra:down": "docker compose down",
     "infra:up:kafka": "docker compose --profile kafka up -d",

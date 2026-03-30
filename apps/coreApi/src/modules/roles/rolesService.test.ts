@@ -191,6 +191,24 @@ describe('RolesService', () => {
       await expect(service.remove('t-1', 'r-1')).rejects.toThrow('Cannot delete system roles');
     });
 
+    it('should delete role_menus as part of the cleanup', async () => {
+      const mockClient = createMockClient([
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 1 },
+        { rows: [], rowCount: 0 },
+      ]);
+      const mockPool = createMockPool([{ rows: [{ is_system: false }], rowCount: 1 }]);
+      mockPool.connect = vi.fn(async () => mockClient);
+      (service as any).pool = mockPool;
+
+      await service.remove('t-1', 'r-1');
+
+      expect(mockClient.calls.some((call) => call.sql === 'DELETE FROM role_menus WHERE role_id = $1')).toBe(true);
+    });
+
     it('should delete role and related records in transaction', async () => {
       const mockClient = createMockClient([
         { rows: [], rowCount: 0 }, // BEGIN
@@ -206,6 +224,112 @@ describe('RolesService', () => {
 
       await service.remove('t-1', 'r-1');
       expect(mockClient.calls.some((c) => c.sql === 'COMMIT')).toBe(true);
+    });
+  });
+
+  describe('removeMany', () => {
+    it('should throw when pool is null', async () => {
+      await expect(service.removeMany('t-1', ['r-1'])).rejects.toThrow('Database not available');
+    });
+
+    it('should return zero deletions when no role IDs are provided', async () => {
+      const mockPool = createMockPool([]);
+      (service as any).pool = mockPool;
+
+      await expect(service.removeMany('t-1', [])).resolves.toEqual({ deletedCount: 0 });
+      expect(mockPool.query).not.toHaveBeenCalled();
+    });
+
+    it('should block batch deletion when one role is system-protected', async () => {
+      const mockPool = createMockPool([
+        {
+          rows: [
+            { id: 'r-1', is_system: false },
+            { id: 'r-2', is_system: true },
+          ],
+          rowCount: 2,
+        },
+      ]);
+      (service as any).pool = mockPool;
+
+      await expect(service.removeMany('t-1', ['r-1', 'r-2'])).rejects.toThrow(
+        'Cannot delete system roles'
+      );
+    });
+
+    it('should trim and deduplicate role IDs before running the tenant check', async () => {
+      const mockClient = createMockClient([
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [{ id: 'r-1' }], rowCount: 1 },
+        { rows: [], rowCount: 0 },
+      ]);
+      const mockPool = createMockPool([
+        {
+          rows: [{ id: 'r-1', is_system: false }],
+          rowCount: 1,
+        },
+      ]);
+      mockPool.connect = vi.fn(async () => mockClient);
+      (service as any).pool = mockPool;
+
+      const result = await service.removeMany('t-1', [' r-1 ', 'r-1', '   ']);
+
+      expect(result).toEqual({ deletedCount: 1 });
+      expect(mockPool.query).toHaveBeenCalledWith(
+        'SELECT id, is_system FROM roles WHERE tenant_id = $1 AND id = ANY($2)',
+        ['t-1', ['r-1']]
+      );
+    });
+
+    it('should fail when one role belongs to another tenant or is missing', async () => {
+      const mockPool = createMockPool([
+        {
+          rows: [{ id: 'r-1', is_system: false }],
+          rowCount: 1,
+        },
+      ]);
+      (service as any).pool = mockPool;
+
+      await expect(service.removeMany('t-1', ['r-1', 'r-2'])).rejects.toThrow(
+        'One or more roles not found'
+      );
+      expect(mockPool.query).toHaveBeenCalledWith(
+        'SELECT id, is_system FROM roles WHERE tenant_id = $1 AND id = ANY($2)',
+        ['t-1', ['r-1', 'r-2']]
+      );
+    });
+
+    it('should delete multiple roles and related records in one transaction', async () => {
+      const mockClient = createMockClient([
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [{ id: 'r-1' }, { id: 'r-2' }], rowCount: 2 },
+        { rows: [], rowCount: 0 },
+      ]);
+      const mockPool = createMockPool([
+        {
+          rows: [
+            { id: 'r-1', is_system: false },
+            { id: 'r-2', is_system: false },
+          ],
+          rowCount: 2,
+        },
+      ]);
+      mockPool.connect = vi.fn(async () => mockClient);
+      (service as any).pool = mockPool;
+
+      const result = await service.removeMany('t-1', ['r-1', 'r-2', 'r-1']);
+
+      expect(result).toEqual({ deletedCount: 2 });
+      expect(mockClient.calls.some((call) => call.sql === 'DELETE FROM role_menus WHERE role_id = ANY($1)')).toBe(true);
+      expect(mockClient.calls.some((call) => call.sql === 'COMMIT')).toBe(true);
     });
   });
 });

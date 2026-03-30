@@ -216,11 +216,18 @@ export function RegisterPage(): JSX.Element {
             )}
           </FormField>
           <button
-            className="h-10 w-full rounded-md bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            className="flex h-10 w-full items-center justify-center rounded-md bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             disabled={loading}
             type="submit"
           >
-            {loading ? t({ id: 'common.loading' }) : t({ id: 'auth.register' })}
+            {loading ? (
+              <>
+                <svg className="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                {t({ id: 'common.loading' })}
+              </>
+            ) : (
+              t({ id: 'auth.register' })
+            )}
           </button>
         </form>
         <p className="mt-4 text-center text-sm text-muted-foreground">

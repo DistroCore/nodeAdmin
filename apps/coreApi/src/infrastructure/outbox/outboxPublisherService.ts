@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Kafka, Producer } from 'kafkajs';
-import { Pool } from 'pg';
+import { Pool, type PoolClient } from 'pg';
 import { runtimeConfig } from '../../app/runtimeConfig';
 
 interface OutboxRow {
@@ -16,6 +16,7 @@ interface OutboxRow {
 @Injectable()
 export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(OutboxPublisherService.name);
+  private static readonly maxErrorLength = 2000;
 
   private intervalHandle: NodeJS.Timeout | null = null;
   private isPublishing = false;
@@ -102,10 +103,10 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
     }
 
     this.isPublishing = true;
-
-    const client = await this.pool.connect();
+    let client: PoolClient | null = null;
 
     try {
+      client = await this.pool.connect();
       await client.query('BEGIN');
       const picked = await client.query<OutboxRow>(
         `
@@ -167,7 +168,7 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
           publishedCount += 1;
         } catch (publishError) {
           const nextRetry = row.retry_count + 1;
-          const serializedError = String(publishError);
+          const serializedError = this.truncateError(String(publishError));
 
           if (nextRetry >= runtimeConfig.outbox.maxRetry) {
             try {
@@ -197,7 +198,7 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
                       retry_count = $3
                   WHERE id = $1;
                 `,
-                [row.id, serializedError.slice(0, 2000), nextRetry]
+                [row.id, serializedError, nextRetry]
               );
               dlqCount += 1;
               continue;
@@ -209,7 +210,7 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
                       last_error = $3
                   WHERE id = $1;
                 `,
-                [row.id, nextRetry, String(dlqError).slice(0, 2000)]
+                [row.id, nextRetry, this.truncateError(String(dlqError))]
               );
               continue;
             }
@@ -222,7 +223,7 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
                   last_error = $3
               WHERE id = $1;
             `,
-            [row.id, nextRetry, serializedError.slice(0, 2000)]
+            [row.id, nextRetry, serializedError]
           );
         }
       }
@@ -233,11 +234,17 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
         this.logger.log(`Outbox batch complete published=${publishedCount} dlq=${dlqCount}`);
       }
     } catch (error) {
-      await client.query('ROLLBACK');
+      if (client) {
+        await client.query('ROLLBACK');
+      }
       this.logger.error(`Outbox publish batch failed: ${String(error)}`);
     } finally {
-      client.release();
+      client?.release();
       this.isPublishing = false;
     }
+  }
+
+  private truncateError(error: string): string {
+    return error.slice(0, OutboxPublisherService.maxErrorLength);
   }
 }

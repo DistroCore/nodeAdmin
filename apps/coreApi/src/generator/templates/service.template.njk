@@ -1,0 +1,157 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { and, count, desc, eq{% if listSearchColumn %}, ilike{% endif %} } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
+import { DatabaseService } from '../../infrastructure/database/databaseService';
+import * as schema from '../../infrastructure/database/schema';
+import { Create{{ entityName }}Dto } from './dto/create{{ entityName }}Dto';
+import { Update{{ entityName }}Dto } from './dto/update{{ entityName }}Dto';
+
+const { {{ tableExportName }} } = schema;
+
+type {{ entityName }}Row = typeof {{ tableExportName }}.$inferSelect;
+
+@Injectable()
+export class {{ serviceClassName }} {
+  constructor(private readonly databaseService: DatabaseService) {}
+
+  async list(
+{% if hasTenantId %}
+    tenantId: string,
+{% endif %}
+    page = 1,
+    pageSize = 20,
+    search?: string
+  ): Promise<{ items: {{ entityName }}Row[]; total: number; page: number; pageSize: number }> {
+    if (!this.databaseService.drizzle) {
+      return { items: [], total: 0, page, pageSize };
+    }
+
+    const offset = (page - 1) * pageSize;
+    const conditions = [
+{% if hasTenantId %}
+      eq({{ tableExportName }}.tenantId, tenantId),
+{% endif %}
+    ];
+
+{% if listSearchColumn %}
+    if (search) {
+      conditions.push(ilike({{ tableExportName }}.{{ listSearchColumn }}, `%${search}%`));
+    }
+{% endif %}
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [items, totals] = await Promise.all([
+      this.databaseService.drizzle
+        .select()
+        .from({{ tableExportName }})
+        .where(whereClause)
+        .orderBy(desc({{ tableExportName }}.{{ sortColumnName }}))
+        .limit(pageSize)
+        .offset(offset),
+      this.databaseService.drizzle
+        .select({ total: count() })
+        .from({{ tableExportName }})
+        .where(whereClause),
+    ]);
+
+    return {
+      items,
+      total: Number(totals[0]?.total ?? 0),
+      page,
+      pageSize,
+    };
+  }
+
+  async findById({% if hasTenantId %}tenantId: string, {% endif %}id: string): Promise<{{ entityName }}Row> {
+    if (!this.databaseService.drizzle) {
+      throw new NotFoundException('{{ entityName }} not found');
+    }
+
+    const [row] = await this.databaseService.drizzle
+      .select()
+      .from({{ tableExportName }})
+      .where(
+        and(
+{% if hasTenantId %}
+          eq({{ tableExportName }}.tenantId, tenantId),
+{% endif %}
+          eq({{ tableExportName }}.{{ primaryColumnName }}, id)
+        )
+      );
+
+    if (!row) {
+      throw new NotFoundException('{{ entityName }} not found');
+    }
+
+    return row;
+  }
+
+  async create(dto: Create{{ entityName }}Dto): Promise<{{ entityName }}Row> {
+    if (!this.databaseService.drizzle) {
+      throw new Error('Database not available');
+    }
+
+    const [row] = await this.databaseService.drizzle
+      .insert({{ tableExportName }})
+      .values({
+        ...dto,
+        id: randomUUID(),
+      })
+      .returning();
+
+    return row;
+  }
+
+  async update({% if hasTenantId %}tenantId: string, {% endif %}id: string, dto: Update{{ entityName }}Dto): Promise<{{ entityName }}Row> {
+    if (!this.databaseService.drizzle) {
+      throw new Error('Database not available');
+    }
+
+    const [row] = await this.databaseService.drizzle
+      .update({{ tableExportName }})
+      .set({
+        ...dto,
+{% if touchUpdatedAt %}
+        updatedAt: new Date(),
+{% endif %}
+      })
+      .where(
+        and(
+{% if hasTenantId %}
+          eq({{ tableExportName }}.tenantId, tenantId),
+{% endif %}
+          eq({{ tableExportName }}.{{ primaryColumnName }}, id)
+        )
+      )
+      .returning();
+
+    if (!row) {
+      throw new NotFoundException('{{ entityName }} not found');
+    }
+
+    return row;
+  }
+
+  async remove({% if hasTenantId %}tenantId: string, {% endif %}id: string): Promise<void> {
+    if (!this.databaseService.drizzle) {
+      throw new Error('Database not available');
+    }
+
+    const rows = await this.databaseService.drizzle
+      .delete({{ tableExportName }})
+      .where(
+        and(
+{% if hasTenantId %}
+          eq({{ tableExportName }}.tenantId, tenantId),
+{% endif %}
+          eq({{ tableExportName }}.{{ primaryColumnName }}, id)
+        )
+      )
+      .returning();
+
+    if (rows.length === 0) {
+      throw new NotFoundException('{{ entityName }} not found');
+    }
+  }
+}

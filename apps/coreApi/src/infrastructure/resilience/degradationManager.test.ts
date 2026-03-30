@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DegradationManager, DegradationFeature } from './degradationManager';
 
 describe('DegradationManager', () => {
@@ -6,6 +6,10 @@ describe('DegradationManager', () => {
 
   beforeEach(() => {
     manager = new DegradationManager();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe('degrade', () => {
@@ -86,6 +90,66 @@ describe('DegradationManager', () => {
       expect(manager.isDegraded(DegradationFeature.KAFKA_OUTBOX)).toBe(false);
       expect(manager.isDegraded(DegradationFeature.AUDIT_LOG)).toBe(false);
       expect(manager.isDegraded(DegradationFeature.TYPING_EVENTS)).toBe(false);
+    });
+  });
+
+  describe('restoreExpired', () => {
+    it('should restore only features that exceeded the recovery window', () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-03-31T00:00:00.000Z'));
+
+      manager.degrade(DegradationFeature.REDIS_ADAPTER, 'Redis failed');
+      vi.advanceTimersByTime(2000);
+      manager.degrade(DegradationFeature.KAFKA_OUTBOX, 'Kafka failed');
+
+      const restored = manager.restoreExpired(1500);
+
+      expect(restored).toEqual([DegradationFeature.REDIS_ADAPTER]);
+      expect(manager.isDegraded(DegradationFeature.REDIS_ADAPTER)).toBe(false);
+      expect(manager.isDegraded(DegradationFeature.KAFKA_OUTBOX)).toBe(true);
+    });
+
+    it('should return an empty list when no features qualify for automatic recovery', () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-03-31T00:00:00.000Z'));
+
+      manager.degrade(DegradationFeature.AUDIT_LOG, 'Audit disabled');
+      vi.advanceTimersByTime(500);
+
+      expect(manager.restoreExpired(1000)).toEqual([]);
+      expect(manager.isDegraded(DegradationFeature.AUDIT_LOG)).toBe(true);
+    });
+
+    it('should restore multiple expired features independently in one sweep', () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-03-31T00:00:00.000Z'));
+
+      manager.degrade(DegradationFeature.REDIS_ADAPTER, 'Redis failed');
+      manager.degrade(DegradationFeature.AUDIT_LOG, 'Audit disabled');
+      vi.advanceTimersByTime(2000);
+
+      const restored = manager.restoreExpired(1000);
+
+      expect(restored).toEqual([
+        DegradationFeature.REDIS_ADAPTER,
+        DegradationFeature.AUDIT_LOG,
+      ]);
+      expect(manager.isDegraded(DegradationFeature.REDIS_ADAPTER)).toBe(false);
+      expect(manager.isDegraded(DegradationFeature.AUDIT_LOG)).toBe(false);
+    });
+
+    it('should leave unrelated features untouched when restoring expired ones', () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-03-31T00:00:00.000Z'));
+
+      manager.degrade(DegradationFeature.REDIS_ADAPTER, 'Redis failed');
+      vi.advanceTimersByTime(1500);
+      manager.degrade(DegradationFeature.TYPING_EVENTS, 'High load');
+
+      manager.restoreExpired(1000);
+
+      expect(manager.getStatus(DegradationFeature.REDIS_ADAPTER)?.reason).toBeNull();
+      expect(manager.getStatus(DegradationFeature.TYPING_EVENTS)?.reason).toBe('High load');
     });
   });
 

@@ -42,7 +42,7 @@ export function Dialog({ children, onClose, open, title }: DialogProps): JSX.Ele
       ref={overlayRef}
     >
       <div
-        className="relative w-full max-w-lg rounded-lg border border-border bg-card p-6 shadow-lg animate-in zoom-in-95 fade-in duration-150"
+        className="relative h-full w-full border-border bg-card p-6 shadow-lg animate-in fade-in zoom-in-95 duration-150 md:h-auto md:max-w-lg md:rounded-lg md:border"
         role="dialog"
       >
         {title ? (

@@ -51,7 +51,7 @@ export class BackpressureController {
   private lastWarnTime = 0;
   private readonly warnIntervalMs = 5000;
 
-  constructor(private readonly config: BackpressureConfig) {
+  constructor(private config: BackpressureConfig) {
     this.logger = new Logger(`BackpressureController:${config.name}`);
     this.registerMetrics();
   }
@@ -111,6 +111,34 @@ export class BackpressureController {
     this.currentQueueSize = 0;
     this.lastWarnTime = 0;
     this.logger.log('Backpressure controller reset');
+  }
+
+  updateConfig(
+    updates: Partial<Omit<BackpressureConfig, 'name'>>
+  ): BackpressureConfig {
+    const nextConfig: BackpressureConfig = {
+      ...this.config,
+      ...updates,
+    };
+
+    if (nextConfig.maxConcurrent <= 0 || nextConfig.maxQueueSize <= 0) {
+      throw new Error('Backpressure limits must be positive.');
+    }
+
+    if (nextConfig.warnThreshold < 0 || nextConfig.rejectThreshold < 0) {
+      throw new Error('Backpressure thresholds cannot be negative.');
+    }
+
+    if (nextConfig.warnThreshold > nextConfig.rejectThreshold) {
+      throw new Error('warnThreshold cannot exceed rejectThreshold.');
+    }
+
+    if (nextConfig.rejectThreshold > nextConfig.maxQueueSize) {
+      throw new Error('rejectThreshold cannot exceed maxQueueSize.');
+    }
+
+    this.config = nextConfig;
+    return { ...this.config };
   }
 
   private recordRejection(reason: string): void {

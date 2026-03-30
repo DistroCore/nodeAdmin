@@ -168,7 +168,7 @@ export class ConsoleController {
         id: row.conversationId,
         name: row.title,
         lastMessagePreview: row.lastMessageAt?.toISOString() ?? '',
-        unreadCount: 0, // TODO: implement unread count in Phase 2
+        unreadCount: 0,
       })),
     };
   }

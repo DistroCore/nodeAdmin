@@ -112,4 +112,51 @@ describe('BackpressureController', () => {
       expect(status.zone).toBe(BackpressureZone.BLACK);
     });
   });
+
+  describe('edge cases', () => {
+    it('should report BLACK zone at the high-water mark without rejecting the request', () => {
+      controller.checkCapacity(0);
+      const status = controller.checkCapacity(5000);
+
+      expect(status.zone).toBe(BackpressureZone.BLACK);
+      expect(status.shouldReject).toBe(false);
+      expect(status.utilizationPercent).toBeCloseTo(83.33, 1);
+    });
+
+    it('should recover from RED back to GREEN when the queue drains below the low water mark', () => {
+      expect(controller.checkCapacity(4600).zone).toBe(BackpressureZone.RED);
+
+      const status = controller.checkCapacity(100);
+
+      expect(status.zone).toBe(BackpressureZone.GREEN);
+      expect(status.shouldReject).toBe(false);
+    });
+
+    it('should allow dynamic threshold adjustment at runtime', () => {
+      controller.updateConfig({
+        maxQueueSize: 6000,
+        rejectThreshold: 5500,
+        warnThreshold: 2000,
+      });
+
+      expect(controller.checkCapacity(1800).zone).toBe(BackpressureZone.GREEN);
+      expect(controller.checkCapacity(2200).zone).toBe(BackpressureZone.YELLOW);
+      expect(controller.checkCapacity(5600).zone).toBe(BackpressureZone.RED);
+    });
+
+    it('should reject invalid dynamic threshold updates', () => {
+      expect(() =>
+        controller.updateConfig({
+          rejectThreshold: 6001,
+        })
+      ).toThrow('rejectThreshold cannot exceed maxQueueSize.');
+
+      expect(() =>
+        controller.updateConfig({
+          rejectThreshold: 400,
+          warnThreshold: 500,
+        })
+      ).toThrow('warnThreshold cannot exceed rejectThreshold.');
+    });
+  });
 });

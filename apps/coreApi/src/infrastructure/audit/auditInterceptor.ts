@@ -4,8 +4,6 @@ import { tap } from 'rxjs/operators';
 import { AuditLogService } from './auditLogService';
 import type { AuthIdentity } from '../../modules/auth/authIdentity';
 
-const SENSITIVE_FIELDS = new Set(['password', 'passwordhash', 'token', 'secret', 'authorization']);
-
 const METHOD_ACTION_MAP: Record<string, string> = {
   DELETE: 'delete',
   PATCH: 'update',
@@ -123,10 +121,21 @@ export class AuditInterceptor implements NestInterceptor {
 
     const sanitized: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(body)) {
-      if (!SENSITIVE_FIELDS.has(key.toLowerCase())) {
+      if (!this.isSensitiveField(key)) {
         sanitized[key] = value;
       }
     }
     return sanitized;
+  }
+
+  private isSensitiveField(key: string): boolean {
+    const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    return (
+      normalizedKey.includes('password') ||
+      normalizedKey.includes('token') ||
+      normalizedKey.includes('secret') ||
+      normalizedKey === 'authorization'
+    );
   }
 }

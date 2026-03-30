@@ -1,0 +1,68 @@
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { {{ serviceClassName }} } from './{{ moduleName }}Service';
+import { Create{{ entityName }}Dto } from './dto/create{{ entityName }}Dto';
+import { Update{{ entityName }}Dto } from './dto/update{{ entityName }}Dto';
+
+@ApiTags('{{ moduleName }}')
+@ApiBearerAuth()
+@Controller('{{ moduleName }}')
+export class {{ entityName }}sController {
+  constructor(private readonly {{ entityNameLower }}sService: {{ serviceClassName }}) {}
+
+  @Get()
+  @ApiOperation({ summary: 'List {{ moduleName }} with pagination' })
+  async list(
+{% if hasTenantId %}
+    @Query('tenantId') tenantId = 'default',
+{% endif %}
+    @Query('page') pageRaw?: string,
+    @Query('pageSize') pageSizeRaw?: string,
+    @Query('search') search?: string
+  ) {
+    const page = Number.isInteger(Number(pageRaw)) && Number(pageRaw) > 0 ? Number(pageRaw) : 1;
+    const pageSize =
+      Number.isInteger(Number(pageSizeRaw)) && Number(pageSizeRaw) > 0
+        ? Math.min(Number(pageSizeRaw), 100)
+        : 20;
+
+    return this.{{ entityNameLower }}sService.list(
+{% if hasTenantId %}
+      tenantId,
+{% endif %}
+      page,
+      pageSize,
+      search
+    );
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get {{ entityNameLower }} by ID' })
+  async findOne(@Param('id') id: string{% if hasTenantId %}, @Query('tenantId') tenantId = 'default'{% endif %}) {
+    return this.{{ entityNameLower }}sService.findById({% if hasTenantId %}tenantId, {% endif %}id);
+  }
+
+  @Post()
+  @ApiOperation({ summary: 'Create a new {{ entityNameLower }}' })
+  async create(@Body() dto: Create{{ entityName }}Dto) {
+    return this.{{ entityNameLower }}sService.create(dto);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update a {{ entityNameLower }}' })
+  async update(
+    @Param('id') id: string,
+    @Body() dto: Update{{ entityName }}Dto{% if hasTenantId %},
+    @Query('tenantId') tenantId = 'default'
+{% endif %}
+  ) {
+    return this.{{ entityNameLower }}sService.update({% if hasTenantId %}tenantId, {% endif %}id, dto);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a {{ entityNameLower }}' })
+  async remove(@Param('id') id: string{% if hasTenantId %}, @Query('tenantId') tenantId = 'default'{% endif %}) {
+    await this.{{ entityNameLower }}sService.remove({% if hasTenantId %}tenantId, {% endif %}id);
+    return { success: true };
+  }
+}

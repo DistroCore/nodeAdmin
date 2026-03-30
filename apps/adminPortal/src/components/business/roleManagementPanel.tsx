@@ -46,27 +46,33 @@ export function RoleManagementPanel(): JSX.Element {
   const roles = Array.isArray(rolesQuery.data) ? rolesQuery.data : [];
 
   return (
-    <section className="h-full overflow-y-auto">
+    <section className="relative h-full overflow-y-auto pb-20 md:pb-0">
       <Card className="p-4">
-        <CardHeader className="mb-4 flex-row items-start justify-between space-y-0 p-0">
+        <CardHeader className="mb-4 flex flex-col items-start justify-between gap-4 p-0 md:flex-row md:items-center md:space-y-0">
           <div className="space-y-1.5">
             <CardTitle className="text-base">{t({ id: 'roles.title' })}</CardTitle>
             <CardDescription>{t({ id: 'roles.desc' })}</CardDescription>
           </div>
-          <Button size="sm" onClick={() => setCreateFormOpen(true)}>
+          <Button
+            className="hidden h-11 w-full md:flex md:h-9 md:w-auto"
+            onClick={() => setCreateFormOpen(true)}
+            size="sm"
+          >
             {t({ id: 'roles.create' })}
           </Button>
         </CardHeader>
 
         <DataTable<RoleItem>
           columns={[
+            { header: t({ id: 'roles.colName' }), cell: (role) => <span className="font-medium">{role.name}</span> },
             {
-              header: t({ id: 'roles.colName' }),
-              cell: (role) => <span className="font-medium">{role.name}</span>,
+              header: t({ id: 'roles.colDescription' }),
+              cell: (role) => role.description,
+              className: 'hidden md:table-cell',
             },
-            { header: t({ id: 'roles.colDescription' }), cell: (role) => role.description },
             {
               header: t({ id: 'roles.colSystem' }),
+              className: 'hidden sm:table-cell',
               cell: (role) =>
                 role.is_system ? (
                   <Badge variant="secondary">{t({ id: 'roles.yes' })}</Badge>
@@ -74,13 +80,18 @@ export function RoleManagementPanel(): JSX.Element {
                   <Badge variant="outline">{t({ id: 'roles.no' })}</Badge>
                 ),
             },
-            { header: t({ id: 'roles.colPermissions' }), cell: (role) => role.permissions.length },
+            {
+              header: t({ id: 'roles.colPermissions' }),
+              className: 'hidden sm:table-cell',
+              cell: (role) => role.permissions.length,
+            },
             {
               header: t({ id: 'roles.colActions' }),
+              className: 'text-right',
               cell: (role) => (
-                <div className="flex gap-2">
+                <div className="flex flex-col items-end gap-1 md:flex-row md:justify-end md:gap-3">
                   <button
-                    className="text-sm text-primary hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed"
+                    className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm text-primary hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed"
                     disabled={Boolean(role.is_system)}
                     onClick={() => setEditRole(role)}
                     title={role.is_system ? t({ id: 'roles.systemRole' }) : undefined}
@@ -89,7 +100,7 @@ export function RoleManagementPanel(): JSX.Element {
                     {t({ id: 'roles.edit' })}
                   </button>
                   <button
-                    className="text-sm text-destructive hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed"
+                    className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm text-destructive hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed"
                     disabled={Boolean(role.is_system)}
                     onClick={() => setDeleteRole(role)}
                     title={role.is_system ? t({ id: 'roles.systemRole' }) : undefined}
@@ -111,6 +122,12 @@ export function RoleManagementPanel(): JSX.Element {
           rowKey={(role) => role.id}
         />
       </Card>
+
+      <div className="fixed bottom-0 left-0 right-0 border-t bg-background p-4 md:hidden">
+        <Button className="h-11 w-full" onClick={() => setCreateFormOpen(true)}>
+          {t({ id: 'roles.create' })}
+        </Button>
+      </div>
 
       <RoleFormDialog
         key={editRole?.id ?? 'create'}

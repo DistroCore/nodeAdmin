@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useIntl } from 'react-intl';
 import type { BacklogSprint, BacklogTask, PaginatedResponse } from '@nodeadmin/shared-types';
@@ -11,6 +11,7 @@ import { ConfirmDialog } from '@/components/ui/dialog';
 import { useApiClient } from '@/hooks/useApiClient';
 import { TaskFormDialog } from './taskFormDialog';
 import { SprintFormDialog } from './sprintFormDialog';
+import { AssignTasksDialog } from './assignTasksDialog';
 
 type TabKey = 'tasks' | 'sprints';
 
@@ -39,9 +40,22 @@ export function BacklogPanel(): JSX.Element {
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<TabKey>('tasks');
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(0);
+
+  const handleTabChange = (tab: TabKey) => {
+    if (tab === activeTab) return;
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setActiveTab(tab);
+      setPage(0);
+      setSearch('');
+      setStatusFilter('');
+      setIsTransitioning(false);
+    }, 150);
+  };
 
   // Task dialog state
   const [taskFormOpen, setTaskFormOpen] = useState(false);
@@ -50,6 +64,7 @@ export function BacklogPanel(): JSX.Element {
   // Sprint dialog state
   const [sprintFormOpen, setSprintFormOpen] = useState(false);
   const [editSprint, setEditSprint] = useState<BacklogSprint | undefined>();
+  const [assignTasksSprint, setAssignTasksSprint] = useState<BacklogSprint | undefined>();
 
   // Delete confirm state
   const [deleteTask, setDeleteTask] = useState<BacklogTask | undefined>();
@@ -86,6 +101,28 @@ export function BacklogPanel(): JSX.Element {
       );
     },
   });
+
+  const allSprintsQuery = useQuery<PaginatedResponse<BacklogSprint>>({
+    queryKey: ['backlog', 'sprints', 'all'],
+    queryFn: () => apiClient.get<PaginatedResponse<BacklogSprint>>('/api/v1/backlog/sprints?pageSize=100'),
+  });
+
+  const usersQuery = useQuery<PaginatedResponse<any>>({
+    queryKey: ['users', 'all'],
+    queryFn: () => apiClient.get<PaginatedResponse<any>>('/api/v1/users?pageSize=100'),
+  });
+
+  const sprintsMap = useMemo(() => {
+    const map = new Map<string, string>();
+    (allSprintsQuery.data?.items ?? []).forEach((s) => map.set(s.id, s.name));
+    return map;
+  }, [allSprintsQuery.data]);
+
+  const usersMap = useMemo(() => {
+    const map = new Map<string, string>();
+    (usersQuery.data?.items ?? []).forEach((u) => map.set(u.id, u.name || u.email));
+    return map;
+  }, [usersQuery.data]);
 
   // ─── Delete Mutations ────────────────────────────────────────────
   const deleteTaskMutation = useMutation({
@@ -160,12 +197,7 @@ export function BacklogPanel(): JSX.Element {
                   ? 'bg-primary text-primary-foreground'
                   : 'hover:bg-muted text-muted-foreground'
               }`}
-              onClick={() => {
-                setActiveTab(tab);
-                setPage(0);
-                setSearch('');
-                setStatusFilter('');
-              }}
+              onClick={() => handleTabChange(tab)}
             >
               {t({ id: tab === 'tasks' ? 'backlog.tabTasks' : 'backlog.tabSprints' })}
             </button>
@@ -208,10 +240,11 @@ export function BacklogPanel(): JSX.Element {
           </select>
         </div>
 
-        {/* Tasks Tab */}
-        {activeTab === 'tasks' && (
-          <DataTable<BacklogTask>
-            columns={[
+        <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'}`}>
+          {/* Tasks Tab */}
+          {activeTab === 'tasks' && (
+            <DataTable<BacklogTask>
+              columns={[
               {
                 header: t({ id: 'backlog.colTitle' }),
                 cell: (row) => <span className="font-medium">{row.title}</span>,
@@ -229,6 +262,24 @@ export function BacklogPanel(): JSX.Element {
                   <Badge variant={PRIORITY_VARIANT[row.priority] ?? 'default'}>
                     {row.priority}
                   </Badge>
+                ),
+              },
+              {
+                header: t({ id: 'backlog.colAssignee' }),
+                className: 'hidden lg:table-cell',
+                cell: (row) => (
+                  <span className="text-sm text-muted-foreground">
+                    {row.assignee_id ? (usersMap.get(row.assignee_id) ?? row.assignee_id) : '—'}
+                  </span>
+                ),
+              },
+              {
+                header: t({ id: 'backlog.colSprint' }),
+                className: 'hidden lg:table-cell',
+                cell: (row) => (
+                  <span className="text-sm text-muted-foreground">
+                    {row.sprint_id ? (sprintsMap.get(row.sprint_id) ?? row.sprint_id) : '—'}
+                  </span>
                 ),
               },
               {
@@ -298,6 +349,13 @@ export function BacklogPanel(): JSX.Element {
                 header: t({ id: 'backlog.colActions' }),
                 cell: (row) => (
                   <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => setAssignTasksSprint(row)}
+                    >
+                      {t({ id: 'backlog.assignTasks' })}
+                    </Button>
                     <Button size="sm" variant="secondary" onClick={() => handleOpenEditSprint(row)}>
                       {t({ id: 'backlog.edit' })}
                     </Button>
@@ -333,9 +391,10 @@ export function BacklogPanel(): JSX.Element {
             }
           />
         )}
-      </Card>
+      </div>
+    </Card>
 
-      <TaskFormDialog
+    <TaskFormDialog
         key={editTask?.id ?? 'create'}
         onClose={() => setTaskFormOpen(false)}
         onSaved={handleTaskSaved}
@@ -349,6 +408,18 @@ export function BacklogPanel(): JSX.Element {
         open={sprintFormOpen}
         sprint={editSprint}
       />
+
+      {assignTasksSprint && (
+        <AssignTasksDialog
+          key={`assign-${assignTasksSprint.id}`}
+          onClose={() => setAssignTasksSprint(undefined)}
+          onSaved={() => {
+            queryClient.invalidateQueries({ queryKey: ['backlog', 'tasks'] });
+          }}
+          open={!!assignTasksSprint}
+          sprint={assignTasksSprint}
+        />
+      )}
 
       <ConfirmDialog
         message={t({ id: 'backlog.deleteTaskConfirm' })}

@@ -1,0 +1,20 @@
+{% if updateDtoSwaggerImports | length > 0 %}
+import { {{ updateDtoSwaggerImports | join(', ') }} } from '@nestjs/swagger';
+{% endif %}
+{% if updateDtoValidatorImports | length > 0 %}
+import { {{ updateDtoValidatorImports | join(', ') }} } from 'class-validator';
+{% endif %}
+{% if updateDtoClassTransformerImports | length > 0 %}
+import { {{ updateDtoClassTransformerImports | join(', ') }} } from 'class-transformer';
+{% endif %}
+
+export class Update{{ entityName }}Dto {
+{% for field in updateDtoFields %}
+  @ApiPropertyOptional({ description: '{{ field.propertyName }}' })
+  {% for decorator in field.decorators %}
+  {{ decorator }}
+  {% endfor %}
+  {{ field.propertyName }}?: {{ field.tsType }};
+
+{% endfor %}
+}

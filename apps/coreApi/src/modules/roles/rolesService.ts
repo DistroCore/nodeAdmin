@@ -154,9 +154,53 @@ export class RolesService {
       await client.query('BEGIN');
       await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [tenantId]);
       await client.query('DELETE FROM role_permissions WHERE role_id = $1', [roleId]);
+      await client.query('DELETE FROM role_menus WHERE role_id = $1', [roleId]);
       await client.query('DELETE FROM user_roles WHERE role_id = $1', [roleId]);
       await client.query('DELETE FROM roles WHERE tenant_id = $1 AND id = $2', [tenantId, roleId]);
       await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async removeMany(tenantId: string, roleIds: string[]) {
+    if (!this.pool) throw new Error('Database not available');
+
+    const normalizedRoleIds = [...new Set(roleIds.map((roleId) => roleId.trim()).filter(Boolean))];
+    if (normalizedRoleIds.length === 0) {
+      return { deletedCount: 0 };
+    }
+
+    const check = await this.pool.query(
+      'SELECT id, is_system FROM roles WHERE tenant_id = $1 AND id = ANY($2)',
+      [tenantId, normalizedRoleIds]
+    );
+
+    if (check.rows.length !== normalizedRoleIds.length) {
+      throw new NotFoundException('One or more roles not found');
+    }
+
+    if (check.rows.some((row) => row.is_system)) {
+      throw new BadRequestException('Cannot delete system roles');
+    }
+
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [tenantId]);
+      await client.query('DELETE FROM role_permissions WHERE role_id = ANY($1)', [normalizedRoleIds]);
+      await client.query('DELETE FROM role_menus WHERE role_id = ANY($1)', [normalizedRoleIds]);
+      await client.query('DELETE FROM user_roles WHERE role_id = ANY($1)', [normalizedRoleIds]);
+      const result = await client.query(
+        'DELETE FROM roles WHERE tenant_id = $1 AND id = ANY($2) RETURNING id',
+        [tenantId, normalizedRoleIds]
+      );
+      await client.query('COMMIT');
+
+      return { deletedCount: result.rows.length };
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;

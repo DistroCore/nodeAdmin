@@ -72,20 +72,25 @@ export function UserManagementPanel(): JSX.Element {
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
-    <section className="h-full overflow-y-auto">
+    <section className="relative h-full overflow-y-auto pb-20 md:pb-0">
       <Card className="p-4">
-        <CardHeader className="mb-4 flex-row items-start justify-between space-y-0 p-0">
+        <CardHeader className="mb-4 flex flex-col items-start justify-between gap-4 p-0 md:flex-row md:items-center md:space-y-0">
           <div className="space-y-1.5">
             <CardTitle className="text-base">{t({ id: 'users.title' })}</CardTitle>
             <CardDescription>{t({ id: 'users.desc' })}</CardDescription>
           </div>
-          <Button size="sm" onClick={() => setShowCreateDialog(true)}>
+          <Button
+            className="hidden h-11 w-full md:flex md:h-9 md:w-auto"
+            onClick={() => setShowCreateDialog(true)}
+            size="sm"
+          >
             {t({ id: 'users.create' })}
           </Button>
         </CardHeader>
 
         <div className="mb-4">
           <Input
+            className="h-11 w-full md:h-9 md:w-64"
             placeholder={t({ id: 'users.search' })}
             type="text"
             value={search}
@@ -98,20 +103,16 @@ export function UserManagementPanel(): JSX.Element {
 
         <DataTable<UserItem>
           columns={[
-            {
-              header: t({ id: 'users.colEmail' }),
-              cell: (user) => <span className="font-medium">{user.email}</span>,
-            },
-            { header: t({ id: 'users.colName' }), cell: (user) => user.name },
+            { header: t({ id: 'users.colEmail' }), cell: (user) => <span className="font-medium">{user.email}</span> },
+            { header: t({ id: 'users.colName' }), cell: (user) => user.name, className: 'hidden sm:table-cell' },
             {
               header: t({ id: 'users.colRoles' }),
+              className: 'hidden md:table-cell',
               cell: (user) =>
                 user.roles.length > 0 ? (
                   <div className="flex flex-wrap gap-1">
                     {user.roles.map((role: { id: string; name: string }) => (
-                      <Badge key={role.id} variant="secondary">
-                        {role.name}
-                      </Badge>
+                      <Badge key={role.id} variant="secondary">{role.name}</Badge>
                     ))}
                   </div>
                 ) : (
@@ -120,6 +121,7 @@ export function UserManagementPanel(): JSX.Element {
             },
             {
               header: t({ id: 'users.colStatus' }),
+              className: 'hidden sm:table-cell',
               cell: (user) => (
                 <Badge variant={user.is_active ? 'default' : 'secondary'}>
                   {user.is_active ? t({ id: 'users.active' }) : t({ id: 'users.inactive' })}
@@ -128,17 +130,18 @@ export function UserManagementPanel(): JSX.Element {
             },
             {
               header: t({ id: 'users.colActions' }),
+              className: 'text-right',
               cell: (user) => (
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col items-end gap-1 md:flex-row md:justify-end md:gap-3">
                   <button
-                    className="text-sm text-primary hover:underline"
+                    className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm text-primary hover:underline"
                     onClick={() => openEditDialog(user)}
                     type="button"
                   >
                     {t({ id: 'users.edit' })}
                   </button>
                   <button
-                    className="text-sm text-destructive hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed"
+                    className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm text-destructive hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed"
                     disabled={deleteMutation.isPending}
                     onClick={() => openDeleteConfirm(user.id)}
                     type="button"
@@ -171,6 +174,12 @@ export function UserManagementPanel(): JSX.Element {
           }
         />
       </Card>
+
+      <div className="fixed bottom-0 left-0 right-0 border-t bg-background p-4 md:hidden">
+        <Button className="h-11 w-full" onClick={() => setShowCreateDialog(true)}>
+          {t({ id: 'users.create' })}
+        </Button>
+      </div>
 
       <UserFormDialog
         key={editingUser?.id ?? 'create'}

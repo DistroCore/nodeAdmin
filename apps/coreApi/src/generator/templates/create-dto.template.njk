@@ -1,0 +1,24 @@
+{% if createDtoSwaggerImports | length > 0 %}
+import { {{ createDtoSwaggerImports | join(', ') }} } from '@nestjs/swagger';
+{% endif %}
+{% if createDtoValidatorImports | length > 0 %}
+import { {{ createDtoValidatorImports | join(', ') }} } from 'class-validator';
+{% endif %}
+{% if createDtoClassTransformerImports | length > 0 %}
+import { {{ createDtoClassTransformerImports | join(', ') }} } from 'class-transformer';
+{% endif %}
+
+export class Create{{ entityName }}Dto {
+{% for field in createDtoFields %}
+{% if field.required %}
+  @ApiProperty({ description: '{{ field.propertyName }}' })
+{% else %}
+  @ApiPropertyOptional({ description: '{{ field.propertyName }}' })
+{% endif %}
+  {% for decorator in field.decorators %}
+  {{ decorator }}
+  {% endfor %}
+  {{ field.propertyName }}{% if not field.required %}?{% else %}!{% endif %}: {{ field.tsType }};
+
+{% endfor %}
+}

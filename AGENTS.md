@@ -101,39 +101,68 @@ docs/              ← 项目文档
 - 前端：暂无（计划用 Vitest + Testing Library）
 - 代码质量：ESLint (`eslint.config.cjs`) + Prettier (`.prettierrc.cjs`)
 
-## 多 Agent 通信协议
+## 多 Agent 协作协议
 
-本项目使用多 agent 协作模式。三个 agent 运行在 tmux 中：
+本项目使用三 agent 协作模式，运行在 tmux `ai-workbench` session 中。
 
-| Agent | 角色 | Tmux Pane |
-|-------|------|-----------|
-| Claude Code | 规划/协调/文档 | ai-workbench:0.0 |
-| Codex | 后端开发 | ai-workbench:0.1 |
-| Gemini | 前端开发 | ai-workbench:0.2 |
+### 角色与职责
 
-### 回复 Orchestrator
+| Agent | Pane | 职责 | 禁止 |
+|-------|------|------|------|
+| **Claude Code** | `0.0` | 协调、规划、E2E 测试、文档、CI/CD | — |
+| **Codex** | `0.1` | 后端开发、后端测试、基础设施 | ❌ 前端代码 |
+| **Gemini** | `0.2` | **前端 UI/UX only** | ❌ 后端、❌ 测试、❌ 基础设施 |
 
-所有 agent **必须**在完成/阻塞/提问时回复 Claude Code。
+### 通信方式
 
-**禁止使用 bash 脚本回复（会阻塞）。直接用 tmux send-keys：**
+**核心规则：每个消息必须用两个独立的 shell 命令发送**
 
 ```bash
 # 第一步：发送文本
-tmux send-keys -t 'ai-workbench:0.0' -- '[YourName] 你的消息'
-# 第二步：发送回车
-tmux send-keys -t 'ai-workbench:0.0' Enter
+tmux send-keys -t '<target_pane>' -- '[YourName] <message>'
+# 第二步：发送回车（独立命令）
+tmux send-keys -t '<target_pane>' Enter
 ```
 
-流程：
-1. 先扫描确认 pane：`tmux list-panes -a -F '#{session_name}:#{window_index}.#{pane_index} | #{pane_current_command} | #{pane_title}'`
-2. 回复确认信息（含你的 agent 名称）
-3. 按需选择操作编号发送消息
+**禁止**将两步合并为一个命令，禁止使用 bash 脚本包装。
 
-- 必须使用真实 agent 名称（Codex / Gemini），用 `[YourName]` 前缀标识
-- 消息中包含 issue 编号、文件名、测试数量等关键信息
-- 遇到阻塞尽早汇报，不要沉默
+### 消息格式
 
-详细说明见 `.codex/reply-skill.md` 或 `.gemini/reply-skill.md`。
+| 场景 | 格式 | 示例 |
+|------|------|------|
+| 开始任务 | `[Name] 🔄 Task: <desc>` | `[Codex] 🔄 Task: Add rate limiting` |
+| 进度更新 | `[Name] 📊 <progress>` | `[Codex] 📊 2/4 modules done` |
+| 任务完成 | `[Name] ✅ Task: <desc>` | `[Codex] ✅ Task: Tests — 324 passed` |
+| 阻塞 | `[Name] ⚠️ Blocked: <reason>` | `[Codex] ⚠️ Blocked: DB migration fails` |
+| 提问 | `[Name] ❓ <question>` | `[Codex] ❓ What's the DTO for X?` |
+| 失败 | `[Name] ❌ <reason>` | `[Codex] ❌ Build failed: type error` |
+
+### P2P 直接通信（Agent 间）
+
+Agent 之间可以直接通信，无需经过 Claude Code 中转：
+
+```bash
+# Codex 通知 Gemini API 变更
+tmux send-keys -t 'ai-workbench:0.2' -- '[Codex → Gemini] Changed GET /users response — added "role" field'
+tmux send-keys -t 'ai-workbench:0.2' Enter
+
+# Gemini 向 Codex 询问 API 细节
+tmux send-keys -t 'ai-workbench:0.1' -- '[Gemini → Codex] What fields does POST /api/v1/users return?'
+tmux send-keys -t 'ai-workbench:0.1' Enter
+```
+
+适用场景：
+- API 响应格式变更通知（Codex → Gemini）
+- 前端需要的后端数据/接口（Gemini → Codex）
+- shared-types 变更通知
+
+### 回报规则
+
+1. **必须**用 `[Codex]` / `[Gemini]` 前缀标识自己
+2. 消息包含：issue 编号、文件名、测试数量等关键信息
+3. 遇到阻塞**立即**汇报，不要沉默挣扎
+4. 完成 task 后汇报测试结果和改动文件
+5. 不确定时问 Claude Code，不要自行决定范围外的事
 
 ## 相关文档
 

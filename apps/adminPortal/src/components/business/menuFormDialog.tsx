@@ -8,7 +8,6 @@ import { FormField } from '@/components/ui/formField';
 import { Select } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useApiClient } from '@/hooks/useApiClient';
-import { useAuthStore } from '@/stores/useAuthStore';
 import { MenuItem } from '@nodeadmin/shared-types';
 
 interface MenuFormDialogProps {
@@ -71,7 +70,6 @@ export function MenuFormDialog({
 }: MenuFormDialogProps): JSX.Element {
   const { formatMessage: t } = useIntl();
   const apiClient = useApiClient();
-  const tenantId = useAuthStore((s) => s.tenantId);
   const isEdit = menu !== undefined;
   const isChildMode = parentId !== undefined;
 
@@ -88,9 +86,9 @@ export function MenuFormDialog({
   const [isVisible, setIsVisible] = useState(initialValues.isVisible);
 
   const saveMutation = useMutation({
-    mutationFn: async (data: MenuData & { tenantId: string }) => {
+    mutationFn: async (data: MenuData) => {
       if (isEdit && menu) {
-        await apiClient.patch<MenuItem>(`/api/v1/menus/${menu.id}?tenantId=${data.tenantId}`, data);
+        await apiClient.put<MenuItem>(`/api/v1/menus/${menu.id}`, data);
       } else {
         await apiClient.post<MenuItem>('/api/v1/menus', data);
       }
@@ -114,7 +112,7 @@ export function MenuFormDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const data: MenuData & { tenantId: string } = {
+    const data: MenuData = {
       name,
       path,
       icon,
@@ -122,7 +120,6 @@ export function MenuFormDialog({
       sort_order: sortOrder,
       permission_code: permissionCode,
       is_visible: isVisible ? 1 : 0,
-      tenantId: tenantId ?? 'default',
     };
 
     saveMutation.mutate(data);
@@ -229,7 +226,14 @@ export function MenuFormDialog({
             {t({ id: 'common.cancel' })}
           </Button>
           <Button disabled={isPending} type="submit">
-            {isPending ? '...' : t({ id: 'common.save' })}
+            {isPending ? (
+              <>
+                <svg className="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                {t({ id: 'common.saving' })}
+              </>
+            ) : (
+              t({ id: 'common.save' })
+            )}
           </Button>
         </div>
       </form>

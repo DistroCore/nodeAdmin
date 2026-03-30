@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
-import { setupTestEnv, createMockPool } from '../../__tests__/helpers';
+import { setupTestEnv, createMockPool, createMockClient } from '../../__tests__/helpers';
 
 setupTestEnv();
 
@@ -95,6 +95,27 @@ describe('TenantsService', () => {
       const result = await service.create({ name: 'New Tenant', slug: 'new-tenant' });
       expect(result.name).toBe('New Tenant');
     });
+
+    it('should store an inactive tenant with is_active = 0', async () => {
+      const mockPool = createMockPool([
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 1 },
+        {
+          rows: [{ id: 't-2', name: 'Dormant Tenant', slug: 'dormant', is_active: 0 }],
+          rowCount: 1,
+        },
+      ]);
+      (service as any).pool = mockPool;
+
+      const result = await service.create({ name: 'Dormant Tenant', slug: 'dormant', isActive: false });
+
+      expect(result.is_active).toBe(0);
+      expect(mockPool.query).toHaveBeenNthCalledWith(
+        2,
+        'INSERT INTO tenants (id, name, slug, logo, is_active, config_json) VALUES ($1, $2, $3, $4, $5, $6)',
+        [expect.any(String), 'Dormant Tenant', 'dormant', null, 0, '{}']
+      );
+    });
   });
 
   // ─── update ─────────────────────────────────────────────────
@@ -135,6 +156,35 @@ describe('TenantsService', () => {
       const result = await service.update('t-1', { name: 'Updated' });
       expect(result.name).toBe('Updated');
     });
+
+    it('should deactivate a tenant by storing is_active = 0', async () => {
+      const mockPool = createMockPool([
+        { rows: [{ id: 't-1' }], rowCount: 1 },
+        { rows: [{ id: 't-1', name: 'Tenant 1', slug: 't1', is_active: 0 }], rowCount: 1 },
+      ]);
+      (service as any).pool = mockPool;
+
+      const result = await service.update('t-1', { isActive: false });
+
+      expect(result.is_active).toBe(0);
+      expect(mockPool.query).toHaveBeenNthCalledWith(
+        1,
+        'UPDATE tenants SET is_active = $1, updated_at = now() WHERE id = $2 RETURNING id',
+        [0, 't-1']
+      );
+    });
+
+    it('should reactivate a tenant by storing is_active = 1', async () => {
+      const mockPool = createMockPool([
+        { rows: [{ id: 't-1' }], rowCount: 1 },
+        { rows: [{ id: 't-1', name: 'Tenant 1', slug: 't1', is_active: 1 }], rowCount: 1 },
+      ]);
+      (service as any).pool = mockPool;
+
+      const result = await service.update('t-1', { isActive: true });
+
+      expect(result.is_active).toBe(1);
+    });
   });
 
   // ─── remove ─────────────────────────────────────────────────
@@ -152,18 +202,73 @@ describe('TenantsService', () => {
     });
 
     it('should throw NotFoundException when tenant not found', async () => {
-      const mockPool = createMockPool([{ rows: [], rowCount: 0 }]);
+      const mockClient = createMockClient([
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+      ]);
+      const mockPool = createMockPool([]);
+      mockPool.connect = vi.fn(async () => mockClient);
       (service as any).pool = mockPool;
 
       await expect(service.remove('nonexistent')).rejects.toThrow('Tenant not found');
+      expect(mockClient.calls.some((call) => call.sql === 'ROLLBACK')).toBe(true);
     });
 
     it('should delete tenant', async () => {
-      const mockPool = createMockPool([{ rows: [{ id: 't-1' }], rowCount: 1 }]);
+      const mockClient = createMockClient([
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [{ id: 't-1' }], rowCount: 1 },
+        { rows: [], rowCount: 0 },
+      ]);
+      const mockPool = createMockPool([]);
+      mockPool.connect = vi.fn(async () => mockClient);
       (service as any).pool = mockPool;
 
       await service.remove('t-1');
-      expect(mockPool.query).toHaveBeenCalled();
+      expect(mockClient.calls.some((call) => call.sql === 'DELETE FROM users WHERE tenant_id = $1')).toBe(true);
+      expect(mockClient.calls.some((call) => call.sql === 'DELETE FROM roles WHERE tenant_id = $1')).toBe(true);
+      expect(mockClient.calls.some((call) => call.sql === 'DELETE FROM tenants WHERE id = $1 RETURNING id')).toBe(true);
+      expect(mockClient.calls.some((call) => call.sql === 'COMMIT')).toBe(true);
+    });
+
+    it('should rollback the cascade when one dependent delete fails', async () => {
+      const mockClient = createMockClient([]);
+      mockClient.query.mockImplementation(async (sql: string, params?: unknown[]) => {
+        mockClient.calls.push({ sql, params: params ?? [] });
+        if (sql === 'DELETE FROM roles WHERE tenant_id = $1') {
+          throw new Error('role delete failed');
+        }
+        return { rows: [], rowCount: 0 };
+      });
+      const mockPool = createMockPool([]);
+      mockPool.connect = vi.fn(async () => mockClient);
+      (service as any).pool = mockPool;
+
+      await expect(service.remove('t-1')).rejects.toThrow('role delete failed');
+      expect(mockClient.calls.some((call) => call.sql === 'ROLLBACK')).toBe(true);
     });
   });
 });

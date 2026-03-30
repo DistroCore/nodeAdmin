@@ -196,4 +196,54 @@ describe('AuditInterceptor', () => {
     expect(call.targetId).toBe('user-123');
     expect(call.targetType).toBe('user');
   });
+
+  it('filters normalized sensitive field variants such as currentPassword and access_token', async () => {
+    const ctx = createHttpContext('POST', '/api/v1/users', mockIdentity, {
+      access_token: 'jwt-token',
+      apiSecret: 'secret-value',
+      currentPassword: 'current-pass',
+      displayName: 'Alice',
+      refreshToken: 'refresh-token',
+    });
+    const next = createCallHandler();
+
+    await interceptor.intercept(ctx, next).toPromise();
+
+    expect(recordMock.mock.calls[0][0].context).toEqual({ displayName: 'Alice' });
+  });
+
+  it('omits context entirely when the body only contains sensitive fields', async () => {
+    const ctx = createHttpContext('PATCH', '/api/v1/users/user-1', mockIdentity, {
+      password: 'secret',
+      secretToken: 'hidden',
+    });
+    const next = createCallHandler();
+
+    await interceptor.intercept(ctx, next).toPromise();
+
+    expect(recordMock.mock.calls[0][0].context).toBeUndefined();
+  });
+
+  it('skips mutating requests when AuthIdentity is missing from the request', async () => {
+    const ctx = createHttpContext('DELETE', '/api/v1/users/user-1', undefined, {
+      reason: 'cleanup',
+    });
+    const next = createCallHandler();
+
+    await interceptor.intercept(ctx, next).toPromise();
+
+    expect(recordMock).not.toHaveBeenCalled();
+  });
+
+  it('skips GET requests even when a body and AuthIdentity are present', async () => {
+    const ctx = createHttpContext('GET', '/api/v1/users/user-1', mockIdentity, {
+      password: 'should-not-matter',
+    });
+    const next = createCallHandler({ ok: true });
+
+    const result = await interceptor.intercept(ctx, next).toPromise();
+
+    expect(result).toEqual({ ok: true });
+    expect(recordMock).not.toHaveBeenCalled();
+  });
 });

@@ -174,7 +174,8 @@ export class MenusService {
        FROM menus m
        INNER JOIN role_menus rm ON rm.menu_id = m.id
        INNER JOIN user_roles ur ON ur.role_id = rm.role_id
-       WHERE ur.user_id = $2 AND m.is_visible = true
+       INNER JOIN roles r ON r.id = ur.role_id
+       WHERE r.tenant_id = $1 AND ur.user_id = $2 AND m.is_visible = true
        ORDER BY m.sort_order, m.created_at`,
       [tenantId, userId]
     );

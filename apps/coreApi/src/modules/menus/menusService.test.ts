@@ -55,6 +55,30 @@ describe('MenusService', () => {
       expect(result[0].children).toHaveLength(1);
       expect(result[0].children![0].id).toBe('m-2');
     });
+
+    it('should treat orphaned nodes as roots instead of dropping them', async () => {
+      const rows = [
+        {
+          id: 'm-1',
+          parent_id: 'missing-parent',
+          name: 'Detached',
+          path: '/detached',
+          icon: null,
+          sort_order: 5,
+          permission_code: null,
+          is_visible: true,
+          created_at: new Date(),
+        },
+      ];
+      const mockPool = createMockPool([{ rows, rowCount: 1 }]);
+      (service as any).pool = mockPool;
+
+      const result = await service.findAll();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('m-1');
+      expect(result[0].children).toEqual([]);
+    });
   });
 
   // ─── findById ───────────────────────────────────────────────
@@ -114,6 +138,37 @@ describe('MenusService', () => {
       const result = await service.create({ name: 'Menu1' });
       expect(result.name).toBe('Menu1');
     });
+
+    it('should default visibility to true and sortOrder to zero', async () => {
+      const mockPool = createMockPool([
+        { rows: [], rowCount: 1 },
+        {
+          rows: [
+            {
+              id: 'm-1',
+              name: 'Defaults',
+              parent_id: null,
+              path: null,
+              icon: null,
+              sort_order: 0,
+              permission_code: null,
+              is_visible: true,
+              created_at: new Date(),
+            },
+          ],
+          rowCount: 1,
+        },
+      ]);
+      (service as any).pool = mockPool;
+
+      await service.create({ name: 'Defaults' });
+
+      expect(mockPool.query).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining('INSERT INTO menus'),
+        [expect.any(String), null, 'Defaults', null, null, 0, null, true]
+      );
+    });
   });
 
   // ─── update ─────────────────────────────────────────────────
@@ -172,6 +227,68 @@ describe('MenusService', () => {
 
       const result = await service.update('m-1', { name: 'Updated' });
       expect(result.name).toBe('Updated');
+    });
+
+    it('should move a menu under a new parent and update sort order together', async () => {
+      const mockPool = createMockPool([
+        { rows: [], rowCount: 1 },
+        {
+          rows: [
+            {
+              id: 'm-1',
+              name: 'Moved',
+              parent_id: 'm-9',
+              path: '/moved',
+              icon: null,
+              sort_order: 3,
+              permission_code: null,
+              is_visible: true,
+              created_at: new Date(),
+            },
+          ],
+          rowCount: 1,
+        },
+      ]);
+      (service as any).pool = mockPool;
+
+      await service.update('m-1', { parentId: 'm-9', sortOrder: 3 });
+
+      expect(mockPool.query).toHaveBeenNthCalledWith(
+        1,
+        'UPDATE menus SET parent_id = $2, sort_order = $3 WHERE id = $4',
+        ['m-9', 3, 'm-1']
+      );
+    });
+
+    it('should preserve false visibility when toggling menu state', async () => {
+      const mockPool = createMockPool([
+        { rows: [], rowCount: 1 },
+        {
+          rows: [
+            {
+              id: 'm-1',
+              name: 'Hidden',
+              parent_id: null,
+              path: null,
+              icon: null,
+              sort_order: 0,
+              permission_code: null,
+              is_visible: false,
+              created_at: new Date(),
+            },
+          ],
+          rowCount: 1,
+        },
+      ]);
+      (service as any).pool = mockPool;
+
+      await service.update('m-1', { isVisible: false });
+
+      expect(mockPool.query).toHaveBeenNthCalledWith(
+        1,
+        'UPDATE menus SET is_visible = $2 WHERE id = $3',
+        [false, 'm-1']
+      );
     });
   });
 
@@ -313,6 +430,18 @@ describe('MenusService', () => {
       const result = await service.getUserMenus('t-1', 'u-1');
       expect(result).toHaveLength(1);
       expect(result[0].children).toHaveLength(1);
+    });
+
+    it('should scope user menu queries by tenant to avoid cross-tenant leakage', async () => {
+      const mockPool = createMockPool([{ rows: [], rowCount: 0 }]);
+      (service as any).pool = mockPool;
+
+      await service.getUserMenus('tenant-b', 'u-1');
+
+      expect(mockPool.query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE r.tenant_id = $1 AND ur.user_id = $2 AND m.is_visible = true'),
+        ['tenant-b', 'u-1']
+      );
     });
   });
 });

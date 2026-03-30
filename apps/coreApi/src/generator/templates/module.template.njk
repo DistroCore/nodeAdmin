@@ -1,0 +1,12 @@
+import { Module } from '@nestjs/common';
+import { InfrastructureModule } from '../../infrastructure/infrastructureModule';
+import { {{ serviceClassName }} } from './{{ moduleName }}Service';
+import { {{ entityName }}sController } from './{{ moduleName }}Controller';
+
+@Module({
+  imports: [InfrastructureModule],
+  controllers: [{{ entityName }}sController],
+  providers: [{{ serviceClassName }}],
+  exports: [{{ serviceClassName }}],
+})
+export class {{ entityName }}sModule {}

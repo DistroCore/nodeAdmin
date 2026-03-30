@@ -150,6 +150,153 @@ describe('OutboxPublisherService', () => {
     expect(producer.disconnect).toHaveBeenCalledWith();
     expect(pool.end).toHaveBeenCalledWith();
   });
+
+  it('increments retry_count when Kafka is unavailable but max retry is not reached', async () => {
+    const originalMaxRetry = runtimeConfig.outbox.maxRetry;
+    runtimeConfig.outbox.maxRetry = 5;
+
+    const client = createMockClient([
+      { rowCount: 0, rows: [] },
+      { rowCount: 1, rows: [createOutboxRow({ retry_count: 1 })] },
+      { rowCount: 1, rows: [] },
+      { rowCount: 0, rows: [] },
+    ]);
+    const pool = createMockPool();
+    pool.connect = vi.fn(async () => client);
+    const producer = {
+      disconnect: vi.fn(),
+      send: vi.fn().mockRejectedValue(new Error('kafka unavailable')),
+    };
+
+    assignInternals(service, { pool, producer });
+
+    try {
+      await invokePublishBatch(service);
+    } finally {
+      runtimeConfig.outbox.maxRetry = originalMaxRetry;
+    }
+
+    expect(producer.send).toHaveBeenCalledTimes(1);
+    expect(
+      client.calls.some(
+        (call) =>
+          call.sql.includes('SET retry_count = $2') &&
+          call.params[1] === 2 &&
+          call.params[2] === 'Error: kafka unavailable'
+      )
+    ).toBe(true);
+  });
+
+  it('truncates oversized error messages when storing retry metadata', async () => {
+    const originalMaxRetry = runtimeConfig.outbox.maxRetry;
+    runtimeConfig.outbox.maxRetry = 5;
+
+    const hugeError = new Error('x'.repeat(4000));
+    const client = createMockClient([
+      { rowCount: 0, rows: [] },
+      { rowCount: 1, rows: [createOutboxRow({ id: 'outbox-3' })] },
+      { rowCount: 1, rows: [] },
+      { rowCount: 0, rows: [] },
+    ]);
+    const pool = createMockPool();
+    pool.connect = vi.fn(async () => client);
+    const producer = {
+      disconnect: vi.fn(),
+      send: vi.fn().mockRejectedValue(hugeError),
+    };
+
+    assignInternals(service, { pool, producer });
+
+    try {
+      await invokePublishBatch(service);
+    } finally {
+      runtimeConfig.outbox.maxRetry = originalMaxRetry;
+    }
+
+    const retryUpdate = client.calls.find((call) => call.sql.includes('SET retry_count = $2'));
+    expect(retryUpdate).toBeDefined();
+    expect(typeof retryUpdate?.params[2]).toBe('string');
+    expect((retryUpdate?.params[2] as string).length).toBe(2000);
+  });
+
+  it('records the DLQ publish error when both primary topic and DLQ publish fail', async () => {
+    const originalMaxRetry = runtimeConfig.outbox.maxRetry;
+    runtimeConfig.outbox.maxRetry = 1;
+
+    const client = createMockClient([
+      { rowCount: 0, rows: [] },
+      { rowCount: 1, rows: [createOutboxRow({ id: 'outbox-4' })] },
+      { rowCount: 1, rows: [] },
+      { rowCount: 0, rows: [] },
+    ]);
+    const pool = createMockPool();
+    pool.connect = vi.fn(async () => client);
+    const producer = {
+      disconnect: vi.fn(),
+      send: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('primary down'))
+        .mockRejectedValueOnce(new Error('dlq down')),
+    };
+
+    assignInternals(service, { pool, producer });
+
+    try {
+      await invokePublishBatch(service);
+    } finally {
+      runtimeConfig.outbox.maxRetry = originalMaxRetry;
+    }
+
+    expect(producer.send).toHaveBeenCalledTimes(2);
+    expect(
+      client.calls.some(
+        (call) =>
+          call.sql.includes('SET retry_count = $2') &&
+          call.params[1] === 1 &&
+          call.params[2] === 'Error: dlq down'
+      )
+    ).toBe(true);
+  });
+
+  it('skips concurrent publish attempts while a batch is already in progress', async () => {
+    const connectDeferred = createDeferred<ReturnType<typeof createMockClient>>();
+    const client = createMockClient([
+      { rowCount: 0, rows: [] },
+      { rowCount: 0, rows: [] },
+      { rowCount: 0, rows: [] },
+    ]);
+    const pool = createMockPool();
+    pool.connect = vi.fn(async () => connectDeferred.promise);
+    const producer = {
+      disconnect: vi.fn(),
+      send: vi.fn(),
+    };
+
+    assignInternals(service, { pool, producer });
+
+    const firstPublish = invokePublishBatch(service);
+    const secondPublish = invokePublishBatch(service);
+    connectDeferred.resolve(client);
+
+    await Promise.all([firstPublish, secondPublish]);
+
+    expect(pool.connect).toHaveBeenCalledTimes(1);
+  });
+
+  it('resets the publishing flag when pool.connect fails before a client is acquired', async () => {
+    const pool = createMockPool();
+    pool.connect = vi.fn().mockRejectedValue(new Error('connect failed'));
+    const producer = {
+      disconnect: vi.fn(),
+      send: vi.fn(),
+    };
+
+    assignInternals(service, { pool, producer });
+
+    await invokePublishBatch(service);
+
+    expect(readIsPublishing(service)).toBe(false);
+  });
 });
 
 function assignInternals(
@@ -183,4 +330,23 @@ async function invokePublishBatch(service: OutboxPublisherService): Promise<void
       publishBatch: () => Promise<void>;
     }
   ).publishBatch();
+}
+
+function readIsPublishing(service: OutboxPublisherService): boolean {
+  return (
+    service as unknown as {
+      isPublishing: boolean;
+    }
+  ).isPublishing;
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, reject, resolve };
 }

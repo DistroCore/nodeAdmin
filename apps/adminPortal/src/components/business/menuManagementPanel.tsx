@@ -5,7 +5,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/ca
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/dialog';
-import { DataTable, type DataColumn } from '@/components/ui/dataTable';
+import { DataTable } from '@/components/ui/dataTable';
 import { useToast } from '@/components/ui/toast';
 import { useApiClient } from '@/hooks/useApiClient';
 import { MenuItem } from '@nodeadmin/shared-types';
@@ -93,84 +93,84 @@ export function MenuManagementPanel(): JSX.Element {
   const menus = menusQuery.data ?? [];
   const treeNodes = buildTree(menus);
 
-  const columns: DataColumn<TreeNode>[] = [
-    {
-      header: t({ id: 'menus.colName' }),
-      cell: (node) => (
-        <div className="flex items-center gap-2" style={{ paddingLeft: `${node.level * 20}px` }}>
-          <NavIcon name={node.menu.icon} />
-          <span className="font-medium">{node.menu.name}</span>
-        </div>
-      ),
-    },
-    {
-      header: t({ id: 'menus.colPath' }),
-      cell: (node) => (
-        <span className="font-mono text-xs text-muted-foreground">{node.menu.path}</span>
-      ),
-      className: 'hidden sm:table-cell',
-    },
-    {
-      header: t({ id: 'menus.colSort' }),
-      cell: (node) => <span className="text-muted-foreground">{node.menu.sort_order}</span>,
-      className: 'w-16 text-center',
-    },
-    {
-      header: t({ id: 'menus.colVisible' }),
-      cell: (node) => (
-        <Badge variant={node.menu.is_visible ? 'default' : 'secondary'}>
-          {node.menu.is_visible ? t({ id: 'menus.visible' }) : t({ id: 'menus.hidden' })}
-        </Badge>
-      ),
-      className: 'w-20 text-center',
-    },
-    {
-      header: t({ id: 'menus.colActions' }),
-      cell: (node) => (
-        <div className="flex items-center gap-3">
-          <button
-            className="text-sm text-primary hover:underline"
-            onClick={() => openEditDialog(node.menu)}
-            type="button"
-          >
-            {t({ id: 'menus.edit' })}
-          </button>
-          <button
-            className="text-sm text-primary hover:underline"
-            onClick={() => openCreateChildDialog(node.menu.id)}
-            type="button"
-          >
-            {t({ id: 'menus.createChild' })}
-          </button>
-          <button
-            className="text-sm text-destructive hover:underline"
-            disabled={deleteMutation.isPending}
-            onClick={() => openDeleteConfirm(node.menu)}
-            type="button"
-          >
-            {t({ id: 'menus.delete' })}
-          </button>
-        </div>
-      ),
-      className: 'text-right',
-    },
-  ];
-
   return (
-    <section className="h-full overflow-y-auto">
+    <section className="relative h-full overflow-y-auto pb-20 md:pb-0">
       <Card className="p-4">
-        <CardHeader className="mb-4 flex-row items-start justify-between space-y-0 p-0">
+        <CardHeader className="mb-4 flex flex-col items-start justify-between gap-4 p-0 md:flex-row md:items-center md:space-y-0">
           <div className="space-y-1.5">
             <CardTitle className="text-base">{t({ id: 'menus.title' })}</CardTitle>
             <CardDescription>{t({ id: 'menus.desc' })}</CardDescription>
           </div>
-          <Button size="sm" onClick={() => setShowCreateDialog(true)}>
+          <Button
+            className="hidden h-11 w-full md:flex md:h-9 md:w-auto"
+            onClick={() => setShowCreateDialog(true)}
+            size="sm"
+          >
             {t({ id: 'menus.create' })}
           </Button>
         </CardHeader>
 
         <DataTable<TreeNode>
-          columns={columns}
+          columns={[
+            {
+              header: t({ id: 'menus.colName' }),
+              cell: (node) => (
+                <div className="flex items-center gap-2" style={{ paddingLeft: `${node.level * 20}px` }}>
+                  <NavIcon name={node.menu.icon} />
+                  <span className="font-medium">{node.menu.name}</span>
+                </div>
+              ),
+            },
+            {
+              header: t({ id: 'menus.colPath' }),
+              cell: (node) => <span className="font-mono text-xs text-muted-foreground">{node.menu.path}</span>,
+              className: 'hidden md:table-cell',
+            },
+            {
+              header: t({ id: 'menus.colSort' }),
+              cell: (node) => <span className="text-muted-foreground">{node.menu.sort_order}</span>,
+              className: 'hidden sm:table-cell w-16 text-center',
+            },
+            {
+              header: t({ id: 'menus.colVisible' }),
+              cell: (node) => (
+                <Badge variant={node.menu.is_visible ? 'default' : 'secondary'}>
+                  {node.menu.is_visible ? t({ id: 'menus.visible' }) : t({ id: 'menus.hidden' })}
+                </Badge>
+              ),
+              className: 'hidden sm:table-cell w-20 text-center',
+            },
+            {
+              header: t({ id: 'menus.colActions' }),
+              className: 'text-right',
+              cell: (node) => (
+                <div className="flex flex-col items-end gap-1 md:flex-row md:justify-end md:gap-3">
+                  <button
+                    className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm text-primary hover:underline"
+                    onClick={() => openEditDialog(node.menu)}
+                    type="button"
+                  >
+                    {t({ id: 'menus.edit' })}
+                  </button>
+                  <button
+                    className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm text-primary hover:underline"
+                    onClick={() => openCreateChildDialog(node.menu.id)}
+                    type="button"
+                  >
+                    {t({ id: 'menus.createChild' })}
+                  </button>
+                  <button
+                    className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm text-destructive hover:underline"
+                    disabled={deleteMutation.isPending}
+                    onClick={() => openDeleteConfirm(node.menu)}
+                    type="button"
+                  >
+                    {t({ id: 'menus.delete' })}
+                  </button>
+                </div>
+              ),
+            },
+          ]}
           data={treeNodes}
           emptyMessage={t({ id: 'menus.empty' })}
           errorMessage={t({ id: 'menus.loadFailed' })}
@@ -181,6 +181,12 @@ export function MenuManagementPanel(): JSX.Element {
           rowKey={(node) => node.id}
         />
       </Card>
+
+      <div className="fixed bottom-0 left-0 right-0 border-t bg-background p-4 md:hidden">
+        <Button className="h-11 w-full" onClick={() => setShowCreateDialog(true)}>
+          {t({ id: 'menus.create' })}
+        </Button>
+      </div>
 
       <MenuFormDialog
         key={editingMenu?.id ?? 'create'}

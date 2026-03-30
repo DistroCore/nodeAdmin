@@ -113,6 +113,26 @@ export class DegradationManager {
     this.logger.log('All features restored');
   }
 
+  restoreExpired(maxDegradedMs: number): DegradationFeature[] {
+    const restored: DegradationFeature[] = [];
+    const now = Date.now();
+
+    for (const [feature, status] of this.degradationState.entries()) {
+      if (!status.degraded || status.degradedAt === null) {
+        continue;
+      }
+
+      if (now - status.degradedAt < maxDegradedMs) {
+        continue;
+      }
+
+      this.restore(feature);
+      restored.push(feature);
+    }
+
+    return restored;
+  }
+
   private registerMetrics(): void {
     DegradationManager.degradationGauge.addCallback((observableResult) => {
       for (const [feature, status] of this.degradationState.entries()) {
