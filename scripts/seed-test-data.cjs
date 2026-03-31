@@ -5,6 +5,7 @@
  */
 
 const { Client } = require('pg');
+const { hash } = require('bcryptjs');
 
 const DATABASE_URL =
   process.env.DATABASE_URL || 'postgres://nodeadmin:nodeadmin@localhost:55432/nodeadmin';
@@ -20,6 +21,24 @@ async function seedData() {
     // Set tenant context for RLS
     await client.query(`SELECT set_config('app.current_tenant', $1, false)`, [TENANT_ID]);
     console.log(`Set tenant context: ${TENANT_ID}`);
+
+    const adminPasswordHash = await hash('Admin123456', 10);
+
+    await client.query(
+      `INSERT INTO users (id, tenant_id, email, password_hash, name, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT DO NOTHING`,
+      ['user-admin', TENANT_ID, 'admin@nodeadmin.dev', adminPasswordHash, 'Admin', 1]
+    );
+    console.log('✓ Ensured default admin user exists');
+
+    await client.query(
+      `INSERT INTO user_roles (user_id, role_id)
+       VALUES ($1, $2)
+       ON CONFLICT DO NOTHING`,
+      ['user-admin', 'role-super-admin']
+    );
+    console.log('✓ Ensured default admin role assignment exists');
 
     // Create test conversations
     const conversations = [
