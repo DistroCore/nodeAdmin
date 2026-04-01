@@ -16,7 +16,16 @@ reports
 uploads
 docs
 infra
+!infra/docker/nginx/adminportal.conf
 apps/adminPortal
+!apps/adminPortal/src
+!apps/adminPortal/public
+!apps/adminPortal/package.json
+!apps/adminPortal/tsconfig*.json
+!apps/adminPortal/vite.config.ts
+!apps/adminPortal/postcss.config.js
+!apps/adminPortal/tailwind.config.ts
+!apps/adminPortal/index.html
 apps/**/test-results
 apps/**/*.test.ts
 apps/**/__tests__

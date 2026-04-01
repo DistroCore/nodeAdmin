@@ -17,6 +17,7 @@ RUN npm ci --ignore-scripts
 # Copy source
 COPY packages/shared-types/ ./packages/shared-types/
 COPY apps/adminPortal/ ./apps/adminPortal/
+COPY infra/docker/nginx/adminportal.conf ./infra/docker/nginx/adminportal.conf
 
 # Build (tsc + vite)
 RUN npm run build -w adminPortal
@@ -24,5 +25,5 @@ RUN npm run build -w adminPortal
 # ── Runtime stage (nginx static hosting) ──
 FROM nginx:1.27-alpine
 COPY --from=builder /app/apps/adminPortal/dist /usr/share/nginx/html
-COPY infra/docker/nginx/adminportal.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/infra/docker/nginx/adminportal.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
