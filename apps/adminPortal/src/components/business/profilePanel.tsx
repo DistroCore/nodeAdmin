@@ -1,12 +1,91 @@
 import { useState } from 'react';
 import { useIntl } from 'react-intl';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/toast';
 import { useApiClient } from '@/hooks/useApiClient';
 import { useAuthStore } from '@/stores/useAuthStore';
+
+interface OAuthAccount {
+  provider: string;
+  providerId: string;
+  createdAt: string;
+}
+
+const OAUTH_PROVIDERS = ['github', 'google'] as const;
+
+function LinkedAccountsSection(): JSX.Element {
+  const { formatMessage: t } = useIntl();
+  const toast = useToast();
+  const apiClient = useApiClient();
+  const queryClient = useQueryClient();
+
+  const { data: accounts = [] } = useQuery({
+    queryKey: ['oauth-accounts'],
+    queryFn: () =>
+      apiClient.get<{ accounts: OAuthAccount[] }>('/api/v1/auth/oauth-accounts'),
+    select: (data) => data.accounts ?? [],
+  });
+
+  const unlinkMutation = useMutation({
+    mutationFn: (provider: string) =>
+      apiClient.del(`/api/v1/auth/oauth-accounts/${provider}`),
+    onSuccess: (_, provider) => {
+      queryClient.invalidateQueries({ queryKey: ['oauth-accounts'] });
+      toast.success(
+        t({ id: 'profile.unlinkSuccess' }, { provider: t({ id: `profile.provider.${provider}` }) })
+      );
+    },
+    onError: (_, provider) => {
+      toast.error(
+        t({ id: 'profile.unlinkFailed' }, { provider: t({ id: `profile.provider.${provider}` }) })
+      );
+    },
+  });
+
+  const linkedProviders = new Set(accounts.map((a: OAuthAccount) => a.provider));
+
+  return (
+    <div className="space-y-2">
+      {OAUTH_PROVIDERS.map((provider) => {
+        const isLinked = linkedProviders.has(provider);
+        return (
+          <div key={provider} className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-foreground">
+                {t({ id: `profile.provider.${provider}` })}
+              </span>
+              <Badge variant={isLinked ? 'default' : 'secondary'}>
+                {isLinked ? t({ id: 'profile.linked' }) : t({ id: 'profile.notLinked' })}
+              </Badge>
+            </div>
+            {isLinked ? (
+              <Button
+                onClick={() => {
+                  if (window.confirm(t({ id: 'profile.unlinkConfirm' }, { provider: t({ id: `profile.provider.${provider}` }) }))) {
+                    unlinkMutation.mutate(provider);
+                  }
+                }}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                {t({ id: 'profile.unlink' })}
+              </Button>
+            ) : (
+              <Button size="sm" type="button" variant="outline" disabled>
+                {t({ id: 'profile.link' })}
+              </Button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export function ProfilePanel(): JSX.Element {
   const { formatMessage: t } = useIntl();
@@ -140,6 +219,19 @@ export function ProfilePanel(): JSX.Element {
           </CardContent>
         </Card>
       </div>
+
+      {/* Linked Accounts */}
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle className="text-sm">{t({ id: 'profile.linkedAccounts' })}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-3 text-xs text-muted-foreground">
+            {t({ id: 'profile.linkedAccounts.desc' })}
+          </p>
+          <LinkedAccountsSection />
+        </CardContent>
+      </Card>
     </section>
   );
 }
