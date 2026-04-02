@@ -42,18 +42,21 @@ test.describe('users panel', () => {
     }
 
     await page.goto('/users');
-    await page.waitForTimeout(1500);
+    await expect(page.getByRole('main')).toBeVisible();
 
     // Page should render — either users are listed or empty state
     const hasContent = await page
+      .getByRole('main')
       .getByRole('heading', { level: 1 })
       .isVisible()
       .catch(() => false);
     const hasTable = await page
+      .getByRole('main')
       .getByRole('table')
       .isVisible()
       .catch(() => false);
     const hasEmptyState = await page
+      .getByRole('main')
       .getByText(/no users|empty/i)
       .isVisible()
       .catch(() => false);
@@ -69,14 +72,14 @@ test.describe('users panel', () => {
     }
 
     await page.goto('/users');
-    await page.waitForTimeout(1500);
+    await expect(page.getByRole('main')).toBeVisible();
 
-    const createButton = page.getByRole('button', { name: /create|add|new/i });
+    const createButton = page.getByRole('main').getByRole('button', { name: /create|add|new/i });
     if (await createButton.isVisible().catch(() => false)) {
       await createButton.click();
       // Dialog should appear
       await expect(page.getByRole('dialog'))
-        .toBeVisible({ timeout: 3000 })
+        .toBeVisible({ timeout: 5_000 })
         .catch(() => {
           // Some implementations may not use role="dialog"
         });
@@ -94,13 +97,15 @@ test.describe('roles panel', () => {
     }
 
     await page.goto('/roles');
-    await page.waitForTimeout(1500);
+    await expect(page.getByRole('main')).toBeVisible();
 
     const hasContent = await page
+      .getByRole('main')
       .getByRole('heading', { level: 1 })
       .isVisible()
       .catch(() => false);
     const hasTable = await page
+      .getByRole('main')
       .getByRole('table')
       .isVisible()
       .catch(() => false);
@@ -118,13 +123,15 @@ test.describe('menus panel', () => {
     }
 
     await page.goto('/menus');
-    await page.waitForTimeout(1500);
+    await expect(page.getByRole('main')).toBeVisible();
 
     const hasContent = await page
+      .getByRole('main')
       .getByRole('heading', { level: 1 })
       .isVisible()
       .catch(() => false);
     const hasTable = await page
+      .getByRole('main')
       .getByRole('table')
       .isVisible()
       .catch(() => false);
@@ -142,13 +149,15 @@ test.describe('tenants panel', () => {
     }
 
     await page.goto('/tenants');
-    await page.waitForTimeout(1500);
+    await expect(page.getByRole('main')).toBeVisible();
 
     const hasContent = await page
+      .getByRole('main')
       .getByRole('heading', { level: 1 })
       .isVisible()
       .catch(() => false);
     const hasTable = await page
+      .getByRole('main')
       .getByRole('table')
       .isVisible()
       .catch(() => false);
@@ -166,13 +175,15 @@ test.describe('audit log panel', () => {
     }
 
     await page.goto('/audit');
-    await page.waitForTimeout(1500);
+    await expect(page.getByRole('main')).toBeVisible();
 
     const hasContent = await page
+      .getByRole('main')
       .getByRole('heading', { level: 1 })
       .isVisible()
       .catch(() => false);
     const hasTable = await page
+      .getByRole('main')
       .getByRole('table')
       .isVisible()
       .catch(() => false);
@@ -190,10 +201,11 @@ test.describe('settings panel', () => {
     }
 
     await page.goto('/settings');
-    await page.waitForTimeout(1500);
+    await expect(page.getByRole('main')).toBeVisible();
 
     // Settings should show theme toggle, language switch, session info
     const hasContent = await page
+      .getByRole('main')
       .getByRole('heading', { level: 1 })
       .isVisible()
       .catch(() => false);

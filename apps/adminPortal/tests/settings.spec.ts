@@ -5,12 +5,13 @@ test.describe('Settings', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto('/settings');
+    await expect(page.getByRole('main').getByRole('heading', { name: /Settings/i })).toBeVisible();
   });
 
   test('toggles theme', async ({ page }) => {
-    // Light theme button
-    const lightBtn = page.getByRole('button', { name: /Light/i });
-    const darkBtn = page.getByRole('button', { name: /Dark/i });
+    const mainArea = page.getByRole('main');
+    const lightBtn = mainArea.getByRole('button', { name: /Light/i });
+    const darkBtn = mainArea.getByRole('button', { name: /Dark/i });
 
     await darkBtn.click();
     await expect(page.locator('html')).toHaveClass(/dark/);
@@ -20,20 +21,19 @@ test.describe('Settings', () => {
   });
 
   test('switches language', async ({ page }) => {
-    await page.getByRole('button', { name: /中文/i }).click();
-    // Check for a known Chinese text, e.g. "设置" (Settings)
-    await expect(page.getByRole('main').getByRole('heading', { name: /系统设置/i })).toBeVisible();
+    const mainArea = page.getByRole('main');
+    await mainArea.getByRole('button', { name: /中文/i }).click();
+    await expect(mainArea.getByRole('heading', { name: /系统设置/i })).toBeVisible();
 
-    await page.getByRole('button', { name: /English/i }).click();
-    await expect(page.getByRole('main').getByRole('heading', { name: /Settings/i })).toBeVisible();
+    await mainArea.getByRole('button', { name: /English/i }).click();
+    await expect(mainArea.getByRole('heading', { name: /Settings/i })).toBeVisible();
   });
 
   test('displays session information', async ({ page }) => {
-    await expect(
-      page.getByRole('main').getByRole('heading', { name: /Session Info/i })
-    ).toBeVisible();
-    await expect(page.getByText(/User ID/i)).toBeVisible();
-    await expect(page.getByText(/Tenant ID/i)).toBeVisible();
-    await expect(page.getByText(/default/i)).toBeVisible(); // Default tenant ID
+    const mainArea = page.getByRole('main');
+    await expect(mainArea.getByRole('heading', { name: /Session Info/i })).toBeVisible();
+    await expect(mainArea.getByText(/User ID/i)).toBeVisible();
+    await expect(mainArea.getByText(/Tenant ID/i)).toBeVisible();
+    await expect(mainArea.getByText(/default/i)).toBeVisible();
   });
 });

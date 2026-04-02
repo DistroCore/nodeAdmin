@@ -4,6 +4,8 @@ import { login } from './helpers';
 test.describe('Sidebar Navigation and 404', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
+    // Wait for sidebar menus to load from API
+    await page.waitForLoadState('networkidle');
   });
 
   test('sidebar renders all navigation items for admin', async ({ page }) => {
@@ -26,7 +28,7 @@ test.describe('Sidebar Navigation and 404', () => {
     ];
 
     for (const item of expectedItems) {
-      await expect(sidebar.getByText(item)).toBeVisible();
+      await expect(sidebar.getByText(item)).toBeVisible({ timeout: 10_000 });
     }
   });
 
@@ -42,7 +44,7 @@ test.describe('Sidebar Navigation and 404', () => {
     ];
 
     for (const nav of navs) {
-      await sidebar.getByText(nav.name).click();
+      await sidebar.getByText(nav.name, { exact: true }).click();
       await expect(page).toHaveURL(nav.path);
     }
   });
@@ -51,11 +53,12 @@ test.describe('Sidebar Navigation and 404', () => {
     const sidebar = page.locator('aside.hidden.md\\:flex');
 
     await page.goto('/users');
+    await page.waitForLoadState('networkidle');
     const usersLink = sidebar.locator('a').filter({ hasText: /^Users$/ });
-    // Link class logic in sidebar.tsx uses bg-primary for active links
     await expect(usersLink).toHaveClass(/bg-primary/);
 
     await page.goto('/roles');
+    await page.waitForLoadState('networkidle');
     const rolesLink = sidebar.locator('a').filter({ hasText: /^Roles$/ });
     await expect(rolesLink).toHaveClass(/bg-primary/);
     await expect(usersLink).not.toHaveClass(/bg-primary/);

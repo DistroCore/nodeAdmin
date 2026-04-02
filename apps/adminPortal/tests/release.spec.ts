@@ -9,25 +9,27 @@ test.describe('Release Control', () => {
   test('renders release checks with status indicators and completion summary', async ({ page }) => {
     await page.goto('/release');
 
-    await expect(page.getByText(/Release Controls/i)).toBeVisible();
-    await expect(page.getByText(/\d+\/\d+ completed/i)).toBeVisible();
+    await expect(page.getByRole('main').getByText(/Release Controls/i)).toBeVisible();
+    await expect(page.getByRole('main').getByText(/\d+\/\d+ completed/i)).toBeVisible();
 
-    const checkRows = page.locator('li').filter({ hasText: /configured/i });
+    const mainArea = page.getByRole('main');
+    const checkRows = mainArea.locator('li').filter({ hasText: /configured/i });
     await expect(checkRows.first()).toBeVisible();
     await expect(checkRows).toHaveCount(5);
 
-    const progressBar = page.locator('.bg-primary.transition-all');
+    const progressBar = mainArea.locator('.bg-primary.transition-all');
     await expect(progressBar).toBeVisible();
   });
 
   test('displays individual release check titles', async ({ page }) => {
     await page.goto('/release');
 
-    await expect(page.getByText(/Database \(PostgreSQL\) configured/i)).toBeVisible();
-    await expect(page.getByText(/Redis configured/i)).toBeVisible();
-    await expect(page.getByText(/Kafka configured/i)).toBeVisible();
-    await expect(page.getByText(/JWT secrets configured/i)).toBeVisible();
-    await expect(page.getByText(/CORS origins configured/i)).toBeVisible();
+    const mainArea = page.getByRole('main');
+    await expect(mainArea.getByText(/Database \(PostgreSQL\) configured/i)).toBeVisible();
+    await expect(mainArea.getByText(/Redis configured/i)).toBeVisible();
+    await expect(mainArea.getByText(/Kafka configured/i)).toBeVisible();
+    await expect(mainArea.getByText(/JWT secrets configured/i)).toBeVisible();
+    await expect(mainArea.getByText(/CORS origins configured/i)).toBeVisible();
   });
 
   test('shows loading state while fetching release checks', async ({ page }) => {

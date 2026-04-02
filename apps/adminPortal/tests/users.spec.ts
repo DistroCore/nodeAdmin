@@ -5,19 +5,16 @@ test.describe('Users Management', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto('/users');
-    await page.waitForTimeout(1000);
-  });
-
-  test('lists users and can search', async ({ page }) => {
     await expect(
       page.getByRole('main').getByRole('heading', { name: /User Management/i })
     ).toBeVisible();
-    await page.waitForTimeout(1000);
-    await expect(page.getByRole('table')).toBeVisible();
+  });
+
+  test('lists users and can search', async ({ page }) => {
+    await expect(page.getByRole('main').getByRole('table')).toBeVisible();
 
     // Check if the default admin is in the list
-    await page.waitForTimeout(1000);
-    await expect(page.getByText(/admin@nodeadmin.dev/i)).toBeVisible();
+    await expect(page.getByRole('main').getByText(/admin@nodeadmin.dev/i)).toBeVisible();
 
     // Search
     const searchInput = page.getByPlaceholder(/Search users/i);
@@ -35,7 +32,10 @@ test.describe('Users Management', () => {
     const newName = `Updated User ${timestamp}`;
 
     // Create
-    await page.getByRole('button', { name: /Create/i }).click();
+    await page
+      .getByRole('main')
+      .getByRole('button', { name: /Create/i })
+      .click();
     await page.getByLabel(/Email/i).fill(email);
     await page.locator('#user-password').fill('Password123!');
     await page.getByLabel(/Name/i).fill(name);
@@ -47,17 +47,16 @@ test.describe('Users Management', () => {
     await page.getByRole('button', { name: /Save/i }).click();
 
     await expect(page.getByText(/saved|successfully/i)).toBeVisible();
-    await expect(page.getByText(email)).toBeVisible();
+    await expect(page.getByRole('main').getByText(email)).toBeVisible();
 
     // Edit
-    // Find the row for the user and click edit
-    const row = page.locator('tr').filter({ hasText: email });
+    const row = page.getByRole('main').locator('tr').filter({ hasText: email });
     await row.getByRole('button', { name: /Edit/i }).click();
     await page.getByLabel(/Name/i).fill(newName);
     await page.getByRole('button', { name: /Save/i }).click();
 
     await expect(page.getByText(/saved|successfully/i)).toBeVisible();
-    await expect(page.getByText(newName)).toBeVisible();
+    await expect(page.getByRole('main').getByText(newName)).toBeVisible();
 
     // Delete
     await row.getByRole('button', { name: /Delete/i }).click();
@@ -65,6 +64,6 @@ test.describe('Users Management', () => {
     await page.getByRole('button', { name: /Confirm/i }).click();
 
     await expect(page.getByText(/deleted|successfully/i)).toBeVisible();
-    await expect(page.getByText(email)).not.toBeVisible();
+    await expect(page.getByRole('main').getByText(email)).not.toBeVisible();
   });
 });

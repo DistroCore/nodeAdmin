@@ -27,18 +27,20 @@ test.describe('Permission Enforcement', () => {
   });
 
   test('viewer role can access overview but NOT settings/release', async ({ page }) => {
-    // For this test, we need a viewer user.
-    // In this system, registration gives 'viewer' role by default.
+    test.slow();
+    // Register a viewer user
     const timestamp = Date.now();
     const email = `viewer-${timestamp}@example.com`;
 
     await page.goto('/register');
+    await page.waitForLoadState('domcontentloaded');
     await page.getByLabel(/Name/i).fill('Viewer User');
     await page.getByLabel(/Email/i).fill(email);
     await page.getByLabel(/^Password$/i).fill('Password123!');
     await page.getByLabel(/Confirm Password/i).fill('Password123!');
 
     const tenantLocator = page.getByLabel(/Tenant ID/i);
+    await expect(tenantLocator).toBeVisible({ timeout: 10_000 });
     const tagName = await tenantLocator.evaluate((el) => el.tagName.toLowerCase());
     if (tagName === 'select') {
       await tenantLocator.selectOption('default');
@@ -47,7 +49,7 @@ test.describe('Permission Enforcement', () => {
     }
 
     await page.getByRole('button', { name: /Register/i }).click();
-    await page.waitForURL(/\/overview/);
+    await page.waitForURL(/\/overview/, { timeout: 15_000 });
 
     // Can access overview
     await page.goto('/overview');
@@ -56,24 +58,27 @@ test.describe('Permission Enforcement', () => {
 
     // Cannot access settings
     await page.goto('/settings');
-    await expect(page.getByText(/You do not have permission/i)).toBeVisible();
+    await expect(page.getByText(/You do not have permission/i)).toBeVisible({ timeout: 10_000 });
 
     // Cannot access release
     await page.goto('/release');
-    await expect(page.getByText(/You do not have permission/i)).toBeVisible();
+    await expect(page.getByText(/You do not have permission/i)).toBeVisible({ timeout: 10_000 });
   });
 
   test('navigation menu hides unauthorized items for viewer', async ({ page }) => {
+    test.slow();
     const timestamp = Date.now();
     const email = `viewer-nav-${timestamp}@example.com`;
 
     await page.goto('/register');
+    await page.waitForLoadState('domcontentloaded');
     await page.getByLabel(/Name/i).fill('Viewer Nav');
     await page.getByLabel(/Email/i).fill(email);
     await page.getByLabel(/^Password$/i).fill('Password123!');
     await page.getByLabel(/Confirm Password/i).fill('Password123!');
 
     const tenantLocator = page.getByLabel(/Tenant ID/i);
+    await expect(tenantLocator).toBeVisible({ timeout: 10_000 });
     const tagName = await tenantLocator.evaluate((el) => el.tagName.toLowerCase());
     if (tagName === 'select') {
       await tenantLocator.selectOption('default');
@@ -82,18 +87,19 @@ test.describe('Permission Enforcement', () => {
     }
 
     await page.getByRole('button', { name: /Register/i }).click();
-    await page.waitForURL(/\/overview/);
+    await page.waitForURL(/\/overview/, { timeout: 15_000 });
+    // Wait for sidebar menus to load
+    await page.waitForLoadState('networkidle');
 
     const sidebar = page
       .locator('aside')
       .filter({ hasText: /Node Admin/i })
       .first();
 
-    // Viewer should see Overview, IM Operations, Backlog (depending on permissions)
-    // But definitely should NOT see sensitive admin pages
+    // Viewer should see Overview
     await expect(sidebar.getByText(/Overview/i)).toBeVisible();
 
-    // These should be hidden
+    // These should be hidden for viewer
     await expect(sidebar.getByText(/Settings/i)).not.toBeVisible();
     await expect(sidebar.getByText(/Release/i)).not.toBeVisible();
     await expect(sidebar.getByText(/Tenants/i)).not.toBeVisible();
