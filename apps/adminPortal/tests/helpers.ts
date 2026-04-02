@@ -39,6 +39,6 @@ export async function login(page: Page) {
     await tenantLocator.fill('default');
   }
 
-  await page.getByRole('button', { name: 'Login' }).click();
+  await page.getByRole('button', { name: 'Login', exact: true }).click();
   await page.waitForURL(/\/overview/);
 }
