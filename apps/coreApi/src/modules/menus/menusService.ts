@@ -175,14 +175,14 @@ export class MenusService {
          INNER JOIN role_menus rm ON rm.menu_id = m.id
          INNER JOIN user_roles ur ON ur.role_id = rm.role_id
          INNER JOIN roles r ON r.id = ur.role_id
-         WHERE r.tenant_id = $1 AND ur.user_id = $2 AND m.is_visible = true
+         WHERE r.tenant_id = $1 AND ur.user_id = $2 AND m.is_visible = 1
 
          UNION
 
          SELECT parent.id, parent.parent_id, parent.name, parent.path, parent.icon, parent.sort_order, parent.permission_code, parent.is_visible, parent.created_at
          FROM menus parent
          INNER JOIN accessible_menus child ON child.parent_id = parent.id
-         WHERE parent.is_visible = true
+         WHERE parent.is_visible = 1
        )
        SELECT id, parent_id, name, path, icon, sort_order, permission_code, is_visible, created_at
        FROM accessible_menus
