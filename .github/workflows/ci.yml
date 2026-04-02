@@ -127,6 +127,7 @@ jobs:
         run: npm run test:e2e -w adminPortal
         env:
           ADMIN_PORTAL_BASE_URL: http://127.0.0.1:3000
+          CI: "true"
 
       - name: Upload Playwright Artifacts
         if: failure()
