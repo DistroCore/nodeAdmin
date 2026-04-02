@@ -20,6 +20,4 @@ export async function login(page: Page) {
 
   await page.getByRole('button', { name: 'Login', exact: true }).click();
   await page.waitForURL(/\/overview/, { timeout: 15_000 });
-  // Wait for overview page data to settle
-  await page.waitForLoadState('networkidle');
 }

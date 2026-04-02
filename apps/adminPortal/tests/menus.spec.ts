@@ -15,8 +15,8 @@ test.describe('Menus Management', () => {
 
     // Check for default menus from seed
     const table = page.getByRole('main').getByRole('table');
-    await expect(table.getByText(/Overview/i)).toBeVisible();
-    await expect(table.getByText(/IM Operations|IM 运维/i)).toBeVisible();
+    await expect(table.getByText(/nav\.overview|Overview/i)).toBeVisible();
+    await expect(table.getByText(/nav\.im|IM Operations/i)).toBeVisible();
   });
 
   test('creates, edits, adds child and deletes a menu', async ({ page }) => {
