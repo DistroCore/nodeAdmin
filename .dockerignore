@@ -23,6 +23,7 @@ apps/adminPortal
 !apps/adminPortal/package.json
 !apps/adminPortal/tsconfig*.json
 !apps/adminPortal/vite.config.ts
+!apps/adminPortal/vite-importmap-plugin.ts
 !apps/adminPortal/postcss.config.js
 !apps/adminPortal/tailwind.config.ts
 !apps/adminPortal/index.html
