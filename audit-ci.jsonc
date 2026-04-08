@@ -1,0 +1,44 @@
+// audit-ci configuration — gate CI on npm audit with a documented allowlist
+// for known vulnerabilities that cannot be fixed without a major upgrade.
+//
+// Policy:
+//   - `high` and `critical` severities block CI.
+//   - `skip-dev` limits the audit to production dependencies.
+//   - `allowlist` entries MUST include: reason, tracked-debt ticket, expiry.
+//
+// Review cadence: every 90 days or whenever a new allowlist entry is added,
+// whichever comes first. Entries past their expiry should be re-evaluated
+// and either removed (upstream fixed), replaced with a concrete fix, or
+// extended with fresh justification.
+{
+  "$schema": "https://github.com/IBM/audit-ci/raw/main/docs/schema.json",
+  "high": true,
+  "critical": true,
+  "skip-dev": true,
+  "report-type": "summary",
+  //
+  // NOTE: audit-ci dedupes advisories per package, so one GHSA ID per
+  // affected package is enough to cover both advisories listed on that
+  // package by `npm audit`. The complementary advisories (one extra per
+  // package) are intentionally left out to keep the allowlist lean:
+  //   lodash          — also GHSA-f23m-r3pf-42rh (prototype pollution)
+  //   path-to-regexp  — also GHSA-27v5-c462-wpq7 (ReDoS multiple wildcards)
+  // If a future audit-ci or registry change causes those to start matching
+  // independently, add them here with the same expiry.
+  "allowlist": [
+    // ─── lodash (transitive via @nestjs/swagger@11.x and @nestjs/config@4.x) ───
+    // Fix requires @nestjs/swagger upgrade to a version that no longer
+    // exact-pins "lodash": "4.17.23". `npm audit fix --force` proposes a
+    // destructive downgrade to @nestjs/swagger@2.5.1 (6 years old), which
+    // is not acceptable. Tracked as tech debt: upgrade/replace @nestjs/swagger.
+    // Expiry: 2026-07-07 (90 days from 2026-04-08).
+    "GHSA-r5fr-rjxr-66jc", // lodash: code injection via `_.template` key names
+
+    // ─── path-to-regexp (transitive via @nestjs/swagger@11.x) ───
+    // Same root cause: @nestjs/swagger@11.2.6 exact-pins "path-to-regexp": "8.3.0".
+    // @nestjs/core and @nestjs/platform-fastify already resolve to 8.4.2
+    // (non-vulnerable); only the swagger branch retains 8.3.0.
+    // Expiry: 2026-07-07 (90 days from 2026-04-08).
+    "GHSA-j3q9-mxjg-w52f", // path-to-regexp: DoS via sequential optional groups
+  ],
+}

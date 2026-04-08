@@ -56,8 +56,9 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-      - name: npm audit (production deps, high+ severity)
-        run: npm audit --omit=dev --audit-level=high
+      - run: npm ci
+      - name: audit-ci (gate on high+ with documented allowlist)
+        run: npx audit-ci --config audit-ci.jsonc
 
   # ── Parallel: Build (artifacts shared with downstream jobs) ──────────────
   build:
