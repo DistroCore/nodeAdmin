@@ -2,7 +2,7 @@ import { useIntl } from 'react-intl';
 import { Link } from 'react-router-dom';
 import { usePluginManagement } from '@/hooks/useMarketplace';
 import { usePluginStore } from '@/stores/usePluginStore';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -14,6 +14,7 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { NavIcon } from '@/app/layout/navIcon';
+import { className } from '@/lib/className';
 
 export function InstalledPluginsPage() {
   const { formatMessage: t } = useIntl();
@@ -26,10 +27,11 @@ export function InstalledPluginsPage() {
         <h1 className="text-2xl font-bold tracking-tight">
           {t({ id: 'plugins.installed.title', defaultMessage: 'Installed Plugins' })}
         </h1>
-        <Link to="/plugins/marketplace">
-          <Button>
-            {t({ id: 'plugins.marketplace.browse', defaultMessage: 'Browse Marketplace' })}
-          </Button>
+        <Link
+          className={className(buttonVariants({ variant: 'default' }))}
+          to="/plugins/marketplace"
+        >
+          {t({ id: 'plugins.marketplace.browse', defaultMessage: 'Browse Marketplace' })}
         </Link>
       </div>
 
@@ -86,10 +88,11 @@ export function InstalledPluginsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right space-x-2">
-                      <Link to={`/plugins/settings/${encodeURIComponent(plugin.name)}`}>
-                        <Button variant="ghost" size="sm">
-                          <NavIcon name="gear" />
-                        </Button>
+                      <Link
+                        className={className(buttonVariants({ variant: 'ghost', size: 'sm' }))}
+                        to={`/plugins/settings/${encodeURIComponent(plugin.name)}`}
+                      >
+                        <NavIcon name="gear" />
                       </Link>
                       <Button
                         variant="ghost"
