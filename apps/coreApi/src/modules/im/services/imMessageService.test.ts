@@ -77,6 +77,15 @@ function createPersistedMessage(
   };
 }
 
+function createStoredMessage(
+  overrides?: Partial<ReturnType<typeof createPersistedMessage>>
+): ReturnType<typeof createPersistedMessage> {
+  return {
+    ...createPersistedMessage(1, 'message-1'),
+    ...overrides,
+  };
+}
+
 describe('ImMessageService', () => {
   let service: ImMessageService;
   let messageRepository: ReturnType<typeof createMockMessageRepository>;
@@ -163,6 +172,186 @@ describe('ImMessageService', () => {
       'message-2',
       'message-3',
     ]);
+  });
+
+  it('rejects append requests when the socket context does not match the authenticated identity', async () => {
+    const identity = createIdentity();
+
+    await expect(
+      service.appendMessage(
+        { ...createContext(), conversationId: 'conversation-2' },
+        createPayload('message-1'),
+        identity
+      )
+    ).rejects.toThrow('Socket context mismatch');
+  });
+
+  it('rejects append requests when sanitized content is empty', async () => {
+    const identity = createIdentity();
+    const context = createContext();
+
+    await expect(
+      service.appendMessage(
+        context,
+        {
+          ...createPayload('message-1'),
+          content: '<script>alert(1)</script>   ',
+        },
+        identity
+      )
+    ).rejects.toThrow('Message content is empty after sanitization.');
+  });
+
+  it('seeds the sequence cache from repository history before assigning the next message sequence', async () => {
+    const identity = createIdentity();
+    const context = createContext();
+
+    messageRepository.getLatest.mockResolvedValue([createStoredMessage({ sequenceId: 41 })]);
+
+    const result = await service.appendMessage(context, createPayload('message-42'), identity);
+
+    expect(result.message.sequenceId).toBe(42);
+    expect(messageRepository.getLatest).toHaveBeenCalledWith('tenant-1', 'conversation-1', 1);
+  });
+
+  it('drops the optimistic duplicate cache entry when persistence fails after all retries', async () => {
+    const identity = createIdentity();
+    const context = createContext();
+    const originalMaxQueueLength = (
+      ImMessageService as unknown as { maxPersistQueueLength: number }
+    ).maxPersistQueueLength;
+
+    messageRepository.append.mockRejectedValue(new Error('db unavailable'));
+    (
+      service as unknown as {
+        delay: (ms: number) => Promise<void>;
+      }
+    ).delay = vi.fn().mockResolvedValue(undefined);
+    (ImMessageService as unknown as { maxPersistQueueLength: number }).maxPersistQueueLength = 0;
+
+    try {
+      await expect(
+        service.appendMessage(context, createPayload('message-9'), identity)
+      ).rejects.toThrow('Message persistence is temporarily unavailable.');
+
+      await expect(
+        service.appendMessage(context, createPayload('message-9'), identity)
+      ).rejects.toThrow('Message persistence is temporarily unavailable.');
+
+      expect(messageRepository.append).toHaveBeenCalledTimes(6);
+    } finally {
+      (ImMessageService as unknown as { maxPersistQueueLength: number }).maxPersistQueueLength =
+        originalMaxQueueLength;
+    }
+  });
+
+  it('sanitizes edited message content before delegating the update', async () => {
+    const identity = createIdentity();
+    const context = createContext();
+    const updated = createStoredMessage({
+      content: 'updated',
+      editedAt: '2026-04-08T00:00:00.000Z',
+      messageId: 'message-1',
+    });
+
+    messageRepository.updateContent.mockResolvedValue(updated);
+
+    await expect(
+      service.editMessage(context, 'message-1', '<b>updated</b>', identity)
+    ).resolves.toEqual(updated);
+
+    expect(messageRepository.updateContent).toHaveBeenCalledWith(
+      'tenant-1',
+      'message-1',
+      'updated'
+    );
+  });
+
+  it('rejects editing when the sanitized content is empty or the updated row belongs to another user', async () => {
+    const identity = createIdentity();
+    const context = createContext();
+
+    await expect(
+      service.editMessage(context, 'message-1', '   <script>bad</script>  ', identity)
+    ).rejects.toThrow('Edited message content is empty after sanitization.');
+
+    messageRepository.updateContent.mockResolvedValue(
+      createStoredMessage({
+        messageId: 'message-1',
+        userId: 'user-2',
+      })
+    );
+
+    await expect(service.editMessage(context, 'message-1', 'updated', identity)).rejects.toThrow(
+      'You can only edit your own messages.'
+    );
+  });
+
+  it('rejects delete requests when the message is missing or owned by another user', async () => {
+    const identity = createIdentity();
+    const context = createContext();
+
+    messageRepository.getLatest.mockResolvedValue([]);
+    await expect(service.deleteMessage(context, 'message-1', identity)).rejects.toThrow(
+      'Message not found.'
+    );
+
+    messageRepository.getLatest.mockResolvedValue([
+      createStoredMessage({
+        messageId: 'message-1',
+        userId: 'user-2',
+      }),
+    ]);
+
+    await expect(service.deleteMessage(context, 'message-1', identity)).rejects.toThrow(
+      'You can only delete your own messages.'
+    );
+  });
+
+  it('soft deletes a message after ownership is verified', async () => {
+    const identity = createIdentity();
+    const context = createContext();
+    const deleted = createStoredMessage({
+      deletedAt: '2026-04-08T00:00:00.000Z',
+      messageId: 'message-1',
+    });
+
+    messageRepository.getLatest.mockResolvedValue([
+      createStoredMessage({ messageId: 'message-1' }),
+    ]);
+    messageRepository.softDelete.mockResolvedValue(deleted);
+
+    await expect(service.deleteMessage(context, 'message-1', identity)).resolves.toEqual(deleted);
+    expect(messageRepository.softDelete).toHaveBeenCalledWith('tenant-1', 'message-1');
+  });
+
+  it('records read receipts using the resolved message sequence and rejects unknown message IDs', async () => {
+    const identity = createIdentity();
+    const context = createContext();
+
+    messageRepository.getLatest.mockResolvedValue([]);
+    await expect(service.markAsRead(context, 'message-1', identity)).rejects.toThrow(
+      'Referenced message not found.'
+    );
+
+    messageRepository.getLatest.mockResolvedValue([
+      createStoredMessage({
+        messageId: 'message-7',
+        sequenceId: 7,
+      }),
+    ]);
+
+    await expect(service.markAsRead(context, 'message-7', identity)).resolves.toEqual({
+      conversationId: 'conversation-1',
+      lastReadMessageId: 'message-7',
+      userId: 'user-1',
+    });
+    expect(messageRepository.upsertReadReceipt).toHaveBeenCalledWith(
+      'tenant-1',
+      'conversation-1',
+      'user-1',
+      7
+    );
   });
 });
 
