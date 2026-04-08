@@ -69,14 +69,16 @@ describe('LoginPage', () => {
     });
   });
 
-  it('1. Email tab is default - shows email/password fields', () => {
+  it('1. Email tab is default - shows email/password fields', async () => {
     render(
       <MemoryRouter>
         <LoginPage />
       </MemoryRouter>
     );
-    // Labels are mocked to return their IDs
-    expect(screen.getByLabelText('auth.email')).toBeInTheDocument();
+    // Wait for initial mount effects to settle (e.g. tenant fetch)
+    await waitFor(() => {
+      expect(screen.getByLabelText('auth.email')).toBeInTheDocument();
+    });
     expect(screen.getByLabelText('auth.password')).toBeInTheDocument();
     expect(screen.queryByLabelText('auth.sms.phone')).not.toBeInTheDocument();
   });
@@ -119,13 +121,15 @@ describe('LoginPage', () => {
     });
   });
 
-  it('4. OAuth buttons are visible (GitHub, Google)', () => {
+  it('4. OAuth buttons are visible (GitHub, Google)', async () => {
     render(
       <MemoryRouter>
         <LoginPage />
       </MemoryRouter>
     );
-    expect(screen.getByText('auth.oauth.github')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('auth.oauth.github')).toBeInTheDocument();
+    });
     expect(screen.getByText('auth.oauth.google')).toBeInTheDocument();
   });
 

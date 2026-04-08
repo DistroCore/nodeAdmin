@@ -12,10 +12,11 @@ import {
   CardFooter,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { NavIcon } from '@/app/layout/navIcon';
+import { className } from '@/lib/className';
 
 export function PluginMarketplacePage() {
   const { formatMessage: t } = useIntl();
@@ -28,9 +29,6 @@ export function PluginMarketplacePage() {
   const plugins = usePluginStore((s) => s.plugins);
 
   const isInstalled = (pluginId: string) => {
-    // Current plugins in store are matched by name, but marketplace uses ID (@nodeadmin/plugin-xxx)
-    // We assume p.name in store might be the short name or the ID.
-    // For now, let's check both or wait for T-209 to clarify.
     return plugins.some((p) => p.name === pluginId || p.manifest?.id === pluginId);
   };
 
@@ -89,14 +87,12 @@ export function PluginMarketplacePage() {
               </div>
             </CardContent>
             <CardFooter className="gap-2">
-              <Button variant="outline" className="flex-1">
-                <Link
-                  className="w-full text-center"
-                  to={`/plugins/marketplace/${encodeURIComponent(plugin.id)}`}
-                >
-                  {t({ id: 'plugins.view_details', defaultMessage: 'View Details' })}
-                </Link>
-              </Button>
+              <Link
+                className={className(buttonVariants({ variant: 'outline' }), 'flex-1')}
+                to={`/plugins/marketplace/${encodeURIComponent(plugin.id)}`}
+              >
+                {t({ id: 'plugins.view_details', defaultMessage: 'View Details' })}
+              </Link>
               {!isInstalled(plugin.id) && (
                 <Button
                   className="flex-1"

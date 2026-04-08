@@ -412,14 +412,14 @@ export function BacklogPanel(): JSX.Element {
       </Card>
 
       <TaskFormDialog
-        key={editTask?.id ?? 'create'}
+        key={editTask?.id ?? 'task-create'}
         onClose={() => setTaskFormOpen(false)}
         onSaved={handleTaskSaved}
         open={taskFormOpen}
         task={editTask}
       />
       <SprintFormDialog
-        key={editSprint?.id ?? 'create'}
+        key={editSprint?.id ?? 'sprint-create'}
         onClose={() => setSprintFormOpen(false)}
         onSaved={handleSprintSaved}
         open={sprintFormOpen}

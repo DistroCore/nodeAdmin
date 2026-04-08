@@ -2,7 +2,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useIntl } from 'react-intl';
 import { usePluginDetail, usePluginManagement } from '@/hooks/useMarketplace';
 import { usePluginStore } from '@/stores/usePluginStore';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import {
@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/table';
 import { Spinner } from '@/components/ui/spinner';
 import { NavIcon } from '@/app/layout/navIcon';
+import { className } from '@/lib/className';
 
 export function PluginDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -37,19 +38,23 @@ export function PluginDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center space-x-4">
-        <Button variant="ghost" size="sm">
-          <Link className="flex items-center" to="/plugins/marketplace">
-            <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                d="M15 19l-7-7 7-7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-              />
-            </svg>
-            {t({ id: 'common.back', defaultMessage: 'Back' })}
-          </Link>
-        </Button>
+        <Link
+          className={className(
+            buttonVariants({ variant: 'ghost', size: 'sm' }),
+            'flex items-center'
+          )}
+          to="/plugins/marketplace"
+        >
+          <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              d="M15 19l-7-7 7-7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+            />
+          </svg>
+          {t({ id: 'common.back', defaultMessage: 'Back' })}
+        </Link>
       </div>
 
       <div className="flex flex-col gap-6 lg:flex-row">
