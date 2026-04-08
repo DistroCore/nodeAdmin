@@ -34,7 +34,7 @@ describe('useApiClient', () => {
     const { result } = renderHook(() => useApiClient());
 
     expect(ApiClient).toHaveBeenCalled();
-    const callArgs = (ApiClient as any).mock.calls[0][0];
+    const callArgs = vi.mocked(ApiClient).mock.calls[0][0];
     expect(callArgs.getAccessToken()).toBe('mock-token');
     expect(useAuthStore.getState).toHaveBeenCalled();
   });
