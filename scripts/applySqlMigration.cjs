@@ -134,12 +134,37 @@ async function applyMigration(client, migration) {
   }
 }
 
-async function run() {
-  const client = new Client({
-    connectionString: databaseUrl,
-  });
+async function connectWithRetry(maxAttempts = 30, delayMs = 1000) {
+  let lastError;
 
-  await client.connect();
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const client = new Client({
+      connectionString: databaseUrl,
+    });
+
+    try {
+      await client.connect();
+      return client;
+    } catch (error) {
+      lastError = error;
+      await client.end().catch(() => undefined);
+
+      if (attempt === maxAttempts) {
+        break;
+      }
+
+      console.log(
+        `[db:migrate] database not ready yet (${attempt}/${maxAttempts}); retrying in ${delayMs}ms`
+      );
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  throw lastError;
+}
+
+async function run() {
+  const client = await connectWithRetry();
   await ensureMigrationTable(client);
 
   const migrations = readMigrationFiles();

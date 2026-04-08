@@ -218,6 +218,8 @@ ALTER TABLE tenant_plugins ADD COLUMN installed_at TIMESTAMPTZ DEFAULT now();
 POST /install { pluginId, version }
   1. 从 plugin_versions 获取 manifest + bundle_url + server_package
   2. npm install server_package（或从 CDN 拉取）
+     - 状态（2026-04-08）：`T-P5-BE-04` 仅实现 lifecycle 调用机制，假设插件包已存在于
+       `node_modules`；动态安装/拉取仍为后续工作项，当前不在该任务 scope 内
   3. 执行 lifecycle.onInstall（数据库迁移等）
   4. 写入 tenant_plugins（enabled=true, installed_version=version）
   5. 返回成功 → 前端刷新插件列表

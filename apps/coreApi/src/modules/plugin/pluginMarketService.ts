@@ -1,3 +1,5 @@
+import { createRequire } from 'node:module';
+import { dirname, resolve } from 'node:path';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Pool, type PoolClient } from 'pg';
 import type { PluginManifest } from '@nodeadmin/shared-types';
@@ -29,6 +31,13 @@ interface InstallableVersion {
   version: string;
 }
 
+interface InstallPluginVersionRow {
+  manifest: PluginManifest;
+  min_platform_version: string | null;
+  server_package: string;
+  version: string;
+}
+
 interface PublishPluginInput {
   bundleUrl: string;
   changelog?: string;
@@ -36,10 +45,32 @@ interface PublishPluginInput {
   serverPackage: string;
 }
 
+interface InstalledPluginLifecycleRow {
+  installed_version: string | null;
+  manifest: PluginManifest | null;
+  server_package: string | null;
+}
+
+interface PluginLifecycleContext {
+  client: PoolClient;
+  manifest: PluginManifest;
+  pluginId: string;
+  tenantId: string;
+  version: string;
+}
+
+type HookModuleLoader = (modulePath: string) => unknown;
+type PackageJsonResolver = (packageName: string) => string;
+type PluginLifecycleHandler = (context: PluginLifecycleContext) => Promise<unknown> | unknown;
+
 @Injectable()
 export class PluginMarketService {
   private readonly platformVersion = '0.1.0';
   private readonly pool: Pool | null;
+  private readonly requireFromRoot = createRequire(resolve(process.cwd(), 'package.json'));
+  private hookModuleLoader: HookModuleLoader = (modulePath) => this.requireFromRoot(modulePath);
+  private packageJsonResolver: PackageJsonResolver = (packageName) =>
+    this.requireFromRoot.resolve(`${packageName}/package.json`);
 
   constructor() {
     const databaseUrl = process.env.DATABASE_URL?.trim();
@@ -172,11 +203,8 @@ export class PluginMarketService {
     }
 
     return this.withTenantContext(tenantId, async (client) => {
-      const versionResult = await client.query<{
-        min_platform_version: string | null;
-        version: string;
-      }>(
-        `SELECT version, min_platform_version
+      const versionResult = await client.query<InstallPluginVersionRow>(
+        `SELECT version, min_platform_version, manifest, server_package
          FROM plugin_versions
          WHERE plugin_id = $1 AND version = $2`,
         [pluginId, version]
@@ -206,6 +234,15 @@ export class PluginMarketService {
         [tenantId, pluginId, version]
       );
 
+      await this.runLifecycleHook(client, {
+        hookPath: selectedVersion.manifest.lifecycle?.onInstall,
+        manifest: selectedVersion.manifest,
+        pluginId,
+        serverPackage: selectedVersion.server_package,
+        tenantId,
+        version,
+      });
+
       return {
         enabled: true,
         pluginId,
@@ -225,6 +262,27 @@ export class PluginMarketService {
     }
 
     return this.withTenantContext(tenantId, async (client) => {
+      const lifecycleResult = await client.query<InstalledPluginLifecycleRow>(
+        `SELECT tp.installed_version, pv.manifest, pv.server_package
+         FROM tenant_plugins tp
+         LEFT JOIN plugin_versions pv
+           ON pv.plugin_id = tp.plugin_name
+          AND pv.version = tp.installed_version
+         WHERE tp.tenant_id = $1 AND tp.plugin_name = $2`,
+        [tenantId, pluginId]
+      );
+
+      const installedPlugin = lifecycleResult.rows[0];
+
+      await this.runLifecycleHook(client, {
+        hookPath: installedPlugin?.manifest?.lifecycle?.onUninstall,
+        manifest: installedPlugin?.manifest ?? null,
+        pluginId,
+        serverPackage: installedPlugin?.server_package ?? null,
+        tenantId,
+        version: installedPlugin?.installed_version ?? null,
+      });
+
       await client.query(
         `DELETE FROM tenant_plugins
          WHERE tenant_id = $1 AND plugin_name = $2
@@ -398,4 +456,64 @@ export class PluginMarketService {
 
     return new Date(value).toISOString();
   }
+
+  private async runLifecycleHook(
+    client: PoolClient,
+    input: {
+      hookPath?: string;
+      manifest: PluginManifest | null;
+      pluginId: string;
+      serverPackage: string | null;
+      tenantId: string;
+      version: string | null;
+    }
+  ): Promise<void> {
+    const hookPath = input.hookPath?.trim();
+
+    if (!hookPath || !input.manifest || !input.serverPackage || !input.version) {
+      return;
+    }
+
+    const packageRoot = dirname(
+      this.packageJsonResolver(this.extractPackageName(input.serverPackage))
+    );
+    const handler = this.resolveLifecycleHandler(
+      this.hookModuleLoader(resolve(packageRoot, hookPath)),
+      hookPath
+    );
+
+    await handler({
+      client,
+      manifest: input.manifest,
+      pluginId: input.pluginId,
+      tenantId: input.tenantId,
+      version: input.version,
+    });
+  }
+
+  private extractPackageName(serverPackage: string): string {
+    const versionSeparatorIndex = serverPackage.lastIndexOf('@');
+
+    if (versionSeparatorIndex > 0) {
+      return serverPackage.slice(0, versionSeparatorIndex);
+    }
+
+    return serverPackage;
+  }
+
+  private resolveLifecycleHandler(loadedModule: unknown, hookPath: string): PluginLifecycleHandler {
+    if (typeof loadedModule === 'function') {
+      return loadedModule as PluginLifecycleHandler;
+    }
+
+    if (isRecord(loadedModule) && typeof loadedModule.default === 'function') {
+      return loadedModule.default as PluginLifecycleHandler;
+    }
+
+    throw new Error(`Lifecycle hook '${hookPath}' must export a function`);
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }
