@@ -163,7 +163,7 @@ export function ManagementOverviewPanel(): JSX.Element {
               </div>
             ) : (
               <>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <p className="text-[0.625rem] font-bold uppercase tracking-wider text-muted-foreground">
                   {t({ id: 'overview.health.version' })}
                 </p>
                 <p className="mt-1 flex items-center text-sm font-medium">

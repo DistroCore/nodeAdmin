@@ -110,7 +110,7 @@ export function RoleManagementPanel(): JSX.Element {
               cell: (role) => (
                 <div className="flex flex-col items-end gap-1 md:flex-row md:justify-end md:gap-3">
                   <button
-                    className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm text-primary hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed"
+                    className="flex min-h-11 min-w-11 items-center justify-center text-sm text-primary hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed"
                     disabled={Boolean(role.is_system)}
                     onClick={() => setEditRole(role)}
                     title={role.is_system ? t({ id: 'roles.systemRole' }) : undefined}
@@ -119,7 +119,7 @@ export function RoleManagementPanel(): JSX.Element {
                     {t({ id: 'roles.edit' })}
                   </button>
                   <button
-                    className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm text-destructive hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed"
+                    className="flex min-h-11 min-w-11 items-center justify-center text-sm text-destructive hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed"
                     disabled={Boolean(role.is_system)}
                     onClick={() => setDeleteRole(role)}
                     title={role.is_system ? t({ id: 'roles.systemRole' }) : undefined}

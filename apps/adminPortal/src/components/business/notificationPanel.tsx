@@ -104,12 +104,12 @@ export function NotificationPanel(): JSX.Element {
                           {getTypeLabel(notification.action)}
                         </span>
                         {isUnread && (
-                          <Badge variant="default" className="h-4 px-1 text-[8px] uppercase">
+                          <Badge variant="default" className="h-4 px-1 text-[0.5rem] uppercase">
                             {t({ id: 'notifications.unread' })}
                           </Badge>
                         )}
                       </div>
-                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                      <span className="text-[0.625rem] text-muted-foreground whitespace-nowrap">
                         {new Date(notification.createdAt).toLocaleString()}
                       </span>
                     </div>

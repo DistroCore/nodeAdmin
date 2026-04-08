@@ -182,7 +182,7 @@ export function Sidebar(): JSX.Element {
         {/* Plugin Section */}
         <div className="mt-4 border-t pt-2">
           {!sidebarCollapsed && (
-            <div className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="mb-2 px-3 text-[0.625rem] font-semibold uppercase tracking-wider text-muted-foreground">
               {t({ id: 'nav.plugins', defaultMessage: 'Plugins' })}
             </div>
           )}
@@ -230,7 +230,7 @@ export function Sidebar(): JSX.Element {
           .map((plugin) => (
             <div className="mt-2 border-t pt-2" key={`group-${plugin.name}`}>
               {!sidebarCollapsed && (
-                <div className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <div className="mb-2 px-3 text-[0.625rem] font-semibold uppercase tracking-wider text-muted-foreground">
                   {plugin.manifest?.displayName || plugin.name}
                 </div>
               )}

@@ -155,21 +155,21 @@ export function MenuManagementPanel(): JSX.Element {
               cell: (node) => (
                 <div className="flex flex-col items-end gap-1 md:flex-row md:justify-end md:gap-3">
                   <button
-                    className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm text-primary hover:underline"
+                    className="flex min-h-11 min-w-11 items-center justify-center text-sm text-primary hover:underline"
                     onClick={() => openEditDialog(node.menu)}
                     type="button"
                   >
                     {t({ id: 'menus.edit' })}
                   </button>
                   <button
-                    className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm text-primary hover:underline"
+                    className="flex min-h-11 min-w-11 items-center justify-center text-sm text-primary hover:underline"
                     onClick={() => openCreateChildDialog(node.menu.id)}
                     type="button"
                   >
                     {t({ id: 'menus.createChild' })}
                   </button>
                   <button
-                    className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm text-destructive hover:underline"
+                    className="flex min-h-11 min-w-11 items-center justify-center text-sm text-destructive hover:underline"
                     disabled={deleteMutation.isPending}
                     onClick={() => openDeleteConfirm(node.menu)}
                     type="button"

@@ -45,7 +45,7 @@ function MessageBody({ message, isMe }: MessageBodyProps): JSX.Element {
       return (
         <div className="space-y-2">
           {message.metadata?.url ? (
-            <div className="relative group/img overflow-hidden rounded-md border border-black/10 bg-muted/20 min-h-[100px] flex items-center justify-center">
+            <div className="relative group/img overflow-hidden rounded-md border border-black/10 bg-muted/20 min-h-24 flex items-center justify-center">
               <img
                 alt={message.metadata.fileName || 'image'}
                 className="max-h-60 max-w-full object-contain transition-transform group-hover/img:scale-105"
@@ -80,7 +80,7 @@ function MessageBody({ message, isMe }: MessageBodyProps): JSX.Element {
               {message.metadata?.url && (
                 <a
                   className={className(
-                    'text-[10px] font-bold uppercase tracking-wider hover:underline',
+                    'text-[0.625rem] font-bold uppercase tracking-wider hover:underline',
                     isMe ? 'text-white' : 'text-primary'
                   )}
                   href={message.metadata.url}
@@ -91,7 +91,7 @@ function MessageBody({ message, isMe }: MessageBodyProps): JSX.Element {
                 </a>
               )}
               {message.metadata?.fileSizeBytes && (
-                <span className="text-[10px] opacity-60">
+                <span className="text-[0.625rem] opacity-60">
                   {(message.metadata.fileSizeBytes / 1024 / 1024).toFixed(2)} MB
                 </span>
               )}
@@ -102,7 +102,7 @@ function MessageBody({ message, isMe }: MessageBodyProps): JSX.Element {
     case 'system':
       return (
         <div className="flex justify-center w-full my-1">
-          <span className="rounded-full bg-muted/50 px-3 py-1 text-[10px] text-muted-foreground italic">
+          <span className="rounded-full bg-muted/50 px-3 py-1 text-[0.625rem] text-muted-foreground italic">
             {message.content}
           </span>
         </div>
@@ -913,7 +913,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                   {conversation.unreadCount > 0 && (
                     <Badge
                       variant="destructive"
-                      className="h-5 min-w-[20px] justify-center px-1 text-[10px] animate-in zoom-in"
+                      className="h-5 min-w-5 justify-center px-1 text-[0.625rem] animate-in zoom-in"
                     >
                       {conversation.unreadCount}
                     </Badge>
@@ -921,7 +921,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                 </div>
                 <p
                   className={className(
-                    'truncate text-[11px] opacity-70',
+                    'truncate text-[0.6875rem] opacity-70',
                     conversation.lastMessagePreview ? 'italic' : 'opacity-40'
                   )}
                 >
@@ -972,7 +972,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                 <h2 className="text-sm font-bold md:text-base leading-none mb-1">
                   {t({ id: 'im.conversation' })}
                 </h2>
-                <div className="flex items-center gap-1.5 text-[10px] md:text-xs">
+                <div className="flex items-center gap-1.5 text-[0.625rem] md:text-xs">
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
@@ -990,7 +990,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
               <div className="hidden sm:flex items-center gap-2 mr-2">
                 <Badge
                   variant="outline"
-                  className="text-[10px] capitalize font-medium px-2 py-0.5 border-green-500/30 text-green-600 bg-green-50/50 dark:bg-green-950/20"
+                  className="text-[0.625rem] capitalize font-medium px-2 py-0.5 border-green-500/30 text-green-600 bg-green-50/50 dark:bg-green-950/20"
                 >
                   {myPresenceStatus}
                 </Badge>
@@ -1006,7 +1006,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                     : 'destructive'
               }
               className={className(
-                'text-[10px] px-2 py-0.5 font-bold uppercase tracking-tighter',
+                'text-[0.625rem] px-2 py-0.5 font-bold uppercase tracking-tighter',
                 connectionState === 'reconnecting' && 'animate-pulse'
               )}
             >
@@ -1015,7 +1015,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
 
             <select
               aria-label={t({ id: 'im.presenceStatus' })}
-              className="hidden md:block rounded-lg border border-border bg-background px-2 py-1 text-[10px] font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+              className="hidden md:block rounded-lg border border-border bg-background px-2 py-1 text-[0.625rem] font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all"
               value={myPresenceStatus}
               onChange={(e) => {
                 const next = e.target.value as ImPresenceStatus;
@@ -1066,9 +1066,11 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                 >
                   <div className="mb-1.5 flex items-center gap-2 px-1">
                     {!isMe && (
-                      <span className="text-[10px] font-bold text-primary">{message.userId}</span>
+                      <span className="text-[0.625rem] font-bold text-primary">
+                        {message.userId}
+                      </span>
                     )}
-                    <span className="text-[10px] text-muted-foreground opacity-70">
+                    <span className="text-[0.625rem] text-muted-foreground opacity-70">
                       {new Date(message.createdAt).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit',
@@ -1102,7 +1104,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                     )}
                   >
                     {editingMessageId === message.messageId ? (
-                      <div className="flex flex-col gap-3 min-w-[220px]">
+                      <div className="flex flex-col gap-3 min-w-52">
                         <textarea
                           autoFocus
                           className="w-full bg-transparent border-none resize-none focus:outline-none text-sm font-medium leading-relaxed"
@@ -1130,7 +1132,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-7 text-[10px] font-bold uppercase tracking-widest text-inherit hover:bg-white/10"
+                            className="h-7 text-[0.625rem] font-bold uppercase tracking-widest text-inherit hover:bg-white/10"
                             onClick={() => setEditingMessageId(null)}
                           >
                             {t({ id: 'common.cancel' })}
@@ -1138,7 +1140,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                           <Button
                             variant="secondary"
                             size="sm"
-                            className="h-7 text-[10px] font-bold uppercase tracking-widest"
+                            className="h-7 text-[0.625rem] font-bold uppercase tracking-widest"
                             onClick={() => {
                               if (editContent.trim()) {
                                 emitEdit({
@@ -1223,7 +1225,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                   </div>
 
                   {message.editedAt && !message.deletedAt && (
-                    <span className="mt-1 text-[9px] font-bold uppercase tracking-widest opacity-40 italic">
+                    <span className="mt-1 text-[0.5625rem] font-bold uppercase tracking-widest opacity-40 italic">
                       {t({ id: 'im.edited' })}
                     </span>
                   )}
@@ -1269,18 +1271,18 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                     <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:0.2s]" />
                     <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:0.4s]" />
                   </div>
-                  <span className="text-[10px] font-bold text-primary uppercase tracking-wider">
+                  <span className="text-[0.625rem] font-bold text-primary uppercase tracking-wider">
                     {t({ id: 'im.typing' }, { users: typingUsersLabel })}
                   </span>
                 </div>
               )}
               {sendLabel && (
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest animate-pulse">
+                <span className="text-[0.625rem] font-bold text-muted-foreground uppercase tracking-widest animate-pulse">
                   {sendLabel}
                 </span>
               )}
               {bootError && (
-                <span className="text-[10px] font-bold text-destructive uppercase tracking-widest">
+                <span className="text-[0.625rem] font-bold text-destructive uppercase tracking-widest">
                   {bootError}
                 </span>
               )}
@@ -1289,7 +1291,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
             {offlineQueueCount > 0 && (
               <div className="flex items-center gap-1.5">
                 <div className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">
+                <span className="text-[0.625rem] font-bold text-amber-600 uppercase tracking-widest">
                   {t({ id: 'im.offlineQueue' }, { count: offlineQueueCount })}
                 </span>
               </div>
@@ -1304,7 +1306,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
               <div className="relative">
                 <select
                   aria-label={t({ id: 'im.messageType' })}
-                  className="h-8 appearance-none rounded-lg border border-border bg-background pl-2 pr-8 text-[10px] font-bold uppercase tracking-widest outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+                  className="h-8 appearance-none rounded-lg border border-border bg-background pl-2 pr-8 text-[0.625rem] font-bold uppercase tracking-widest outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
                   onChange={(event) => setMessageType(event.target.value as ImMessageType)}
                   value={messageType}
                 >
@@ -1332,7 +1334,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                 onClick={() => fileInputRef.current?.click()}
                 size="sm"
                 variant="ghost"
-                className="h-8 gap-2 text-[10px] font-bold uppercase tracking-widest px-3 hover:bg-primary/5 hover:text-primary transition-all"
+                className="h-8 gap-2 text-[0.625rem] font-bold uppercase tracking-widest px-3 hover:bg-primary/5 hover:text-primary transition-all"
               >
                 <svg
                   className="h-4 w-4"
@@ -1452,7 +1454,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                 d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
               />
             </svg>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            <p className="text-[0.625rem] font-bold uppercase tracking-widest text-muted-foreground">
               {t({ id: 'im.readonly' })}
             </p>
           </div>
