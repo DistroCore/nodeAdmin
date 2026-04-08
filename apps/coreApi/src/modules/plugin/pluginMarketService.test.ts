@@ -441,6 +441,59 @@ describe('PluginMarketService', () => {
       );
       expect(mockClient.calls[3]?.sql).toContain('INSERT INTO tenant_plugins');
     });
+
+    it('rolls back the tenant_plugins insert when the install hook throws', async () => {
+      const lifecycleHook = vi.fn(async () => {
+        throw new Error('install hook failed');
+      });
+      const hookModuleLoader = vi.fn(() => lifecycleHook);
+      const packageJsonResolver = vi.fn(
+        () => '/repo/node_modules/@nodeadmin/plugin-kanban/package.json'
+      );
+      const mockClient = createMockClient([
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        {
+          rows: [
+            {
+              manifest: {
+                author: { name: 'NodeAdmin Team' },
+                description: 'Board view',
+                displayName: 'Kanban',
+                engines: { nodeAdmin: '>=0.1.0' },
+                entrypoints: { server: './dist/server/index.js' },
+                id: '@nodeadmin/plugin-kanban',
+                lifecycle: { onInstall: './scripts/install.cjs' },
+                permissions: ['backlog:view'],
+                version: '1.2.0',
+              },
+              min_platform_version: '>=0.1.0',
+              server_package: '@nodeadmin/plugin-kanban@1.2.0',
+              version: '1.2.0',
+            },
+          ],
+          rowCount: 1,
+        },
+        { rows: [], rowCount: 1 },
+        { rows: [], rowCount: 0 },
+      ]);
+      const mockPool = createMockPool([]);
+      mockPool.connect = vi.fn(async () => mockClient);
+      (service as unknown as { pool: typeof mockPool }).pool = mockPool;
+      (service as unknown as { hookModuleLoader: typeof hookModuleLoader }).hookModuleLoader =
+        hookModuleLoader;
+      (
+        service as unknown as { packageJsonResolver: typeof packageJsonResolver }
+      ).packageJsonResolver = packageJsonResolver;
+
+      await expect(
+        service.installPlugin('tenant-1', '@nodeadmin/plugin-kanban', '1.2.0')
+      ).rejects.toThrow('install hook failed');
+
+      expect(mockClient.calls[3]?.sql).toContain('INSERT INTO tenant_plugins');
+      expect(mockClient.calls.at(-1)?.sql).toBe('ROLLBACK');
+      expect(mockClient.calls.some((call) => call.sql === 'COMMIT')).toBe(false);
+    });
   });
 
   describe('publishPlugin', () => {
