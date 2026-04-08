@@ -88,14 +88,14 @@ export function TenantControlPanel(): JSX.Element {
               cell: (tenant) => (
                 <div className="flex flex-col items-end gap-1 md:flex-row md:justify-end md:gap-3">
                   <button
-                    className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm text-primary hover:underline"
+                    className="flex min-h-11 min-w-11 items-center justify-center text-sm text-primary hover:underline"
                     onClick={() => setEditTenant(tenant)}
                     type="button"
                   >
                     {t({ id: 'tenant.edit' })}
                   </button>
                   <button
-                    className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm text-destructive hover:underline"
+                    className="flex min-h-11 min-w-11 items-center justify-center text-sm text-destructive hover:underline"
                     onClick={() => setDeleteTenant(tenant)}
                     type="button"
                   >

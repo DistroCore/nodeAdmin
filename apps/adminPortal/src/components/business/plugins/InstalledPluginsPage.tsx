@@ -40,7 +40,7 @@ export function InstalledPluginsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[300px]">Plugin</TableHead>
+                <TableHead className="w-72">Plugin</TableHead>
                 <TableHead>Version</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -65,7 +65,7 @@ export function InstalledPluginsPage() {
                           <div className="font-medium">
                             {plugin.manifest?.displayName || plugin.name}
                           </div>
-                          <div className="text-xs text-muted-foreground truncate max-w-[200px]">
+                          <div className="text-xs text-muted-foreground truncate max-w-48">
                             {plugin.manifest?.description || 'No description'}
                           </div>
                         </div>
@@ -76,7 +76,7 @@ export function InstalledPluginsPage() {
                         <span>v{plugin.installedVersion || '0.1.0'}</span>
                         {/* Mock update check */}
                         {false && (
-                          <span className="text-[10px] text-amber-600 font-bold">
+                          <span className="text-[0.625rem] text-amber-600 font-bold">
                             UPDATE AVAILABLE
                           </span>
                         )}

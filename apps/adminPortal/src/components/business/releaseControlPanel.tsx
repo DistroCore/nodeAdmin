@@ -157,7 +157,7 @@ export function ReleaseControlPanel(): JSX.Element {
                     </div>
                     <Badge
                       variant={check.done ? 'default' : 'destructive'}
-                      className="min-w-[60px] justify-center"
+                      className="min-w-[3.75rem] justify-center"
                     >
                       {check.done ? t({ id: 'release.pass' }) : t({ id: 'release.fail' })}
                     </Badge>

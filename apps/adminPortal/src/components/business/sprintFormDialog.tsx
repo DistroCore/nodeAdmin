@@ -108,7 +108,7 @@ export function SprintFormDialog({
 
           <FormField label={t({ id: 'backlog.fieldSprintGoal' })} htmlFor="sprint-goal">
             <textarea
-              className="border-input bg-background ring-ring flex min-h-[60px] w-full rounded-md border px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2"
+              className="border-input bg-background ring-ring flex min-h-[3.75rem] w-full rounded-md border px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2"
               id="sprint-goal"
               value={goal}
               onChange={(e) => setGoal(e.target.value)}

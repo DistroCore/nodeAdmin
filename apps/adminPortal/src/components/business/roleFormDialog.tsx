@@ -158,7 +158,7 @@ export function RoleFormDialog({ onClose, onSaved, open, role }: RoleFormDialogP
                 {t({ id: 'roles.loadingPermissions' })}
               </div>
             ) : (
-              <div className="max-h-[300px] space-y-4 overflow-y-auto rounded-lg border border-border bg-muted/5 p-4">
+              <div className="max-h-72 space-y-4 overflow-y-auto rounded-lg border border-border bg-muted/5 p-4">
                 {Object.entries(groupedPermissions).map(([module, modulePerms]) => {
                   const isModuleAllSelected = modulePerms.every((p) =>
                     selectedPermissionIds.includes(p.id)
@@ -172,7 +172,7 @@ export function RoleFormDialog({ onClose, onSaved, open, role }: RoleFormDialogP
                         <button
                           type="button"
                           onClick={() => toggleModule(modulePerms)}
-                          className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors"
+                          className="text-[0.625rem] font-bold text-muted-foreground hover:text-primary transition-colors"
                         >
                           {isModuleAllSelected
                             ? t({ id: 'common.deselectAll' })

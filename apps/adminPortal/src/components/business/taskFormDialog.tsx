@@ -133,7 +133,7 @@ export function TaskFormDialog({ onClose, onSaved, open, task }: TaskFormDialogP
 
           <FormField label={t({ id: 'backlog.fieldDescription' })} htmlFor="task-desc">
             <textarea
-              className="border-input bg-background ring-ring flex min-h-[80px] w-full rounded-md border px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2"
+              className="border-input bg-background ring-ring flex min-h-20 w-full rounded-md border px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2"
               id="task-desc"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
