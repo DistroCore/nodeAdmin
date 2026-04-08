@@ -202,7 +202,26 @@ describe('PluginMarketService', () => {
       const mockClient = createMockClient([
         { rows: [], rowCount: 0 },
         { rows: [], rowCount: 0 },
-        { rows: [{ version: '1.2.0', min_platform_version: '>=0.1.0' }], rowCount: 1 },
+        {
+          rows: [
+            {
+              manifest: {
+                author: { name: 'NodeAdmin Team' },
+                description: 'Board view',
+                displayName: 'Kanban',
+                engines: { nodeAdmin: '>=0.1.0' },
+                entrypoints: { server: './dist/server/index.js' },
+                id: '@nodeadmin/plugin-kanban',
+                permissions: ['backlog:view'],
+                version: '1.2.0',
+              },
+              min_platform_version: '>=0.1.0',
+              server_package: '@nodeadmin/plugin-kanban@1.2.0',
+              version: '1.2.0',
+            },
+          ],
+          rowCount: 1,
+        },
         { rows: [], rowCount: 1 },
         { rows: [], rowCount: 0 },
       ]);
@@ -233,7 +252,26 @@ describe('PluginMarketService', () => {
       const mockClient = createMockClient([
         { rows: [], rowCount: 0 },
         { rows: [], rowCount: 0 },
-        { rows: [{ version: '1.3.0', min_platform_version: '>=0.1.0' }], rowCount: 1 },
+        {
+          rows: [
+            {
+              manifest: {
+                author: { name: 'NodeAdmin Team' },
+                description: 'Board view',
+                displayName: 'Kanban',
+                engines: { nodeAdmin: '>=0.1.0' },
+                entrypoints: { server: './dist/server/index.js' },
+                id: '@nodeadmin/plugin-kanban',
+                permissions: ['backlog:view'],
+                version: '1.3.0',
+              },
+              min_platform_version: '>=0.1.0',
+              server_package: '@nodeadmin/plugin-kanban@1.3.0',
+              version: '1.3.0',
+            },
+          ],
+          rowCount: 1,
+        },
         { rows: [], rowCount: 1 },
         { rows: [], rowCount: 0 },
       ]);
@@ -257,6 +295,16 @@ describe('PluginMarketService', () => {
       const mockClient = createMockClient([
         { rows: [], rowCount: 0 },
         { rows: [], rowCount: 0 },
+        {
+          rows: [
+            {
+              installed_version: '1.2.0',
+              manifest: null,
+              server_package: null,
+            },
+          ],
+          rowCount: 1,
+        },
         { rows: [{ plugin_name: '@nodeadmin/plugin-kanban' }], rowCount: 1 },
         { rows: [], rowCount: 0 },
       ]);
@@ -272,8 +320,126 @@ describe('PluginMarketService', () => {
         tenantId: 'tenant-1',
       });
 
-      expect(mockClient.calls[2]?.sql).toContain('DELETE FROM tenant_plugins');
-      expect(mockClient.calls[2]?.params).toEqual(['tenant-1', '@nodeadmin/plugin-kanban']);
+      expect(mockClient.calls[2]?.sql).toContain('FROM tenant_plugins tp');
+      expect(mockClient.calls[3]?.sql).toContain('DELETE FROM tenant_plugins');
+      expect(mockClient.calls[3]?.params).toEqual(['tenant-1', '@nodeadmin/plugin-kanban']);
+    });
+
+    it('runs lifecycle hooks before removing an installed plugin', async () => {
+      const lifecycleHook = vi.fn(async () => undefined);
+      const hookModuleLoader = vi.fn(() => lifecycleHook);
+      const packageJsonResolver = vi.fn(
+        () => '/repo/node_modules/@nodeadmin/plugin-kanban/package.json'
+      );
+      const mockClient = createMockClient([
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        {
+          rows: [
+            {
+              installed_version: '1.2.0',
+              manifest: {
+                author: { name: 'NodeAdmin Team' },
+                description: 'Board view',
+                displayName: 'Kanban',
+                engines: { nodeAdmin: '>=0.1.0' },
+                entrypoints: { server: './dist/server/index.js' },
+                id: '@nodeadmin/plugin-kanban',
+                lifecycle: { onUninstall: './scripts/uninstall.cjs' },
+                permissions: ['backlog:view'],
+                version: '1.2.0',
+              },
+              server_package: '@nodeadmin/plugin-kanban@1.2.0',
+            },
+          ],
+          rowCount: 1,
+        },
+        { rows: [{ plugin_name: '@nodeadmin/plugin-kanban' }], rowCount: 1 },
+        { rows: [], rowCount: 0 },
+      ]);
+      const mockPool = createMockPool([]);
+      mockPool.connect = vi.fn(async () => mockClient);
+      (service as unknown as { pool: typeof mockPool }).pool = mockPool;
+      (service as unknown as { hookModuleLoader: typeof hookModuleLoader }).hookModuleLoader =
+        hookModuleLoader;
+      (
+        service as unknown as { packageJsonResolver: typeof packageJsonResolver }
+      ).packageJsonResolver = packageJsonResolver;
+
+      await service.uninstallPlugin('tenant-1', '@nodeadmin/plugin-kanban');
+
+      expect(packageJsonResolver).toHaveBeenCalledWith('@nodeadmin/plugin-kanban');
+      expect(hookModuleLoader).toHaveBeenCalledWith(
+        '/repo/node_modules/@nodeadmin/plugin-kanban/scripts/uninstall.cjs'
+      );
+      expect(lifecycleHook).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pluginId: '@nodeadmin/plugin-kanban',
+          tenantId: 'tenant-1',
+          version: '1.2.0',
+        })
+      );
+      expect(mockClient.calls[3]?.sql).toContain('DELETE FROM tenant_plugins');
+    });
+  });
+
+  describe('install lifecycle', () => {
+    it('runs lifecycle hooks after persisting an installed plugin', async () => {
+      const lifecycleHook = vi.fn(async () => undefined);
+      const hookModuleLoader = vi.fn(() => lifecycleHook);
+      const packageJsonResolver = vi.fn(
+        () => '/repo/node_modules/@nodeadmin/plugin-kanban/package.json'
+      );
+      const mockClient = createMockClient([
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        {
+          rows: [
+            {
+              manifest: {
+                author: { name: 'NodeAdmin Team' },
+                description: 'Board view',
+                displayName: 'Kanban',
+                engines: { nodeAdmin: '>=0.1.0' },
+                entrypoints: { server: './dist/server/index.js' },
+                id: '@nodeadmin/plugin-kanban',
+                lifecycle: { onInstall: './scripts/install.cjs' },
+                permissions: ['backlog:view'],
+                version: '1.2.0',
+              },
+              min_platform_version: '>=0.1.0',
+              server_package: '@nodeadmin/plugin-kanban@1.2.0',
+              version: '1.2.0',
+            },
+          ],
+          rowCount: 1,
+        },
+        { rows: [], rowCount: 1 },
+        { rows: [], rowCount: 0 },
+      ]);
+      const mockPool = createMockPool([]);
+      mockPool.connect = vi.fn(async () => mockClient);
+      (service as unknown as { pool: typeof mockPool }).pool = mockPool;
+      (service as unknown as { hookModuleLoader: typeof hookModuleLoader }).hookModuleLoader =
+        hookModuleLoader;
+      (
+        service as unknown as { packageJsonResolver: typeof packageJsonResolver }
+      ).packageJsonResolver = packageJsonResolver;
+
+      await service.installPlugin('tenant-1', '@nodeadmin/plugin-kanban', '1.2.0');
+
+      expect(packageJsonResolver).toHaveBeenCalledWith('@nodeadmin/plugin-kanban');
+      expect(hookModuleLoader).toHaveBeenCalledWith(
+        '/repo/node_modules/@nodeadmin/plugin-kanban/scripts/install.cjs'
+      );
+      expect(lifecycleHook).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pluginId: '@nodeadmin/plugin-kanban',
+          tenantId: 'tenant-1',
+          version: '1.2.0',
+        })
+      );
+      expect(mockClient.calls[3]?.sql).toContain('INSERT INTO tenant_plugins');
     });
   });
 

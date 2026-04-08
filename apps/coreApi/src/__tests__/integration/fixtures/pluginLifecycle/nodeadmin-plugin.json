@@ -1,0 +1,22 @@
+{
+  "id": "@nodeadmin/plugin-lifecycle-fixture",
+  "version": "1.0.0",
+  "displayName": "Plugin Lifecycle Fixture",
+  "description": "Integration fixture for plugin install and uninstall lifecycle hooks",
+  "author": {
+    "name": "nodeAdmin Test Suite"
+  },
+  "engines": {
+    "nodeAdmin": ">=0.1.0"
+  },
+  "permissions": [
+    "plugin:lifecycle:test"
+  ],
+  "entrypoints": {
+    "server": "./dist/server/index.js"
+  },
+  "lifecycle": {
+    "onInstall": "./scripts/install.cjs",
+    "onUninstall": "./scripts/uninstall.cjs"
+  }
+}
