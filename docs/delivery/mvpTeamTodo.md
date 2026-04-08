@@ -110,14 +110,19 @@ Status legend:
 
 ## Phase 5 (Post-M3) Incremental Capabilities
 
+> nodeAdmin is positioned as a **rapid-development enterprise middle/back-office
+> framework**, so post-M3 work focuses on framework DX (API documentation, plugin
+> mechanism, CI stability) rather than vertical business features. Business
+> capabilities live in downstream forks.
+
 ### Backend
 
+- [x] Swagger API documentation (`dff4c45`, 2026-03-29) — `SwaggerModule.setup('api/docs', ...)` in `apps/coreApi/src/app/createApp.ts`, gated by `SWAGGER_ENABLED`; `@ApiTags` + `@ApiOperation` on all controllers, `@ApiProperty` on DTOs
 - [x] Audit log system — JWT HTTP guard, global interceptor, Drizzle repository, query API (`5aa6e1c` / PR #21)
-- [x] Modernizer module — analyze / docSync / controller
-- [x] Plugin marketplace Phase 0+1+2 — manifest schema, dynamic NestJS module registration, plugin sandbox, install/uninstall API, version management (`e11a5d9`)
+- [x] Modernizer module — analyze / docSync / controller (part of `dff4c45` batch)
+- [x] Plugin marketplace Phase 0+1+2 — manifest schema, dynamic NestJS module registration, plugin sandbox, install/uninstall/publish API, auto-update service, version management (`e11a5d9`)
 - [x] TenantContext abstraction + `SINGLE_TENANT_MODE` switch (`d132602`)
-- [ ] Swagger API documentation (`SwaggerModule.setup()` in `main.ts` + `@ApiTags` across controllers) — spec at `docs/superpowers/specs/2026-03-29-swagger-modernizer-design.md`, not yet integrated
-- [ ] TD-1: upgrade/replace `@nestjs/swagger@11.2.6` to escape exact-pinned `lodash` / `path-to-regexp`
+- [ ] TD-1: upgrade/replace `@nestjs/swagger@11.2.6` to escape exact-pinned `lodash` / `path-to-regexp` (allowlist expiry 2026-07-07)
 
 ### Frontend
 
@@ -135,11 +140,8 @@ Status legend:
 - [x] `wait-for-infra` composite action no longer silently continues on port/PG timeout
 - [x] Build artifact shared between `build` and `test-integration` jobs via `actions/upload-artifact`
 - [x] Frontend unit warnings cleaned up (BacklogPanel duplicate-key, LoginPage `act()`, plugin marketplace Button+Link)
+- [x] drizzle-orm 0.45.1 → 0.45.2 patching GHSA-gpj5-g38j-94v9 SQL injection (`f2ee0d8`), caught by new audit-ci gate
 - [ ] TD-3: root-cause Playwright E2E flake (removed from CI in `c33a0fc`) before re-adding E2E job
-
-### Strategic Decisions Pending
-
-- [ ] Agent microservice architecture — see `docs/architecture/agentMicroservicePlan.md` + `agentMicroserviceReview.md`. Potentially conflicts with D-007 (modular monolith through M2); requires project lead to clarify intent before any implementation begins.
 
 ## Quick Commands
 

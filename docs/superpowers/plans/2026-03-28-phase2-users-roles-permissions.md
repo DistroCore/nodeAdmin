@@ -1,5 +1,9 @@
 # Phase 2: 用户/角色/权限管理模块 实施计划
 
+> **Status (2026-04-08 update): COMPLETED.** users / roles / permissions 三个
+> NestJS 模块均已落地，见 `apps/coreApi/src/modules/users/`、`roles/`、
+> `permissions/`。本文档作为模块结构和校验规范的参考保留。
+>
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** 实现用户 CRUD、角色 CRUD + 权限分配、权限列表 API。
@@ -13,11 +17,13 @@
 ### Task 1: 创建 PermissionsModule
 
 **Files:**
+
 - Create: `apps/coreApi/src/modules/permissions/permissionsModule.ts`
 - Create: `apps/coreApi/src/modules/permissions/permissionsController.ts`
 - Create: `apps/coreApi/src/modules/permissions/permissionsService.ts`
 
 permissionsService.ts — 查询所有权限（只读，种子数据初始化的）：
+
 ```typescript
 import { Injectable, Logger } from '@nestjs/common';
 import { Pool } from 'pg';
@@ -64,6 +70,7 @@ export class PermissionsService {
 ```
 
 permissionsController.ts:
+
 ```typescript
 import { Controller, Get, Param } from '@nestjs/common';
 import { PermissionsService } from './permissionsService';
@@ -85,6 +92,7 @@ export class PermissionsController {
 ```
 
 permissionsModule.ts:
+
 ```typescript
 import { Module } from '@nestjs/common';
 import { PermissionsController } from './permissionsController';
@@ -103,6 +111,7 @@ export class PermissionsModule {}
 ### Task 2: 创建 UsersModule
 
 **Files:**
+
 - Create: `apps/coreApi/src/modules/users/usersModule.ts`
 - Create: `apps/coreApi/src/modules/users/usersController.ts`
 - Create: `apps/coreApi/src/modules/users/usersService.ts`
@@ -111,6 +120,7 @@ export class PermissionsModule {}
 - Create: `apps/coreApi/src/modules/users/dto/listUsersQueryDto.ts`
 
 listUsersQueryDto.ts:
+
 ```typescript
 import { IsOptional, IsString, IsInt, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -140,8 +150,17 @@ export class ListUsersQueryDto {
 ```
 
 createUserDto.ts:
+
 ```typescript
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MaxLength, MinLength, IsArray } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+  IsArray,
+} from 'class-validator';
 
 export class CreateUserDto {
   @IsEmail()
@@ -171,6 +190,7 @@ export class CreateUserDto {
 ```
 
 updateUserDto.ts:
+
 ```typescript
 import { IsOptional, IsString, MaxLength, IsArray } from 'class-validator';
 
@@ -196,6 +216,7 @@ export class UpdateUserDto {
 ```
 
 usersService.ts — 核心 CRUD:
+
 ```typescript
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
@@ -265,7 +286,13 @@ export class UsersService {
     return result.rows[0];
   }
 
-  async create(tenantId: string, email: string, password: string, name?: string, roleIds?: string[]) {
+  async create(
+    tenantId: string,
+    email: string,
+    password: string,
+    name?: string,
+    roleIds?: string[]
+  ) {
     if (!this.pool) throw new Error('Database not available');
     const userId = randomUUID();
     const passwordHash = await hash(password, 12);
@@ -280,7 +307,10 @@ export class UsersService {
       );
       if (roleIds && roleIds.length > 0) {
         for (const roleId of roleIds) {
-          await client.query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)', [userId, roleId]);
+          await client.query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)', [
+            userId,
+            roleId,
+          ]);
         }
       }
       await client.query('COMMIT');
@@ -293,7 +323,11 @@ export class UsersService {
     return this.findById(tenantId, userId);
   }
 
-  async update(tenantId: string, userId: string, data: { name?: string; avatar?: string; isActive?: boolean; roleIds?: string[] }) {
+  async update(
+    tenantId: string,
+    userId: string,
+    data: { name?: string; avatar?: string; isActive?: boolean; roleIds?: string[] }
+  ) {
     if (!this.pool) throw new Error('Database not available');
 
     const client = await this.pool.connect();
@@ -305,9 +339,18 @@ export class UsersService {
       const params: unknown[] = [];
       let paramIdx = 1;
 
-      if (data.name !== undefined) { sets.push(`name = $${++paramIdx}`); params.push(data.name); }
-      if (data.avatar !== undefined) { sets.push(`avatar = $${++paramIdx}`); params.push(data.avatar); }
-      if (data.isActive !== undefined) { sets.push(`is_active = $${++paramIdx}`); params.push(data.isActive); }
+      if (data.name !== undefined) {
+        sets.push(`name = $${++paramIdx}`);
+        params.push(data.name);
+      }
+      if (data.avatar !== undefined) {
+        sets.push(`avatar = $${++paramIdx}`);
+        params.push(data.avatar);
+      }
+      if (data.isActive !== undefined) {
+        sets.push(`is_active = $${++paramIdx}`);
+        params.push(data.isActive);
+      }
 
       if (sets.length > 0) {
         sets.push(`updated_at = now()`);
@@ -321,7 +364,10 @@ export class UsersService {
       if (data.roleIds !== undefined) {
         await client.query('DELETE FROM user_roles WHERE user_id = $1', [userId]);
         for (const roleId of data.roleIds) {
-          await client.query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)', [userId, roleId]);
+          await client.query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)', [
+            userId,
+            roleId,
+          ]);
         }
       }
 
@@ -342,7 +388,10 @@ export class UsersService {
       await client.query('BEGIN');
       await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [tenantId]);
       await client.query('DELETE FROM user_roles WHERE user_id = $1', [userId]);
-      const result = await client.query('DELETE FROM users WHERE tenant_id = $1 AND id = $2 RETURNING id', [tenantId, userId]);
+      const result = await client.query(
+        'DELETE FROM users WHERE tenant_id = $1 AND id = $2 RETURNING id',
+        [tenantId, userId]
+      );
       await client.query('COMMIT');
       if (result.rows.length === 0) throw new NotFoundException('User not found');
     } catch (error) {
@@ -356,6 +405,7 @@ export class UsersService {
 ```
 
 usersController.ts:
+
 ```typescript
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { UsersService } from './usersService';
@@ -384,7 +434,11 @@ export class UsersController {
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() dto: UpdateUserDto, @Query('tenantId') tenantId?: string) {
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserDto,
+    @Query('tenantId') tenantId?: string
+  ) {
     return this.usersService.update(tenantId ?? 'default', id, {
       name: dto.name,
       avatar: dto.avatar,
@@ -402,6 +456,7 @@ export class UsersController {
 ```
 
 usersModule.ts:
+
 ```typescript
 import { Module } from '@nestjs/common';
 import { UsersController } from './usersController';
@@ -420,6 +475,7 @@ export class UsersModule {}
 ### Task 3: 创建 RolesModule
 
 **Files:**
+
 - Create: `apps/coreApi/src/modules/roles/rolesModule.ts`
 - Create: `apps/coreApi/src/modules/roles/rolesController.ts`
 - Create: `apps/coreApi/src/modules/roles/rolesService.ts`
@@ -427,6 +483,7 @@ export class UsersModule {}
 - Create: `apps/coreApi/src/modules/roles/dto/updateRoleDto.ts`
 
 createRoleDto.ts:
+
 ```typescript
 import { IsNotEmpty, IsOptional, IsString, MaxLength, IsArray } from 'class-validator';
 
@@ -452,6 +509,7 @@ export class CreateRoleDto {
 ```
 
 updateRoleDto.ts:
+
 ```typescript
 import { IsOptional, IsString, MaxLength, IsArray } from 'class-validator';
 
@@ -473,6 +531,7 @@ export class UpdateRoleDto {
 ```
 
 rolesService.ts:
+
 ```typescript
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
@@ -538,7 +597,10 @@ export class RolesService {
       );
       if (permissionIds && permissionIds.length > 0) {
         for (const permId of permissionIds) {
-          await client.query('INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2)', [roleId, permId]);
+          await client.query(
+            'INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2)',
+            [roleId, permId]
+          );
         }
       }
       await client.query('COMMIT');
@@ -551,11 +613,18 @@ export class RolesService {
     return this.findById(tenantId, roleId);
   }
 
-  async update(tenantId: string, roleId: string, data: { name?: string; description?: string; permissionIds?: string[] }) {
+  async update(
+    tenantId: string,
+    roleId: string,
+    data: { name?: string; description?: string; permissionIds?: string[] }
+  ) {
     if (!this.pool) throw new Error('Database not available');
 
     // Check not system role
-    const check = await this.pool.query('SELECT is_system FROM roles WHERE tenant_id = $1 AND id = $2', [tenantId, roleId]);
+    const check = await this.pool.query(
+      'SELECT is_system FROM roles WHERE tenant_id = $1 AND id = $2',
+      [tenantId, roleId]
+    );
     if (check.rows.length === 0) throw new NotFoundException('Role not found');
     if (check.rows[0].is_system) throw new BadRequestException('Cannot modify system roles');
 
@@ -568,8 +637,14 @@ export class RolesService {
       const params: unknown[] = [];
       let paramIdx = 0;
 
-      if (data.name !== undefined) { sets.push(`name = $${++paramIdx}`); params.push(data.name); }
-      if (data.description !== undefined) { sets.push(`description = $${++paramIdx}`); params.push(data.description); }
+      if (data.name !== undefined) {
+        sets.push(`name = $${++paramIdx}`);
+        params.push(data.name);
+      }
+      if (data.description !== undefined) {
+        sets.push(`description = $${++paramIdx}`);
+        params.push(data.description);
+      }
 
       if (sets.length > 0) {
         sets.push(`updated_at = now()`);
@@ -583,7 +658,10 @@ export class RolesService {
       if (data.permissionIds !== undefined) {
         await client.query('DELETE FROM role_permissions WHERE role_id = $1', [roleId]);
         for (const permId of data.permissionIds) {
-          await client.query('INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2)', [roleId, permId]);
+          await client.query(
+            'INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2)',
+            [roleId, permId]
+          );
         }
       }
 
@@ -599,7 +677,10 @@ export class RolesService {
 
   async remove(tenantId: string, roleId: string) {
     if (!this.pool) throw new Error('Database not available');
-    const check = await this.pool.query('SELECT is_system FROM roles WHERE tenant_id = $1 AND id = $2', [tenantId, roleId]);
+    const check = await this.pool.query(
+      'SELECT is_system FROM roles WHERE tenant_id = $1 AND id = $2',
+      [tenantId, roleId]
+    );
     if (check.rows.length === 0) throw new NotFoundException('Role not found');
     if (check.rows[0].is_system) throw new BadRequestException('Cannot delete system roles');
 
@@ -622,6 +703,7 @@ export class RolesService {
 ```
 
 rolesController.ts:
+
 ```typescript
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { RolesService } from './rolesService';
@@ -648,7 +730,11 @@ export class RolesController {
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() dto: UpdateRoleDto, @Query('tenantId') tenantId?: string) {
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateRoleDto,
+    @Query('tenantId') tenantId?: string
+  ) {
     return this.rolesService.update(tenantId ?? 'default', id, {
       name: dto.name,
       description: dto.description,
@@ -665,6 +751,7 @@ export class RolesController {
 ```
 
 rolesModule.ts:
+
 ```typescript
 import { Module } from '@nestjs/common';
 import { RolesController } from './rolesController';
@@ -717,6 +804,7 @@ export class AppModule {}
 ### Task 5: 验证所有 API 端点
 
 启动服务器后测试：
+
 - `GET /api/v1/permissions` — 返回 18 条权限
 - `GET /api/v1/users` — 用户列表
 - `GET /api/v1/roles` — 角色列表（含权限）

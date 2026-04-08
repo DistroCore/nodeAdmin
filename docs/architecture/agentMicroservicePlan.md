@@ -1,7 +1,13 @@
 # Agent 微服务架构规划
 
 > 来源：Gemini 生成，2026-04-06
-> 状态：待评审 — 评审意见见 [agentMicroserviceReview.md](./agentMicroserviceReview.md)
+> 评审意见：[agentMicroserviceReview.md](./agentMicroserviceReview.md)
+>
+> **Scope（2026-04-08 更新）**：nodeAdmin 是通用的中后台快速开发框架，Agent
+> 能力（闲鱼客服、量化日报等）属于 **fork 出去的下游业务系统**，不是 nodeAdmin
+> 本身的路线图工作。本文档与评审意见保留在这里，作为下游系统可能通过 nodeAdmin
+> 的插件市场（见 `pluginMarketplacePlan.md`）集成时的架构参考。如果下游 fork 真正
+> 启动 Agent 开发，应把对应的决策和实施计划放到 fork 的仓库，而不是这里。
 
 ## 1. 中台系统 (Node.js) 技术细节
 

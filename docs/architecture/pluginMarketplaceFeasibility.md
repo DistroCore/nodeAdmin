@@ -165,7 +165,18 @@ Phase 0 是**现在就可以做的低风险高回报**工作：
 - 给租户管理员提供功能开关的灵活性
 - 为后续 Phase 1/2 打下数据基础（`tenant_plugins` 表）
 
-Phase 1/2 建议在 Agent 微服务（闲鱼客服、量化日报）的需求明确后再启动，因为 Agent 本身就是第一批"外部插件"的天然候选。
+## 交付现状（2026-04-08 更新）
+
+Phase 0 + Phase 1 + Phase 2 已经全部落地，见 `e11a5d9`。插件市场现在是 nodeAdmin
+框架的核心扩展机制：
+
+- 后端 22 个文件（registry / market / auto-update / sandbox / guard / manifest
+  validator / admin controller），install / update / publish / uninstall 端点齐全
+- 前端市场首页 / 详情页 / 已安装管理 / 配置页齐全
+- 原文档中"Phase 1/2 等 Agent 需求明确后再启动"的前提条件已经失效 —— 随着 nodeAdmin
+  被定位为**中后台快速开发框架**，插件市场是独立于任何具体业务（包括下游 fork 的
+  Agent 系统）的平台能力，理应先于下游业务交付。下游 fork 如果需要 Agent 能力，
+  可以直接把 Agent 功能打包成 nodeAdmin 插件上架。
 
 ---
 

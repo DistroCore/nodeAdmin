@@ -1,5 +1,11 @@
 # Phase 1: 数据库 Schema + 认证系统 实施计划
 
+> **Status (2026-04-08 update): COMPLETED.** users / roles / permissions / tenants
+> 表及 bcrypt + JWT 双 token 认证链路均已落地，见
+> `apps/coreApi/src/infrastructure/database/schema.ts` 和
+> `apps/coreApi/src/modules/auth/`。原始 `- [ ]` checkbox 未回填，本文档作为任务
+> 拆分和 DTO/校验规范的参考保留。
+>
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 新增 P0 所需的数据库表，并实现邮箱密码登录/注册/密码重置的完整认证流程。
@@ -41,6 +47,7 @@ apps/coreApi/
 ### Task 1: 新增 Drizzle Schema 定义
 
 **Files:**
+
 - Modify: `apps/coreApi/src/infrastructure/database/schema.ts`
 
 - [ ] **Step 1: 在 schema.ts 末尾追加所有新表定义**
@@ -51,7 +58,9 @@ apps/coreApi/
 // ─── RBAC / Admin Platform Tables ────────────────────────────────
 
 export const tenants = pgTable('tenants', {
-  id: varchar('id', { length: 128 }).primaryKey().$defaultFn(() => randomUUID()),
+  id: varchar('id', { length: 128 })
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
   name: varchar('name', { length: 200 }).notNull(),
   slug: varchar('slug', { length: 100 }).notNull().unique(),
   logo: varchar('logo', { length: 500 }),
@@ -61,106 +70,166 @@ export const tenants = pgTable('tenants', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const users = pgTable('users', {
-  id: varchar('id', { length: 128 }).primaryKey().$defaultFn(() => randomUUID()),
-  tenantId: varchar('tenant_id', { length: 128 }).notNull(),
-  email: varchar('email', { length: 255 }).notNull(),
-  phone: varchar('phone', { length: 20 }),
-  passwordHash: varchar('password_hash', { length: 255 }).notNull(),
-  name: varchar('name', { length: 100 }),
-  avatar: varchar('avatar', { length: 500 }),
-  isActive: integer('is_active').$type<boolean>().default(1).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-}, (table) => ({
-  usersTenantEmailUnique: uniqueIndex('users_tenant_email_uniq').on(table.tenantId, table.email),
-  usersTenantIdx: index('users_tenant_idx').on(table.tenantId),
-}));
+export const users = pgTable(
+  'users',
+  {
+    id: varchar('id', { length: 128 })
+      .primaryKey()
+      .$defaultFn(() => randomUUID()),
+    tenantId: varchar('tenant_id', { length: 128 }).notNull(),
+    email: varchar('email', { length: 255 }).notNull(),
+    phone: varchar('phone', { length: 20 }),
+    passwordHash: varchar('password_hash', { length: 255 }).notNull(),
+    name: varchar('name', { length: 100 }),
+    avatar: varchar('avatar', { length: 500 }),
+    isActive: integer('is_active').$type<boolean>().default(1).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    usersTenantEmailUnique: uniqueIndex('users_tenant_email_uniq').on(table.tenantId, table.email),
+    usersTenantIdx: index('users_tenant_idx').on(table.tenantId),
+  })
+);
 
-export const roles = pgTable('roles', {
-  id: varchar('id', { length: 128 }).primaryKey().$defaultFn(() => randomUUID()),
-  tenantId: varchar('tenant_id', { length: 128 }).notNull(),
-  name: varchar('name', { length: 100 }).notNull(),
-  description: text('description'),
-  isSystem: integer('is_system').$type<boolean>().default(0).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-}, (table) => ({
-  rolesTenantNameUnique: uniqueIndex('roles_tenant_name_uniq').on(table.tenantId, table.name),
-  rolesTenantIdx: index('roles_tenant_idx').on(table.tenantId),
-}));
+export const roles = pgTable(
+  'roles',
+  {
+    id: varchar('id', { length: 128 })
+      .primaryKey()
+      .$defaultFn(() => randomUUID()),
+    tenantId: varchar('tenant_id', { length: 128 }).notNull(),
+    name: varchar('name', { length: 100 }).notNull(),
+    description: text('description'),
+    isSystem: integer('is_system').$type<boolean>().default(0).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    rolesTenantNameUnique: uniqueIndex('roles_tenant_name_uniq').on(table.tenantId, table.name),
+    rolesTenantIdx: index('roles_tenant_idx').on(table.tenantId),
+  })
+);
 
 export const permissions = pgTable('permissions', {
-  id: varchar('id', { length: 128 }).primaryKey().$defaultFn(() => randomUUID()),
+  id: varchar('id', { length: 128 })
+    .primaryKey()
+    .$defaultFn(() => randomUUID()),
   code: varchar('code', { length: 100 }).notNull().unique(),
   name: varchar('name', { length: 200 }).notNull(),
   module: varchar('module', { length: 50 }).notNull(),
   description: text('description'),
 });
 
-export const userRoles = pgTable('user_roles', {
-  userId: varchar('user_id', { length: 128 }).notNull().references(() => users.id),
-  roleId: varchar('role_id', { length: 128 }).notNull().references(() => roles.id),
-}, (table) => ({
-  pk: primaryKey({ columns: [table.userId, table.roleId], name: 'user_roles_pk' }),
-}));
+export const userRoles = pgTable(
+  'user_roles',
+  {
+    userId: varchar('user_id', { length: 128 })
+      .notNull()
+      .references(() => users.id),
+    roleId: varchar('role_id', { length: 128 })
+      .notNull()
+      .references(() => roles.id),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.userId, table.roleId], name: 'user_roles_pk' }),
+  })
+);
 
-export const rolePermissions = pgTable('role_permissions', {
-  roleId: varchar('role_id', { length: 128 }).notNull().references(() => roles.id),
-  permissionId: varchar('permission_id', { length: 128 }).notNull().references(() => permissions.id),
-}, (table) => ({
-  pk: primaryKey({ columns: [table.roleId, table.permissionId], name: 'role_permissions_pk' }),
-}));
+export const rolePermissions = pgTable(
+  'role_permissions',
+  {
+    roleId: varchar('role_id', { length: 128 })
+      .notNull()
+      .references(() => roles.id),
+    permissionId: varchar('permission_id', { length: 128 })
+      .notNull()
+      .references(() => permissions.id),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.roleId, table.permissionId], name: 'role_permissions_pk' }),
+  })
+);
 
-export const menus = pgTable('menus', {
-  id: varchar('id', { length: 128 }).primaryKey().$defaultFn(() => randomUUID()),
-  parentId: varchar('parent_id', { length: 128 }),
-  name: varchar('name', { length: 100 }).notNull(),
-  path: varchar('path', { length: 200 }),
-  icon: varchar('icon', { length: 100 }),
-  sortOrder: integer('sort_order').default(0).notNull(),
-  permissionCode: varchar('permission_code', { length: 100 }),
-  isVisible: integer('is_visible').$type<boolean>().default(1).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-}, (table) => ({
-  menusParentIdx: index('menus_parent_idx').on(table.parentId),
-}));
+export const menus = pgTable(
+  'menus',
+  {
+    id: varchar('id', { length: 128 })
+      .primaryKey()
+      .$defaultFn(() => randomUUID()),
+    parentId: varchar('parent_id', { length: 128 }),
+    name: varchar('name', { length: 100 }).notNull(),
+    path: varchar('path', { length: 200 }),
+    icon: varchar('icon', { length: 100 }),
+    sortOrder: integer('sort_order').default(0).notNull(),
+    permissionCode: varchar('permission_code', { length: 100 }),
+    isVisible: integer('is_visible').$type<boolean>().default(1).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    menusParentIdx: index('menus_parent_idx').on(table.parentId),
+  })
+);
 
-export const roleMenus = pgTable('role_menus', {
-  roleId: varchar('role_id', { length: 128 }).notNull().references(() => roles.id),
-  menuId: varchar('menu_id', { length: 128 }).notNull().references(() => menus.id),
-}, (table) => ({
-  pk: primaryKey({ columns: [table.roleId, table.menuId], name: 'role_menus_pk' }),
-}));
+export const roleMenus = pgTable(
+  'role_menus',
+  {
+    roleId: varchar('role_id', { length: 128 })
+      .notNull()
+      .references(() => roles.id),
+    menuId: varchar('menu_id', { length: 128 })
+      .notNull()
+      .references(() => menus.id),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.roleId, table.menuId], name: 'role_menus_pk' }),
+  })
+);
 
-export const oauthAccounts = pgTable('oauth_accounts', {
-  id: varchar('id', { length: 128 }).primaryKey().$defaultFn(() => randomUUID()),
-  userId: varchar('user_id', { length: 128 }).notNull().references(() => users.id),
-  provider: varchar('provider', { length: 50 }).notNull(),
-  providerId: varchar('provider_id', { length: 255 }).notNull(),
-  accessToken: text('access_token'),
-  refreshToken: text('refresh_token'),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-}, (table) => ({
-  oauthProviderUnique: uniqueIndex('oauth_provider_uniq').on(table.provider, table.providerId),
-}));
+export const oauthAccounts = pgTable(
+  'oauth_accounts',
+  {
+    id: varchar('id', { length: 128 })
+      .primaryKey()
+      .$defaultFn(() => randomUUID()),
+    userId: varchar('user_id', { length: 128 })
+      .notNull()
+      .references(() => users.id),
+    provider: varchar('provider', { length: 50 }).notNull(),
+    providerId: varchar('provider_id', { length: 255 }).notNull(),
+    accessToken: text('access_token'),
+    refreshToken: text('refresh_token'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    oauthProviderUnique: uniqueIndex('oauth_provider_uniq').on(table.provider, table.providerId),
+  })
+);
 
-export const smsCodes = pgTable('sms_codes', {
-  id: varchar('id', { length: 128 }).primaryKey().$defaultFn(() => randomUUID()),
-  phone: varchar('phone', { length: 20 }).notNull(),
-  code: varchar('code', { length: 6 }).notNull(),
-  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-  usedAt: timestamp('used_at', { withTimezone: true }),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-}, (table) => ({
-  smsPhoneIdx: index('sms_phone_idx').on(table.phone, table.createdAt),
-}));
+export const smsCodes = pgTable(
+  'sms_codes',
+  {
+    id: varchar('id', { length: 128 })
+      .primaryKey()
+      .$defaultFn(() => randomUUID()),
+    phone: varchar('phone', { length: 20 }).notNull(),
+    code: varchar('code', { length: 6 }).notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    smsPhoneIdx: index('sms_phone_idx').on(table.phone, table.createdAt),
+  })
+);
 ```
 
 注意：需要在文件顶部 import 中添加 `randomUUID` 和 `uniqueIndex`：
+
 ```typescript
 import { randomUUID } from 'node:crypto';
 ```
+
 并确保 `uniqueIndex` 已在 drizzle-orm/pg-core 的导入中。
 
 - [ ] **Step 2: 验证 TypeScript 编译通过**
@@ -180,6 +249,7 @@ git commit -m "feat(schema): add RBAC tables (users, roles, permissions, tenants
 ### Task 2: 创建数据库迁移 SQL
 
 **Files:**
+
 - Create: `apps/coreApi/drizzle/migrations/0016_rbac_tables.sql`
 - Create: `apps/coreApi/drizzle/migrations/0016_rbac_tables_seed.sql`
 
@@ -386,6 +456,7 @@ git commit -m "feat(db): add RBAC migration and seed data"
 ### Task 3: 安装 bcrypt 依赖
 
 **Files:**
+
 - Modify: `apps/coreApi/package.json`
 
 - [ ] **Step 1: 安装 bcryptjs 和类型定义**
@@ -404,6 +475,7 @@ git commit -m "chore: add bcryptjs dependency for password hashing"
 ### Task 4: 创建 Auth DTOs
 
 **Files:**
+
 - Create: `apps/coreApi/src/modules/auth/dto/registerDto.ts`
 - Create: `apps/coreApi/src/modules/auth/dto/loginDto.ts`
 - Create: `apps/coreApi/src/modules/auth/dto/refreshTokenDto.ts`
@@ -509,6 +581,7 @@ git commit -m "feat(auth): add login, register, refresh, reset-password DTOs"
 ### Task 5: 扩展 AuthService 支持密码认证
 
 **Files:**
+
 - Modify: `apps/coreApi/src/modules/auth/authService.ts`
 
 - [ ] **Step 1: 扩展 AuthService**
@@ -585,13 +658,24 @@ export class AuthService {
     const roles = this.normalizeRoles(input.roles);
 
     const accessToken = sign(
-      { jti: accessTokenJti, roles, sub: input.userId, tid: input.tenantId, type: 'access' } satisfies AccessTokenClaims,
+      {
+        jti: accessTokenJti,
+        roles,
+        sub: input.userId,
+        tid: input.tenantId,
+        type: 'access',
+      } satisfies AccessTokenClaims,
       runtimeConfig.auth.accessSecret,
       { expiresIn: runtimeConfig.auth.accessExpiresIn as StringValue }
     );
 
     const refreshToken = sign(
-      { jti: refreshTokenJti, sub: input.userId, tid: input.tenantId, type: 'refresh' } satisfies RefreshTokenClaims,
+      {
+        jti: refreshTokenJti,
+        sub: input.userId,
+        tid: input.tenantId,
+        type: 'refresh',
+      } satisfies RefreshTokenClaims,
       runtimeConfig.auth.refreshSecret,
       { expiresIn: runtimeConfig.auth.refreshExpiresIn as StringValue }
     );
@@ -627,7 +711,12 @@ export class AuthService {
     return { jti, roles, tenantId, userId };
   }
 
-  async register(email: string, password: string, tenantId: string, name?: string): Promise<{ userId: string; tokens: IssuedTokens }> {
+  async register(
+    email: string,
+    password: string,
+    tenantId: string,
+    name?: string
+  ): Promise<{ userId: string; tokens: IssuedTokens }> {
     if (!this.pool) throw new UnauthorizedException('Database not available.');
 
     const existing = await this.pool.query(
@@ -669,7 +758,11 @@ export class AuthService {
     return { userId, tokens };
   }
 
-  async login(email: string, password: string, tenantId: string): Promise<{ userId: string; tokens: IssuedTokens }> {
+  async login(
+    email: string,
+    password: string,
+    tenantId: string
+  ): Promise<{ userId: string; tokens: IssuedTokens }> {
     if (!this.pool) throw new UnauthorizedException('Database not available.');
 
     const result = await this.pool.query<UserRow>(
@@ -765,6 +858,7 @@ git commit -m "feat(auth): add register, login, refresh-tokens with bcrypt passw
 ### Task 6: 扩展 AuthController 新增端点
 
 **Files:**
+
 - Modify: `apps/coreApi/src/modules/auth/authController.ts`
 
 - [ ] **Step 1: 替换 authController.ts**
@@ -803,11 +897,7 @@ export class AuthController {
 
   @Post('login')
   async login(@Body() dto: LoginDto) {
-    const { userId, tokens } = await this.authService.login(
-      dto.email,
-      dto.password,
-      dto.tenantId
-    );
+    const { userId, tokens } = await this.authService.login(dto.email, dto.password, dto.tenantId);
 
     try {
       await this.auditLogService.record({

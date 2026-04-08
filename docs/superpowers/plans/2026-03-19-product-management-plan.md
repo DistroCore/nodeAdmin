@@ -1,5 +1,11 @@
 # nodeAdmin 产品管理框架实施计划
 
+> **Status (2026-04-08 update): COMPLETED.** 三个模块均已落地：代码生成器
+> `npm run generate:crud`（`apps/coreApi/src/cli/`）、Backlog 模块
+> （`apps/coreApi/src/modules/backlog/` + `apps/adminPortal/src/components/business/backlogPanel.tsx`）、
+> Modernizer 模块（`apps/coreApi/src/modules/modernizer/`，含 analyze / docSync）。
+> 原始计划的 `- [ ]` checkbox 未回填，本文档作为任务拆分和架构决策的历史参考保留。
+>
 > **Goal:** 为 nodeAdmin 添加代码生成器、需求管理 (Backlog)、架构现代化三大模块
 
 **Architecture:** CLI 工具独立运行不加载到 NestJS 运行时；Backlog 和 Modernizer 作为标准 NestJS 模块
@@ -59,6 +65,7 @@ apps/coreApi/
 - [ ] **Task 6: 支持 `--dry-run` 和 `--force` 选项**
 
 ### 验收
+
 - `npm run generate:crud -- crud Product --dry-run` 预览生成内容
 - `npm run generate:crud -- crud Product` 生成可编译的模块
 - 生成的代码使用 Drizzle ORM，遵循项目 CommonJS 规范
@@ -79,6 +86,7 @@ apps/coreApi/
 - [ ] **Task 6: 注册 BacklogModule** — 添加到 `appModule.ts` imports
 
 ### API 端点
+
 - `GET /api/v1/backlog/tasks` — 分页查询任务
 - `POST /api/v1/backlog/tasks` — 创建任务
 - `PATCH /api/v1/backlog/tasks/:id` — 更新任务状态/优先级
@@ -89,6 +97,7 @@ apps/coreApi/
 - `POST /api/v1/backlog/sprints/:id/tasks` — 将任务分配到 Sprint
 
 ### 验收
+
 - 所有 API 端点可用
 - 支持分页、状态筛选
 - 前端 Backlog 面板（后续）
@@ -111,6 +120,7 @@ apps/coreApi/
 - [ ] **Task 4: 添加 CLI 入口** — `npm run modernizer:analyze` + `npm run modernizer:sync-docs`
 
 ### 验收
+
 - `npm run modernizer:analyze` 输出代码质量报告
 - `npm run modernizer:sync-docs` 自动更新 API 端点文档
 
@@ -118,8 +128,8 @@ apps/coreApi/
 
 ## 优先级
 
-| Phase | 优先级 | 前置条件 |
-|-------|--------|----------|
-| Phase 1: Code Generator | P2 | 审计日志模块完成 |
-| Phase 2: Backlog | P3 | Phase 1 完成 |
-| Phase 3: Modernizer | P3 | Phase 1 完成 |
+| Phase                   | 优先级 | 前置条件         |
+| ----------------------- | ------ | ---------------- |
+| Phase 1: Code Generator | P2     | 审计日志模块完成 |
+| Phase 2: Backlog        | P3     | Phase 1 完成     |
+| Phase 3: Modernizer     | P3     | Phase 1 完成     |

@@ -3,6 +3,10 @@
 > 评审对象：[agentMicroservicePlan.md](./agentMicroservicePlan.md)（Gemini 生成）
 > 评审人：Claude Code（项目架构师视角）
 > 日期：2026-04-06
+>
+> **Scope（2026-04-08 更新）**：见被评审文档的 Scope 说明。Agent 业务能力属于
+> 下游 fork，不在 nodeAdmin 框架本身的路线图内。此评审保留作为架构推理的历史
+> 参考；fork 启动实际开发时应当把修正后的方案搬到 fork 自己的 decisionLog。
 
 ## 总体评价
 

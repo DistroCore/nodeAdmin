@@ -157,8 +157,20 @@
 - 影响范围：`audit-ci.jsonc` 注释格式、新增 `scripts/checkAuditAllowlistExpiry.cjs`、`ci.yml` audit job 新增 step。
 - 责任人：平台与安全负责人。
 
+### D-019
+
+- 日期：2026-04-08
+- 决策：nodeAdmin 明确定位为**企业级中后台快速开发框架**，具体业务能力（如 Agent / 闲鱼客服 / 量化日报 等）属于**下游 fork 的产品**，不在 nodeAdmin 本体路线图内。
+- 原因：项目到 M3 之后方向一度模糊——从 Plan 文档看有 agentMicroservicePlan 在推进，给人"nodeAdmin 要做 Agent 业务"的错觉。实际意图是 nodeAdmin 作为基础框架，fork 出去承载具体业务。明确这个边界后，框架的优先级非常清晰：DX（API 文档、插件机制、代码生成、类型导出）、稳定性（CI、审计、依赖安全）、可扩展性（插件市场）高于任何纵向业务功能。
+- 影响范围：
+  - `docs/architecture/agentMicroservicePlan.md` 和 `agentMicroserviceReview.md` 已加 Scope 标注，说明这两份文档是下游 fork 架构的历史参考，不是 nodeAdmin 的开放工作。
+  - `docs/delivery/roadmapPlan.md` 第 9.2 节原本把 Agent 列为"需战略决策"，移除。
+  - `docs/delivery/mvpTeamTodo.md` 的 "Strategic Decisions Pending" 段落移除。
+  - 未来讨论或规划时，默认假设：任何 vertical business domain（IM 业务具体玩法除外——IM 是框架内置的示范模块）应当放到下游 fork 的 repo，不进 nodeAdmin 主线。
+- 责任人：项目负责人 / 架构负责人。
+
 ## 最近更新时间
 
-- 2026-04-08（补录 D-012 ~ D-018，对齐插件市场 / CI 加固 / TenantContext 实际落地；前序决策日志自 2026-03-01 起滞后）
+- 2026-04-08（新增 D-019 明确框架定位；同日补录 D-012 ~ D-018，对齐插件市场 / CI 加固 / TenantContext 实际落地）
 - 2026-03-01（补录 D-007 ~ D-011，对齐 brainstormingResults.md 决策建议）
 - 2026-02-28

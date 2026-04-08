@@ -2,7 +2,11 @@
 
 > 日期：2026-04-06
 > 前置条件：Plugin Phase 0（租户级功能开关）已完成
-> 状态：待评审
+> **状态（2026-04-08 更新）：Phase 0 + Phase 1 + Phase 2 已实现，见 `e11a5d9`**
+> 后端 22 个文件覆盖 registry / market / auto-update / sandbox / guard / manifest
+> validator / admin controller，install / update / publish / uninstall 端点齐全；
+> 前端市场首页 / 详情页 / 已安装管理 / 配置页齐全。本文档保留作为原始规划和技术
+> 决策的参考；Phase 3 及后续增强请另起新计划文档。
 
 ## 技术决策
 

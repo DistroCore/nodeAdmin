@@ -152,18 +152,21 @@ M1/M2/M3 的 MVP 目标已全部通过。以下是自 2026-03-01 以来的增量
 
 ### 9.1 已完成（M3 → 现在）
 
-- [x] **审计日志系统**（`5aa6e1c` PR #21）— JWT HTTP guard、全局审计拦截器、Drizzle 查询层、前端 Timeline 组件与 AuditLogPanel。对应 spec: `docs/superpowers/specs/2026-03-29-audit-log-system-design.md`，决策: D-012 前置条件。
-- [x] **Modernizer 模块** — analyze / docSync / controller 链路，配合 M3 后的文档治理能力。
-- [x] **插件市场 Phase 0 + 1 + 2**（`e11a5d9`）— 租户级功能开关、manifest 校验、动态 NestJS Module 注册、前端 dynamic import + React.lazy、importmap 共享依赖、市场 UI / 安装卸载 API / 版本管理。对应计划: `docs/architecture/pluginMarketplacePlan.md`，决策: D-013、D-014。
+> nodeAdmin 被定位为**企业级中后台快速开发框架**，所以 M3 之后的增量工作都围绕框架
+> DX（API 文档、插件机制、CI 稳定性）而非单一业务功能展开。
+
+- [x] **Swagger API 文档集成**（`dff4c45`，2026-03-29）— `SwaggerModule.setup('api/docs', ...)` 在 `apps/coreApi/src/app/createApp.ts:135`，由 `SWAGGER_ENABLED` 环境变量开关；所有 controller 已打 `@ApiTags` + `@ApiOperation`，DTO 已打 `@ApiProperty`。对应 spec: `docs/superpowers/specs/2026-03-29-swagger-modernizer-design.md` Part 1。
+- [x] **审计日志系统**（`5aa6e1c` PR #21）— JWT HTTP guard、全局审计拦截器、Drizzle 查询层、前端 Timeline 组件与 AuditLogPanel。对应 spec: `docs/superpowers/specs/2026-03-29-audit-log-system-design.md`。
+- [x] **Modernizer 模块**（`dff4c45` Part 2 同批）— analyze / docSync / controller 链路，配合 M3 后的文档治理能力。
+- [x] **插件市场 Phase 0 + 1 + 2**（`e11a5d9`）— 租户级功能开关、manifest 校验、动态 NestJS Module 注册、前端 dynamic import + React.lazy、importmap 共享依赖、市场 UI / 安装卸载 / 发布 / 自动更新端点齐全。对应计划: `docs/architecture/pluginMarketplacePlan.md`，决策: D-013、D-014。
 - [x] **TenantContext 抽象 + `SINGLE_TENANT_MODE`**（`d132602`）— 单/多租户部署统一入口，决策: D-015。
-- [x] **CI/CD 加固**（`b463d59` → `2cdb769` 共 5 提交，2026-04-08）— 6 job 工作流（static / unit-test 含前端 vitest / audit / build / test-integration / docker-build）、artifact 共享、failure 时 docker logs 收集、`wait-for-infra` 静默失败修复、audit-ci + allowlist 模式、allowlist 过期自动检查、`.dockerignore` pattern-based 白名单加固。决策: D-016、D-017、D-018。
+- [x] **CI/CD 加固**（`b463d59` → `4a21e1e` 共 8 提交，2026-04-08）— 6 job 工作流（static / unit-test 含前端 vitest / audit / build / test-integration / docker-build）、artifact 共享、failure 时 docker logs 收集、`wait-for-infra` 静默失败修复、audit-ci + allowlist 模式、allowlist 过期自动检查、`.dockerignore` pattern-based 白名单加固、drizzle-orm SQL 注入补丁（`f2ee0d8`）。决策: D-016、D-017、D-018。
 
 ### 9.2 规划中（未启动）
 
-| 项目                 | 依据                                                                    | 优先级     | 备注                                                                                                                                            |
-| -------------------- | ----------------------------------------------------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Swagger API 文档集成 | `docs/superpowers/specs/2026-03-29-swagger-modernizer-design.md` Part 1 | 中         | 注意：`main.ts` 当前**没有** `SwaggerModule.setup()`，所有 controller 也未加 `@ApiTags`。属于 spec 已完成但实现未落地状态。建议与 TD-1 合并推进 |
-| Agent 微服务架构     | `docs/architecture/agentMicroservicePlan.md`（待评审）                  | 需战略决策 | 与 D-007「M2 前不做物理微服务拆分」潜在冲突；需项目负责人先明确业务意图（是 RPA/量化类面向个人自动化，还是中台平台能力），再评估是否解禁        |
+当前没有规划但未启动的**框架级**大型工作项。下游 fork 的业务能力（Agent / 闲鱼客服 /
+量化日报等）不在 nodeAdmin 框架本体的路线图内，应由各 fork 自行维护，见
+`docs/architecture/agentMicroservicePlan.md` 顶部的 Scope 说明。
 
 ### 9.3 Tech Debt（按紧迫度排序）
 

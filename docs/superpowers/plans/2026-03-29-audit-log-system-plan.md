@@ -1,5 +1,10 @@
 # Audit Log System Implementation Plan
 
+> **Status (2026-04-08 update): COMPLETED via `5aa6e1c` (PR #21).** All tasks in
+> this plan are implemented. The `[ ]` checkboxes below are the original
+> planning format and were not back-filled; the plan is retained here for
+> reference on the original task decomposition and design rationale.
+>
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Implement JWT HTTP auth, automatic audit logging, enhanced query API with Drizzle ORM, and an activity timeline frontend page.
@@ -14,37 +19,38 @@
 
 ### New Files
 
-| File | Responsibility |
-|------|---------------|
-| `apps/coreApi/src/modules/auth/jwtAuthGuard.ts` | Global JWT auth guard for HTTP endpoints |
-| `apps/coreApi/src/modules/auth/currentUser.decorator.ts` | Param decorator to extract `AuthIdentity` from request |
-| `apps/coreApi/src/modules/auth/jwtAuthGuard.test.ts` | Tests for the guard |
-| `apps/coreApi/src/infrastructure/audit/auditInterceptor.ts` | Global interceptor for automatic audit logging |
-| `apps/coreApi/src/infrastructure/audit/auditInterceptor.test.ts` | Tests for the interceptor |
-| `apps/coreApi/src/infrastructure/database/auditLogRepository.ts` | Drizzle ORM query layer for audit logs |
-| `apps/coreApi/src/infrastructure/database/auditLogRepository.test.ts` | Tests for the repository |
-| `apps/adminPortal/src/components/ui/timeline.tsx` | Reusable timeline UI component |
-| `apps/adminPortal/src/components/business/auditLogPanel.tsx` | Audit log page composing Timeline + filters |
+| File                                                                  | Responsibility                                         |
+| --------------------------------------------------------------------- | ------------------------------------------------------ |
+| `apps/coreApi/src/modules/auth/jwtAuthGuard.ts`                       | Global JWT auth guard for HTTP endpoints               |
+| `apps/coreApi/src/modules/auth/currentUser.decorator.ts`              | Param decorator to extract `AuthIdentity` from request |
+| `apps/coreApi/src/modules/auth/jwtAuthGuard.test.ts`                  | Tests for the guard                                    |
+| `apps/coreApi/src/infrastructure/audit/auditInterceptor.ts`           | Global interceptor for automatic audit logging         |
+| `apps/coreApi/src/infrastructure/audit/auditInterceptor.test.ts`      | Tests for the interceptor                              |
+| `apps/coreApi/src/infrastructure/database/auditLogRepository.ts`      | Drizzle ORM query layer for audit logs                 |
+| `apps/coreApi/src/infrastructure/database/auditLogRepository.test.ts` | Tests for the repository                               |
+| `apps/adminPortal/src/components/ui/timeline.tsx`                     | Reusable timeline UI component                         |
+| `apps/adminPortal/src/components/business/auditLogPanel.tsx`          | Audit log page composing Timeline + filters            |
 
 ### Modified Files
 
-| File | Change |
-|------|--------|
-| `apps/coreApi/src/app/appModule.ts` | Register global guard + interceptor |
-| `apps/coreApi/src/infrastructure/audit/auditLogService.ts` | Delegate to repository instead of raw pg |
-| `apps/coreApi/src/infrastructure/infrastructureModule.ts` | Provide AuditLogRepository |
-| `apps/coreApi/src/modules/console/consoleController.ts` | Enhanced audit-logs endpoint with filters + pagination |
-| `packages/shared-types/src/index.ts` | Add `audit:view` permission + `AuditLogItem` type |
-| `apps/adminPortal/src/app/layout/navConfig.ts` | Add audit nav item |
-| `apps/adminPortal/src/app/appRoot.tsx` | Add `/audit` route |
-| `apps/adminPortal/src/i18n/locales/en.json` | Add audit i18n keys |
-| `apps/adminPortal/src/i18n/locales/zh.json` | Add audit i18n keys |
+| File                                                       | Change                                                 |
+| ---------------------------------------------------------- | ------------------------------------------------------ |
+| `apps/coreApi/src/app/appModule.ts`                        | Register global guard + interceptor                    |
+| `apps/coreApi/src/infrastructure/audit/auditLogService.ts` | Delegate to repository instead of raw pg               |
+| `apps/coreApi/src/infrastructure/infrastructureModule.ts`  | Provide AuditLogRepository                             |
+| `apps/coreApi/src/modules/console/consoleController.ts`    | Enhanced audit-logs endpoint with filters + pagination |
+| `packages/shared-types/src/index.ts`                       | Add `audit:view` permission + `AuditLogItem` type      |
+| `apps/adminPortal/src/app/layout/navConfig.ts`             | Add audit nav item                                     |
+| `apps/adminPortal/src/app/appRoot.tsx`                     | Add `/audit` route                                     |
+| `apps/adminPortal/src/i18n/locales/en.json`                | Add audit i18n keys                                    |
+| `apps/adminPortal/src/i18n/locales/zh.json`                | Add audit i18n keys                                    |
 
 ---
 
 ## Task 1: JWT HTTP Guard
 
 **Files:**
+
 - Create: `apps/coreApi/src/modules/auth/currentUser.decorator.ts`
 - Create: `apps/coreApi/src/modules/auth/jwtAuthGuard.ts`
 - Create: `apps/coreApi/src/modules/auth/jwtAuthGuard.test.ts`
@@ -64,7 +70,7 @@ export const CurrentUser = createParamDecorator(
       throw new Error('@CurrentUser() used on a route without JwtAuthGuard.');
     }
     return request.user;
-  },
+  }
 );
 ```
 
@@ -80,7 +86,7 @@ import type { AuthIdentity } from './authIdentity';
 
 function createHttpExecutionContext(
   headers: Record<string, string>,
-  url: string,
+  url: string
 ): ExecutionContext {
   return {
     switchToHttp: () => ({
@@ -107,7 +113,7 @@ describe('JwtAuthGuard', () => {
 
     const ctx = createHttpExecutionContext(
       { authorization: 'Bearer valid-token' },
-      '/api/v1/users',
+      '/api/v1/users'
     );
 
     const result = guard.canActivate(ctx);
@@ -135,10 +141,7 @@ describe('JwtAuthGuard', () => {
     } as unknown as AuthService;
     const guard = new JwtAuthGuard(authService);
 
-    const ctx = createHttpExecutionContext(
-      { authorization: 'Basic abc123' },
-      '/api/v1/users',
-    );
+    const ctx = createHttpExecutionContext({ authorization: 'Basic abc123' }, '/api/v1/users');
 
     expect(() => guard.canActivate(ctx)).toThrow(UnauthorizedException);
   });
@@ -150,10 +153,7 @@ describe('JwtAuthGuard', () => {
     const authService = { verifyAccessToken } as unknown as AuthService;
     const guard = new JwtAuthGuard(authService);
 
-    const ctx = createHttpExecutionContext(
-      { authorization: 'Bearer bad-token' },
-      '/api/v1/users',
-    );
+    const ctx = createHttpExecutionContext({ authorization: 'Bearer bad-token' }, '/api/v1/users');
 
     expect(() => guard.canActivate(ctx)).toThrow(UnauthorizedException);
   });
@@ -237,7 +237,9 @@ export class JwtAuthGuard implements CanActivate {
   constructor(private readonly authService: AuthService) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest<{ headers: Record<string, string>; url: string; user?: AuthIdentity }>();
+    const request = context
+      .switchToHttp()
+      .getRequest<{ headers: Record<string, string>; url: string; user?: AuthIdentity }>();
 
     if (EXCLUDED_PATHS.some((path) => request.url === path || request.url.startsWith(path + '/'))) {
       return true;
@@ -250,7 +252,9 @@ export class JwtAuthGuard implements CanActivate {
 
     const parts = authHeader.split(' ');
     if (parts.length !== 2 || parts[0].toLowerCase() !== 'bearer') {
-      throw new UnauthorizedException('Invalid Authorization header format. Expected: Bearer <token>.');
+      throw new UnauthorizedException(
+        'Invalid Authorization header format. Expected: Bearer <token>.'
+      );
     }
 
     const token = parts[1].trim();
@@ -326,6 +330,7 @@ git commit -m "feat(auth): add JWT HTTP guard and @CurrentUser() decorator (#14)
 ## Task 2: Audit Interceptor
 
 **Files:**
+
 - Create: `apps/coreApi/src/infrastructure/audit/auditInterceptor.ts`
 - Create: `apps/coreApi/src/infrastructure/audit/auditInterceptor.test.ts`
 - Modify: `apps/coreApi/src/app/appModule.ts` — register interceptor
@@ -345,7 +350,7 @@ function createHttpContext(
   method: string,
   url: string,
   user?: AuthIdentity,
-  body?: Record<string, unknown>,
+  body?: Record<string, unknown>
 ): ExecutionContext {
   return {
     switchToHttp: () => ({
@@ -420,7 +425,9 @@ describe('AuditInterceptor', () => {
   });
 
   it('records audit log for PATCH request', async () => {
-    const ctx = createHttpContext('PATCH', '/api/v1/tenants/tenant-1', mockIdentity, { name: 'Updated' });
+    const ctx = createHttpContext('PATCH', '/api/v1/tenants/tenant-1', mockIdentity, {
+      name: 'Updated',
+    });
     const next = createCallHandler();
 
     await interceptor.intercept(ctx, next).toPromise();
@@ -440,7 +447,10 @@ describe('AuditInterceptor', () => {
   });
 
   it('skips auth login endpoint', async () => {
-    const ctx = createHttpContext('POST', '/api/v1/auth/login', mockIdentity, { email: 'test@test.com', password: 'secret' });
+    const ctx = createHttpContext('POST', '/api/v1/auth/login', mockIdentity, {
+      email: 'test@test.com',
+      password: 'secret',
+    });
     const next = createCallHandler();
 
     await interceptor.intercept(ctx, next).toPromise();
@@ -503,7 +513,9 @@ describe('AuditInterceptor', () => {
   });
 
   it('handles URL with trailing path segments beyond targetId', async () => {
-    const ctx = createHttpContext('POST', '/api/v1/conversations/conv-1/messages', mockIdentity, { content: 'hi' });
+    const ctx = createHttpContext('POST', '/api/v1/conversations/conv-1/messages', mockIdentity, {
+      content: 'hi',
+    });
     const next = createCallHandler();
 
     await interceptor.intercept(ctx, next).toPromise();
@@ -579,9 +591,12 @@ export class AuditInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap(() => {
         this.recordAuditLog(request).catch((error: unknown) => {
-          this.logger.error('Failed to record audit log', error instanceof Error ? error.message : error);
+          this.logger.error(
+            'Failed to record audit log',
+            error instanceof Error ? error.message : error
+          );
         });
-      }),
+      })
     );
   }
 
@@ -601,7 +616,8 @@ export class AuditInterceptor implements NestInterceptor {
 
     await this.auditLogService.record({
       action: targetType ? `${targetType}.${action}` : action,
-      context: sanitizedContext && Object.keys(sanitizedContext).length > 0 ? sanitizedContext : undefined,
+      context:
+        sanitizedContext && Object.keys(sanitizedContext).length > 0 ? sanitizedContext : undefined,
       targetId,
       targetType,
       tenantId: user.tenantId,
@@ -622,14 +638,15 @@ export class AuditInterceptor implements NestInterceptor {
     const id = segments[3] ?? null;
 
     // Singularize: remove trailing 's' if present and length > 2
-    const singularized = resource && resource.length > 2 && resource.endsWith('s')
-      ? resource.slice(0, -1)
-      : resource;
+    const singularized =
+      resource && resource.length > 2 && resource.endsWith('s') ? resource.slice(0, -1) : resource;
 
     return { targetId: id, targetType: singularized };
   }
 
-  private sanitizeBody(body: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+  private sanitizeBody(
+    body: Record<string, unknown> | undefined
+  ): Record<string, unknown> | undefined {
     if (!body || typeof body !== 'object') {
       return undefined;
     }
@@ -698,6 +715,7 @@ git commit -m "feat(audit): add global audit interceptor for automatic CRUD logg
 ## Task 3: Audit Log Repository (Drizzle ORM)
 
 **Files:**
+
 - Create: `apps/coreApi/src/infrastructure/database/auditLogRepository.ts`
 - Create: `apps/coreApi/src/infrastructure/database/auditLogRepository.test.ts`
 - Modify: `apps/coreApi/src/infrastructure/audit/auditLogService.ts` — delegate to repository
@@ -790,9 +808,7 @@ export interface StoredAuditLog {
 }
 
 export class AuditLogRepository {
-  constructor(
-    private readonly db: NodePgDatabase<typeof schema>,
-  ) {}
+  constructor(private readonly db: NodePgDatabase<typeof schema>) {}
 
   async record(input: {
     action: string;
@@ -815,7 +831,11 @@ export class AuditLogRepository {
     });
   }
 
-  async findByFilter(filter: AuditLogFilter, page: number, pageSize: number): Promise<StoredAuditLog[]> {
+  async findByFilter(
+    filter: AuditLogFilter,
+    page: number,
+    pageSize: number
+  ): Promise<StoredAuditLog[]> {
     const conditions = this.buildConditions(filter);
 
     const rows = await this.db
@@ -909,9 +929,7 @@ export class AuditLogService implements OnModuleDestroy {
   private readonly logger = new Logger(AuditLogService.name);
   private readonly fallbackRows: StoredAuditLog[] = [];
 
-  constructor(
-    @Optional() private readonly repository?: AuditLogRepository,
-  ) {
+  constructor(@Optional() private readonly repository?: AuditLogRepository) {
     if (!this.repository) {
       this.logger.warn('AuditLogRepository not available. Audit logs will use in-memory fallback.');
     }
@@ -945,9 +963,16 @@ export class AuditLogService implements OnModuleDestroy {
   }
 
   async listByFilter(
-    filter: { tenantId: string; userId?: string; action?: string; targetType?: string; startDate?: string; endDate?: string },
+    filter: {
+      tenantId: string;
+      userId?: string;
+      action?: string;
+      targetType?: string;
+      startDate?: string;
+      endDate?: string;
+    },
     page: number,
-    pageSize: number,
+    pageSize: number
   ): Promise<{ items: StoredAuditLog[]; total: number }> {
     if (!this.repository) {
       const filtered = this.fallbackRows.filter((row) => {
@@ -1036,11 +1061,13 @@ git commit -m "feat(audit): add Drizzle ORM repository and migrate AuditLogServi
 ## Task 4: Enhanced Audit Log Query API
 
 **Files:**
+
 - Modify: `apps/coreApi/src/modules/console/consoleController.ts` — enhanced endpoint
 
 - [ ] **Step 1: Update `consoleController.ts` audit-logs endpoint**
 
 Replace the existing `getAuditLogs` method. The endpoint now:
+
 - Uses `@CurrentUser()` to get tenantId from JWT (no longer required from query)
 - Accepts filter params: `userId`, `action`, `targetType`, `startDate`, `endDate`
 - Uses `page`/`pageSize` pagination
@@ -1116,6 +1143,7 @@ git commit -m "feat(audit): enhance audit log query API with filters and paginat
 ## Task 5: Shared Types & Permissions
 
 **Files:**
+
 - Modify: `packages/shared-types/src/index.ts` — add `audit:view` + `AuditLogItem`
 
 - [ ] **Step 1: Add `audit:view` to `AppPermission` union**
@@ -1169,6 +1197,7 @@ git commit -m "feat(shared-types): add audit:view permission and AuditLogItem ty
 ## Task 6: Frontend — Reusable Timeline Component
 
 **Files:**
+
 - Create: `apps/adminPortal/src/components/ui/timeline.tsx`
 
 - [ ] **Step 1: Create `timeline.tsx`**
@@ -1229,7 +1258,11 @@ export function Timeline({
         <div className="py-8 text-center">
           <p className="text-sm text-destructive">{errorMessage}</p>
           {onRetry ? (
-            <button className="mt-2 text-xs text-primary hover:underline" onClick={onRetry} type="button">
+            <button
+              className="mt-2 text-xs text-primary hover:underline"
+              onClick={onRetry}
+              type="button"
+            >
               {loadMoreLabel}
             </button>
           ) : null}
@@ -1287,6 +1320,7 @@ git commit -m "feat(ui): add reusable Timeline component"
 ## Task 7: Frontend — Audit Log Panel
 
 **Files:**
+
 - Create: `apps/adminPortal/src/components/business/auditLogPanel.tsx`
 - Modify: `apps/adminPortal/src/app/layout/navConfig.ts`
 - Modify: `apps/adminPortal/src/app/appRoot.tsx`
@@ -1433,9 +1467,7 @@ export function AuditLogPanel(): JSX.Element {
 
   const query = useQuery({
     queryFn: () =>
-      apiClient.get<PaginatedResponse<AuditLogItem>>(
-        `/api/v1/console/audit-logs?${queryParams}`
-      ),
+      apiClient.get<PaginatedResponse<AuditLogItem>>(`/api/v1/console/audit-logs?${queryParams}`),
     queryKey: ['audit-logs', queryParams],
   });
 
@@ -1448,7 +1480,7 @@ export function AuditLogPanel(): JSX.Element {
       ? items.filter(
           (item) =>
             item.userId.toLowerCase().includes(search.toLowerCase()) ||
-            item.action.toLowerCase().includes(search.toLowerCase()),
+            item.action.toLowerCase().includes(search.toLowerCase())
         )
       : items;
 

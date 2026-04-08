@@ -1,5 +1,10 @@
 # Phase 3: 菜单 + 租户管理模块 实施计划
 
+> **Status (2026-04-08 update): COMPLETED.** menus 和 tenants 两个 NestJS 模块
+> 均已落地，菜单树 CRUD + 角色-菜单关联 + 用户可见菜单 CTE 查询齐全，见
+> `apps/coreApi/src/modules/menus/` 和 `apps/coreApi/src/modules/tenants/`。
+> 本文档作为模块结构和 CTE 查询设计的参考保留。
+>
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** 实现菜单树 CRUD + 角色关联菜单 + 用户可见菜单查询，以及租户 CRUD。
@@ -13,6 +18,7 @@
 ### Task 1: 创建 MenusModule
 
 **Files:**
+
 - Create: `apps/coreApi/src/modules/menus/menusModule.ts`
 - Create: `apps/coreApi/src/modules/menus/menusController.ts`
 - Create: `apps/coreApi/src/modules/menus/menusService.ts`
@@ -21,6 +27,7 @@
 - Create: `apps/coreApi/src/modules/menus/dto/setRoleMenusDto.ts`
 
 createMenuDto.ts:
+
 ```typescript
 import { IsNotEmpty, IsOptional, IsString, MaxLength, IsInt, Min } from 'class-validator';
 
@@ -61,6 +68,7 @@ export class CreateMenuDto {
 ```
 
 updateMenuDto.ts:
+
 ```typescript
 import { IsOptional, IsString, MaxLength, IsInt, Min } from 'class-validator';
 
@@ -101,6 +109,7 @@ export class UpdateMenuDto {
 ```
 
 setRoleMenusDto.ts:
+
 ```typescript
 import { IsArray, IsNotEmpty, IsString } from 'class-validator';
 
@@ -113,6 +122,7 @@ export class SetRoleMenusDto {
 ```
 
 menusService.ts — 菜单树 + 角色关联 + 用户可见菜单:
+
 ```typescript
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
@@ -163,37 +173,83 @@ export class MenusService {
     return result.rows[0];
   }
 
-  async create(data: { parentId?: string; name: string; path?: string; icon?: string; sortOrder?: number; permissionCode?: string; isVisible?: boolean }) {
+  async create(data: {
+    parentId?: string;
+    name: string;
+    path?: string;
+    icon?: string;
+    sortOrder?: number;
+    permissionCode?: string;
+    isVisible?: boolean;
+  }) {
     if (!this.pool) throw new Error('Database not available');
     const id = `menu-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     await this.pool.query(
       'INSERT INTO menus (id, parent_id, name, path, icon, sort_order, permission_code, is_visible) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-      [id, data.parentId ?? null, data.name, data.path ?? null, data.icon ?? null, data.sortOrder ?? 0, data.permissionCode ?? null, data.isVisible !== false]
+      [
+        id,
+        data.parentId ?? null,
+        data.name,
+        data.path ?? null,
+        data.icon ?? null,
+        data.sortOrder ?? 0,
+        data.permissionCode ?? null,
+        data.isVisible !== false,
+      ]
     );
     return this.findById(id);
   }
 
-  async update(id: string, data: { parentId?: string; name?: string; path?: string; icon?: string; sortOrder?: number; permissionCode?: string; isVisible?: boolean }) {
+  async update(
+    id: string,
+    data: {
+      parentId?: string;
+      name?: string;
+      path?: string;
+      icon?: string;
+      sortOrder?: number;
+      permissionCode?: string;
+      isVisible?: boolean;
+    }
+  ) {
     if (!this.pool) throw new Error('Database not available');
     const sets: string[] = [];
     const params: unknown[] = [];
     let idx = 1;
 
-    if (data.parentId !== undefined) { sets.push(`parent_id = $${++idx}`); params.push(data.parentId); }
-    if (data.name !== undefined) { sets.push(`name = $${++idx}`); params.push(data.name); }
-    if (data.path !== undefined) { sets.push(`path = $${++idx}`); params.push(data.path); }
-    if (data.icon !== undefined) { sets.push(`icon = $${++idx}`); params.push(data.icon); }
-    if (data.sortOrder !== undefined) { sets.push(`sort_order = $${++idx}`); params.push(data.sortOrder); }
-    if (data.permissionCode !== undefined) { sets.push(`permission_code = $${++idx}`); params.push(data.permissionCode); }
-    if (data.isVisible !== undefined) { sets.push(`is_visible = $${++idx}`); params.push(data.isVisible); }
+    if (data.parentId !== undefined) {
+      sets.push(`parent_id = $${++idx}`);
+      params.push(data.parentId);
+    }
+    if (data.name !== undefined) {
+      sets.push(`name = $${++idx}`);
+      params.push(data.name);
+    }
+    if (data.path !== undefined) {
+      sets.push(`path = $${++idx}`);
+      params.push(data.path);
+    }
+    if (data.icon !== undefined) {
+      sets.push(`icon = $${++idx}`);
+      params.push(data.icon);
+    }
+    if (data.sortOrder !== undefined) {
+      sets.push(`sort_order = $${++idx}`);
+      params.push(data.sortOrder);
+    }
+    if (data.permissionCode !== undefined) {
+      sets.push(`permission_code = $${++idx}`);
+      params.push(data.permissionCode);
+    }
+    if (data.isVisible !== undefined) {
+      sets.push(`is_visible = $${++idx}`);
+      params.push(data.isVisible);
+    }
 
     if (sets.length === 0) return this.findById(id);
 
     params.push(id);
-    await this.pool.query(
-      `UPDATE menus SET ${sets.join(', ')} WHERE id = $${idx + 1}`,
-      params
-    );
+    await this.pool.query(`UPDATE menus SET ${sets.join(', ')} WHERE id = $${idx + 1}`, params);
     return this.findById(id);
   }
 
@@ -212,10 +268,9 @@ export class MenusService {
 
   async getRoleMenus(roleId: string): Promise<string[]> {
     if (!this.pool) return [];
-    const result = await this.pool.query(
-      'SELECT menu_id FROM role_menus WHERE role_id = $1',
-      [roleId]
-    );
+    const result = await this.pool.query('SELECT menu_id FROM role_menus WHERE role_id = $1', [
+      roleId,
+    ]);
     return result.rows.map((r: any) => r.menu_id);
   }
 
@@ -226,7 +281,10 @@ export class MenusService {
       await client.query('BEGIN');
       await client.query('DELETE FROM role_menus WHERE role_id = $1', [roleId]);
       for (const menuId of menuIds) {
-        await client.query('INSERT INTO role_menus (role_id, menu_id) VALUES ($1, $2)', [roleId, menuId]);
+        await client.query('INSERT INTO role_menus (role_id, menu_id) VALUES ($1, $2)', [
+          roleId,
+          menuId,
+        ]);
       }
       await client.query('COMMIT');
     } catch (error) {
@@ -272,6 +330,7 @@ export class MenusService {
 ```
 
 menusController.ts:
+
 ```typescript
 import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { MenusService } from './menusService';
@@ -343,6 +402,7 @@ export class MenusController {
 ```
 
 menusModule.ts:
+
 ```typescript
 import { Module } from '@nestjs/common';
 import { MenusController } from './menusController';
@@ -361,6 +421,7 @@ export class MenusModule {}
 ### Task 2: 创建 TenantsModule
 
 **Files:**
+
 - Create: `apps/coreApi/src/modules/tenants/tenantsModule.ts`
 - Create: `apps/coreApi/src/modules/tenants/tenantsController.ts`
 - Create: `apps/coreApi/src/modules/tenants/tenantsService.ts`
@@ -368,6 +429,7 @@ export class MenusModule {}
 - Create: `apps/coreApi/src/modules/tenants/dto/updateTenantDto.ts`
 
 createTenantDto.ts:
+
 ```typescript
 import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
@@ -393,6 +455,7 @@ export class CreateTenantDto {
 ```
 
 updateTenantDto.ts:
+
 ```typescript
 import { IsOptional, IsString, MaxLength } from 'class-validator';
 
@@ -413,6 +476,7 @@ export class UpdateTenantDto {
 ```
 
 tenantsService.ts:
+
 ```typescript
 import { Injectable, Logger, NotFoundException, ConflictException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
@@ -471,9 +535,18 @@ export class TenantsService {
     const params: unknown[] = [];
     let idx = 1;
 
-    if (data.name !== undefined) { sets.push(`name = $${++idx}`); params.push(data.name); }
-    if (data.logo !== undefined) { sets.push(`logo = $${++idx}`); params.push(data.logo); }
-    if (data.isActive !== undefined) { sets.push(`is_active = $${++idx}`); params.push(data.isActive); }
+    if (data.name !== undefined) {
+      sets.push(`name = $${++idx}`);
+      params.push(data.name);
+    }
+    if (data.logo !== undefined) {
+      sets.push(`logo = $${++idx}`);
+      params.push(data.logo);
+    }
+    if (data.isActive !== undefined) {
+      sets.push(`is_active = $${++idx}`);
+      params.push(data.isActive);
+    }
 
     if (sets.length === 0) return this.findById(id);
 
@@ -497,6 +570,7 @@ export class TenantsService {
 ```
 
 tenantsController.ts:
+
 ```typescript
 import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { TenantsService } from './tenantsService';
@@ -545,6 +619,7 @@ export class TenantsController {
 ```
 
 tenantsModule.ts:
+
 ```typescript
 import { Module } from '@nestjs/common';
 import { TenantsController } from './tenantsController';
@@ -601,6 +676,7 @@ export class AppModule {}
 ### Task 4: 验证所有 API 端点
 
 启动服务器后测试：
+
 - `GET /api/v1/menus` — 返回 8 个菜单的树形结构
 - `GET /api/v1/menus/role/role-super-admin` — 超级管理员的菜单
 - `GET /api/v1/tenants` — 租户列表
