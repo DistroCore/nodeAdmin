@@ -90,9 +90,7 @@ describe('PluginMarketService', () => {
       const mockPool = createMockPool([{ rows: [], rowCount: 0 }]);
       (service as unknown as { pool: typeof mockPool }).pool = mockPool;
 
-      await expect(service.getPluginDetails('@nodeadmin/plugin-missing')).rejects.toThrow(
-        'Plugin not found'
-      );
+      await expect(service.getPluginDetails('@nodeadmin/plugin-missing')).rejects.toThrow('Plugin not found');
     });
 
     it('returns plugin details with version history and compatibility', async () => {
@@ -229,9 +227,7 @@ describe('PluginMarketService', () => {
       mockPool.connect = vi.fn(async () => mockClient);
       (service as unknown as { pool: typeof mockPool }).pool = mockPool;
 
-      await expect(
-        service.installPlugin('tenant-1', '@nodeadmin/plugin-kanban', '1.2.0')
-      ).resolves.toEqual({
+      await expect(service.installPlugin('tenant-1', '@nodeadmin/plugin-kanban', '1.2.0')).resolves.toEqual({
         enabled: true,
         pluginId: '@nodeadmin/plugin-kanban',
         tenantId: 'tenant-1',
@@ -279,9 +275,7 @@ describe('PluginMarketService', () => {
       mockPool.connect = vi.fn(async () => mockClient);
       (service as unknown as { pool: typeof mockPool }).pool = mockPool;
 
-      await expect(
-        service.updatePlugin('tenant-1', '@nodeadmin/plugin-kanban', '1.3.0')
-      ).resolves.toEqual({
+      await expect(service.updatePlugin('tenant-1', '@nodeadmin/plugin-kanban', '1.3.0')).resolves.toEqual({
         enabled: true,
         pluginId: '@nodeadmin/plugin-kanban',
         tenantId: 'tenant-1',
@@ -312,9 +306,7 @@ describe('PluginMarketService', () => {
       mockPool.connect = vi.fn(async () => mockClient);
       (service as unknown as { pool: typeof mockPool }).pool = mockPool;
 
-      await expect(
-        service.uninstallPlugin('tenant-1', '@nodeadmin/plugin-kanban')
-      ).resolves.toEqual({
+      await expect(service.uninstallPlugin('tenant-1', '@nodeadmin/plugin-kanban')).resolves.toEqual({
         pluginId: '@nodeadmin/plugin-kanban',
         removed: true,
         tenantId: 'tenant-1',
@@ -328,9 +320,7 @@ describe('PluginMarketService', () => {
     it('runs lifecycle hooks before removing an installed plugin', async () => {
       const lifecycleHook = vi.fn(async () => undefined);
       const hookModuleLoader = vi.fn(() => lifecycleHook);
-      const packageJsonResolver = vi.fn(
-        () => '/repo/node_modules/@nodeadmin/plugin-kanban/package.json'
-      );
+      const packageJsonResolver = vi.fn(() => '/repo/node_modules/@nodeadmin/plugin-kanban/package.json');
       const mockClient = createMockClient([
         { rows: [], rowCount: 0 },
         { rows: [], rowCount: 0 },
@@ -360,24 +350,22 @@ describe('PluginMarketService', () => {
       const mockPool = createMockPool([]);
       mockPool.connect = vi.fn(async () => mockClient);
       (service as unknown as { pool: typeof mockPool }).pool = mockPool;
-      (service as unknown as { hookModuleLoader: typeof hookModuleLoader }).hookModuleLoader =
-        hookModuleLoader;
-      (
-        service as unknown as { packageJsonResolver: typeof packageJsonResolver }
-      ).packageJsonResolver = packageJsonResolver;
+      (service as unknown as { hookModuleLoader: typeof hookModuleLoader }).hookModuleLoader = hookModuleLoader;
+      (service as unknown as { packageJsonResolver: typeof packageJsonResolver }).packageJsonResolver =
+        packageJsonResolver;
 
       await service.uninstallPlugin('tenant-1', '@nodeadmin/plugin-kanban');
 
       expect(packageJsonResolver).toHaveBeenCalledWith('@nodeadmin/plugin-kanban');
       expect(hookModuleLoader).toHaveBeenCalledWith(
-        '/repo/node_modules/@nodeadmin/plugin-kanban/scripts/uninstall.cjs'
+        expect.stringMatching(/plugin-kanban[/\\]scripts[/\\]uninstall\.cjs/),
       );
       expect(lifecycleHook).toHaveBeenCalledWith(
         expect.objectContaining({
           pluginId: '@nodeadmin/plugin-kanban',
           tenantId: 'tenant-1',
           version: '1.2.0',
-        })
+        }),
       );
       expect(mockClient.calls[3]?.sql).toContain('DELETE FROM tenant_plugins');
     });
@@ -387,9 +375,7 @@ describe('PluginMarketService', () => {
     it('runs lifecycle hooks after persisting an installed plugin', async () => {
       const lifecycleHook = vi.fn(async () => undefined);
       const hookModuleLoader = vi.fn(() => lifecycleHook);
-      const packageJsonResolver = vi.fn(
-        () => '/repo/node_modules/@nodeadmin/plugin-kanban/package.json'
-      );
+      const packageJsonResolver = vi.fn(() => '/repo/node_modules/@nodeadmin/plugin-kanban/package.json');
       const mockClient = createMockClient([
         { rows: [], rowCount: 0 },
         { rows: [], rowCount: 0 },
@@ -420,24 +406,22 @@ describe('PluginMarketService', () => {
       const mockPool = createMockPool([]);
       mockPool.connect = vi.fn(async () => mockClient);
       (service as unknown as { pool: typeof mockPool }).pool = mockPool;
-      (service as unknown as { hookModuleLoader: typeof hookModuleLoader }).hookModuleLoader =
-        hookModuleLoader;
-      (
-        service as unknown as { packageJsonResolver: typeof packageJsonResolver }
-      ).packageJsonResolver = packageJsonResolver;
+      (service as unknown as { hookModuleLoader: typeof hookModuleLoader }).hookModuleLoader = hookModuleLoader;
+      (service as unknown as { packageJsonResolver: typeof packageJsonResolver }).packageJsonResolver =
+        packageJsonResolver;
 
       await service.installPlugin('tenant-1', '@nodeadmin/plugin-kanban', '1.2.0');
 
       expect(packageJsonResolver).toHaveBeenCalledWith('@nodeadmin/plugin-kanban');
       expect(hookModuleLoader).toHaveBeenCalledWith(
-        '/repo/node_modules/@nodeadmin/plugin-kanban/scripts/install.cjs'
+        expect.stringMatching(/plugin-kanban[/\\]scripts[/\\]install\.cjs/),
       );
       expect(lifecycleHook).toHaveBeenCalledWith(
         expect.objectContaining({
           pluginId: '@nodeadmin/plugin-kanban',
           tenantId: 'tenant-1',
           version: '1.2.0',
-        })
+        }),
       );
       expect(mockClient.calls[3]?.sql).toContain('INSERT INTO tenant_plugins');
     });
@@ -447,9 +431,7 @@ describe('PluginMarketService', () => {
         throw new Error('install hook failed');
       });
       const hookModuleLoader = vi.fn(() => lifecycleHook);
-      const packageJsonResolver = vi.fn(
-        () => '/repo/node_modules/@nodeadmin/plugin-kanban/package.json'
-      );
+      const packageJsonResolver = vi.fn(() => '/repo/node_modules/@nodeadmin/plugin-kanban/package.json');
       const mockClient = createMockClient([
         { rows: [], rowCount: 0 },
         { rows: [], rowCount: 0 },
@@ -480,15 +462,13 @@ describe('PluginMarketService', () => {
       const mockPool = createMockPool([]);
       mockPool.connect = vi.fn(async () => mockClient);
       (service as unknown as { pool: typeof mockPool }).pool = mockPool;
-      (service as unknown as { hookModuleLoader: typeof hookModuleLoader }).hookModuleLoader =
-        hookModuleLoader;
-      (
-        service as unknown as { packageJsonResolver: typeof packageJsonResolver }
-      ).packageJsonResolver = packageJsonResolver;
+      (service as unknown as { hookModuleLoader: typeof hookModuleLoader }).hookModuleLoader = hookModuleLoader;
+      (service as unknown as { packageJsonResolver: typeof packageJsonResolver }).packageJsonResolver =
+        packageJsonResolver;
 
-      await expect(
-        service.installPlugin('tenant-1', '@nodeadmin/plugin-kanban', '1.2.0')
-      ).rejects.toThrow('install hook failed');
+      await expect(service.installPlugin('tenant-1', '@nodeadmin/plugin-kanban', '1.2.0')).rejects.toThrow(
+        'install hook failed',
+      );
 
       expect(mockClient.calls[3]?.sql).toContain('INSERT INTO tenant_plugins');
       expect(mockClient.calls.at(-1)?.sql).toBe('ROLLBACK');
@@ -527,7 +507,7 @@ describe('PluginMarketService', () => {
             version: '1.2.0',
           },
           serverPackage: '@nodeadmin/plugin-kanban@1.2.0',
-        })
+        }),
       ).resolves.toEqual({
         pluginId: '@nodeadmin/plugin-kanban',
         publishedVersion: '1.2.0',
