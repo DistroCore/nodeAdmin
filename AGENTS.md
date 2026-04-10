@@ -9,15 +9,15 @@ nodeAdmin 是一个企业级中台系统，包含 IM 即时通讯模块。Monore
 
 ## 技术栈
 
-| 层 | 技术 |
-|---|------|
-| 后端 | NestJS 11 + Fastify + TypeScript (CommonJS) |
-| 前端 | React 18 + TypeScript + Vite 6 + Tailwind CSS + shadcn/ui |
-| 实时通信 | Socket.IO + Redis Adapter |
-| 数据库 | PostgreSQL + Drizzle ORM + RLS 多租户 |
-| 缓存 | Redis |
-| 异步消息 | Kafka |
-| 状态管理 | Zustand (客户端) + TanStack Query (服务端) |
+| 层       | 技术                                                      |
+| -------- | --------------------------------------------------------- |
+| 后端     | NestJS 11 + Fastify + TypeScript (CommonJS)               |
+| 前端     | React 18 + TypeScript + Vite 6 + Tailwind CSS + shadcn/ui |
+| 实时通信 | Socket.IO + Redis Adapter                                 |
+| 数据库   | PostgreSQL + Drizzle ORM + RLS 多租户                     |
+| 缓存     | Redis                                                     |
+| 异步消息 | Kafka                                                     |
+| 状态管理 | Zustand (客户端) + TanStack Query (服务端)                |
 
 ## 目录结构
 
@@ -54,12 +54,14 @@ docs/              ← 项目文档
 ## 编码规范
 
 ### TypeScript
+
 - 严格模式 (`"strict": true`)
 - 后端是 CommonJS (`"module": "commonjs"`)，前端是 ESM (`"module": "ESNext"`)
 - 前端使用 `@/` 路径别名映射到 `src/`
 - 使用 `interface` 定义对象结构，`type` 用于联合类型
 
 ### 后端 (NestJS)
+
 - Controller → Service → Repository 分层
 - 使用 `class-validator` + `class-transformer` 做 DTO 校验
 - 使用 `@nestjs/config` 管理配置（`runtimeConfig.ts`）
@@ -67,6 +69,7 @@ docs/              ← 项目文档
 - 统一异常过滤器 (`unifiedExceptionFilter.ts`)
 
 ### 前端 (React)
+
 - 函数组件 + Hooks（不用 class component）
 - 使用 `useApiClient()` Hook 获取 API 客户端
 - 使用 `useQuery` / `useMutation` (TanStack Query) 管理服务端状态
@@ -75,6 +78,7 @@ docs/              ← 项目文档
 - Tailwind CSS 工具类，使用 `className()` 合并类名 (clsx + tailwind-merge)
 
 ### 样式
+
 - Tailwind CSS 优先，避免自定义 CSS
 - 使用 CSS 变量定义设计令牌（在 `globals.css` 中）
 - 颜色引用 `hsl(var(--xxx))` 格式
@@ -97,8 +101,8 @@ docs/              ← 项目文档
 
 ## 测试
 
-- 后端：暂无（计划用 Vitest）
-- 前端：暂无（计划用 Vitest + Testing Library）
+- 后端：Vitest 单元测试 (`npm run test:coreApi`) + 集成测试 (`npm run test:coreApi:integration`)，覆盖率约 80%
+- 前端：Vitest + Testing Library (`npm run test:adminPortal`)，E2E 用 Playwright (`npm run test:e2e:web`，仅本地运行)
 - 代码质量：ESLint (`eslint.config.cjs`) + Prettier (`.prettierrc.cjs`)
 
 ## 多 Agent 协作协议
@@ -107,16 +111,24 @@ docs/              ← 项目文档
 
 ### 角色与职责
 
-| Agent | Pane | 职责 | 禁止 |
-|-------|------|------|------|
-| **Claude (Claude Code)** | `0.0` | 协调、规划、E2E 测试、文档、CI/CD | — |
-| **Codex** | `0.1` | 后端开发、后端测试、基础设施 | ❌ 前端代码 |
-| **Gemini** | `0.2` | **前端 UI/UX only** | ❌ 后端、❌ 测试、❌ 基础设施 |
+| Agent                    | Pane  | 职责                              | 禁止                          |
+| ------------------------ | ----- | --------------------------------- | ----------------------------- |
+| **Claude (Claude Code)** | `0.0` | 协调、规划、E2E 测试、文档、CI/CD | —                             |
+| **Codex**                | `0.1` | 后端开发、后端测试、基础设施      | ❌ 前端代码                   |
+| **Gemini**               | `0.2` | **前端 UI/UX only**               | ❌ 后端、❌ 测试、❌ 基础设施 |
 
 ## 相关文档
 
+### Agent 首读顺序（必读）
+
+所有 AI 代理在修改本项目时，**必须按以下顺序读取上下文**：
+
+1. `AGENTS.md`（本文件）— 项目规范、命名约定、禁止事项
+2. `CLAUDE.md` — 架构、命令、编码规则
+3. `docs/governance/decisionLog.md` — 重大技术决策（避免重复决策）
+4. `docs/delivery/roadmapPlan.md` — 当前阶段与里程碑状态
+
+### 参考文档（按需读取）
+
 - 架构基线：`docs/architecture/architectureBaseline.md`
-- 路线图：`docs/delivery/roadmapPlan.md`
 - 头脑风暴结果：`docs/delivery/brainstormingResults.md`
-- 决策日志：`docs/governance/decisionLog.md`
-- [CLAUDE.md](CLAUDE.md)

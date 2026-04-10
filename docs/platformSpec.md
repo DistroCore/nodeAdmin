@@ -2,8 +2,9 @@
 
 ## 1) 命名规范（强制）
 
-- 目录名：`lowercase` 或 `kebab-case`
-  - 示例：`apps`、`adminPortal`、`coreApi`、`components`、`modules`
+- 目录名：`lowercase`
+  - 示例：`apps`、`adminportal`、`coreapi`、`components`、`modules`
+  - 说明：已存在的 `adminPortal`、`coreApi` 为历史命名，新增目录必须使用纯 `lowercase`
 - 业务代码文件名：`lowerCamelCase`
   - 示例：`conversationService.ts`、`messageRepository.ts`、`adminDashboardPage.tsx`
 - 特殊说明：工具/框架约定文件保留官方命名
