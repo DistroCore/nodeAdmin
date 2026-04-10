@@ -82,9 +82,7 @@ export function BacklogPanel(): JSX.Element {
       });
       if (search) params.set('search', search);
       if (statusFilter) params.set('status', statusFilter);
-      return apiClient.get<PaginatedResponse<BacklogTask>>(
-        `/api/v1/backlog/tasks?${params.toString()}`
-      );
+      return apiClient.get<PaginatedResponse<BacklogTask>>(`/api/v1/backlog/tasks?${params.toString()}`);
     },
   });
 
@@ -98,21 +96,19 @@ export function BacklogPanel(): JSX.Element {
       });
       if (search) params.set('search', search);
       if (statusFilter) params.set('status', statusFilter);
-      return apiClient.get<PaginatedResponse<BacklogSprint>>(
-        `/api/v1/backlog/sprints?${params.toString()}`
-      );
+      return apiClient.get<PaginatedResponse<BacklogSprint>>(`/api/v1/backlog/sprints?${params.toString()}`);
     },
   });
 
   const allSprintsQuery = useQuery<PaginatedResponse<BacklogSprint>>({
     queryKey: ['backlog', 'sprints', 'all'],
-    queryFn: () =>
-      apiClient.get<PaginatedResponse<BacklogSprint>>('/api/v1/backlog/sprints?pageSize=100'),
+    queryFn: () => apiClient.get<PaginatedResponse<BacklogSprint>>('/api/v1/backlog/sprints?pageSize=100'),
   });
 
   const usersQuery = useQuery<PaginatedResponse<{ id: string; name: string; email: string }>>({
     queryKey: ['users', 'all'],
-    queryFn: () => apiClient.get<PaginatedResponse<any>>('/api/v1/users?pageSize=100'),
+    queryFn: () =>
+      apiClient.get<PaginatedResponse<{ id: string; name: string; email: string }>>('/api/v1/users?pageSize=100'),
   });
 
   const sprintsMap = useMemo(() => {
@@ -188,13 +184,8 @@ export function BacklogPanel(): JSX.Element {
             <CardTitle className="text-base">{t({ id: 'backlog.title' })}</CardTitle>
             <CardDescription>{t({ id: 'backlog.desc' })}</CardDescription>
           </div>
-          <Button
-            size="sm"
-            onClick={activeTab === 'tasks' ? handleOpenCreateTask : handleOpenCreateSprint}
-          >
-            {activeTab === 'tasks'
-              ? t({ id: 'backlog.createTask' })
-              : t({ id: 'backlog.createSprint' })}
+          <Button size="sm" onClick={activeTab === 'tasks' ? handleOpenCreateTask : handleOpenCreateSprint}>
+            {activeTab === 'tasks' ? t({ id: 'backlog.createTask' }) : t({ id: 'backlog.createSprint' })}
           </Button>
         </CardHeader>
 
@@ -204,9 +195,7 @@ export function BacklogPanel(): JSX.Element {
             <button
               key={tab}
               className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                activeTab === tab
-                  ? 'bg-primary text-primary-foreground'
-                  : 'hover:bg-muted text-muted-foreground'
+                activeTab === tab ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'
               }`}
               onClick={() => handleTabChange(tab)}
             >
@@ -264,18 +253,12 @@ export function BacklogPanel(): JSX.Element {
                 },
                 {
                   header: t({ id: 'backlog.colStatus' }),
-                  cell: (row) => (
-                    <Badge variant={STATUS_VARIANT[row.status] ?? 'default'}>{row.status}</Badge>
-                  ),
+                  cell: (row) => <Badge variant={STATUS_VARIANT[row.status] ?? 'default'}>{row.status}</Badge>,
                 },
                 {
                   header: t({ id: 'backlog.colPriority' }),
                   className: 'hidden sm:table-cell',
-                  cell: (row) => (
-                    <Badge variant={PRIORITY_VARIANT[row.priority] ?? 'default'}>
-                      {row.priority}
-                    </Badge>
-                  ),
+                  cell: (row) => <Badge variant={PRIORITY_VARIANT[row.priority] ?? 'default'}>{row.priority}</Badge>,
                 },
                 {
                   header: t({ id: 'backlog.colAssignee' }),
@@ -323,10 +306,7 @@ export function BacklogPanel(): JSX.Element {
                       page,
                       totalPages,
                       onPageChange: setPage,
-                      pageInfo: t(
-                        { id: 'users.pageInfo' },
-                        { page: page + 1, total: tasksQuery.data?.total ?? 0 }
-                      ),
+                      pageInfo: t({ id: 'users.pageInfo' }, { page: page + 1, total: tasksQuery.data?.total ?? 0 }),
                       prevLabel: t({ id: 'users.prev' }),
                       nextLabel: t({ id: 'users.next' }),
                     }
@@ -345,9 +325,7 @@ export function BacklogPanel(): JSX.Element {
                 },
                 {
                   header: t({ id: 'backlog.colStatus' }),
-                  cell: (row) => (
-                    <Badge variant={STATUS_VARIANT[row.status] ?? 'default'}>{row.status}</Badge>
-                  ),
+                  cell: (row) => <Badge variant={STATUS_VARIANT[row.status] ?? 'default'}>{row.status}</Badge>,
                 },
                 {
                   header: t({ id: 'backlog.colDates' }),
@@ -362,18 +340,10 @@ export function BacklogPanel(): JSX.Element {
                   header: t({ id: 'backlog.colActions' }),
                   cell: (row) => (
                     <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => setAssignTasksSprint(row)}
-                      >
+                      <Button size="sm" variant="secondary" onClick={() => setAssignTasksSprint(row)}>
                         {t({ id: 'backlog.assignTasks' })}
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => handleOpenEditSprint(row)}
-                      >
+                      <Button size="sm" variant="secondary" onClick={() => handleOpenEditSprint(row)}>
                         {t({ id: 'backlog.edit' })}
                       </Button>
                       <Button size="sm" variant="secondary" onClick={() => setDeleteSprint(row)}>
@@ -397,10 +367,7 @@ export function BacklogPanel(): JSX.Element {
                       page,
                       totalPages,
                       onPageChange: setPage,
-                      pageInfo: t(
-                        { id: 'users.pageInfo' },
-                        { page: page + 1, total: sprintsQuery.data?.total ?? 0 }
-                      ),
+                      pageInfo: t({ id: 'users.pageInfo' }, { page: page + 1, total: sprintsQuery.data?.total ?? 0 }),
                       prevLabel: t({ id: 'users.prev' }),
                       nextLabel: t({ id: 'users.next' }),
                     }

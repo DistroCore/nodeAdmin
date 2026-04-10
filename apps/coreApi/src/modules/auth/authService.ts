@@ -76,7 +76,7 @@ export class AuthService {
         type: 'access',
       } satisfies AccessTokenClaims,
       runtimeConfig.auth.accessSecret,
-      { expiresIn: runtimeConfig.auth.accessExpiresIn as StringValue }
+      { expiresIn: runtimeConfig.auth.accessExpiresIn as StringValue },
     );
 
     const refreshToken = sign(
@@ -87,7 +87,7 @@ export class AuthService {
         type: 'refresh',
       } satisfies RefreshTokenClaims,
       runtimeConfig.auth.refreshSecret,
-      { expiresIn: runtimeConfig.auth.refreshExpiresIn as StringValue }
+      { expiresIn: runtimeConfig.auth.refreshExpiresIn as StringValue },
     );
 
     return { accessToken, refreshToken, tokenType: 'Bearer' };
@@ -128,9 +128,7 @@ export class AuthService {
     const userId = this.normalizeString(payload.sub);
     const tenantId = this.normalizeString(payload.tid);
     const jti = this.normalizeString(payload.jti);
-    const roles = Array.isArray(payload.roles)
-      ? payload.roles.filter((role) => typeof role === 'string')
-      : [];
+    const roles = Array.isArray(payload.roles) ? payload.roles.filter((role) => typeof role === 'string') : [];
     const tokenType = payload.type;
 
     if (!userId || !jti || tokenType !== 'access') {
@@ -151,14 +149,14 @@ export class AuthService {
     email: string,
     password: string,
     tenantId: string,
-    name?: string
+    name?: string,
   ): Promise<{ name: string | null; roles: string[]; tokens: IssuedTokens; userId: string }> {
     if (!this.pool) throw new UnauthorizedException('Database not available.');
 
-    const existing = await this.pool.query(
-      'SELECT id FROM users WHERE tenant_id = $1 AND email = $2',
-      [tenantId, email]
-    );
+    const existing = await this.pool.query('SELECT id FROM users WHERE tenant_id = $1 AND email = $2', [
+      tenantId,
+      email,
+    ]);
     if (existing.rows.length > 0) {
       throw new UnauthorizedException('Email already registered in this tenant.');
     }
@@ -170,15 +168,18 @@ export class AuthService {
     try {
       await client.query('BEGIN');
       await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [tenantId]);
-      await client.query(
-        'INSERT INTO users (id, tenant_id, email, password_hash, name) VALUES ($1, $2, $3, $4, $5)',
-        [userId, tenantId, email, passwordHash, name ?? null]
-      );
+      await client.query('INSERT INTO users (id, tenant_id, email, password_hash, name) VALUES ($1, $2, $3, $4, $5)', [
+        userId,
+        tenantId,
+        email,
+        passwordHash,
+        name ?? null,
+      ]);
 
       // Assign viewer role by default
       await client.query(
         `INSERT INTO user_roles (user_id, role_id) SELECT $1, id FROM roles WHERE tenant_id = $2 AND name = 'viewer' LIMIT 1`,
-        [userId, tenantId]
+        [userId, tenantId],
       );
 
       await client.query('COMMIT');
@@ -197,13 +198,13 @@ export class AuthService {
   async login(
     email: string,
     password: string,
-    tenantId: string
+    tenantId: string,
   ): Promise<{ name: string | null; roles: string[]; tokens: IssuedTokens; userId: string }> {
     if (!this.pool) throw new UnauthorizedException('Database not available.');
 
     const result = await this.pool.query<UserRow>(
       'SELECT id, email, password_hash, name, is_active FROM users WHERE tenant_id = $1 AND email = $2',
-      [tenantId, email]
+      [tenantId, email],
     );
 
     const user = result.rows[0];
@@ -249,17 +250,12 @@ export class AuthService {
     return this.issueTokens({ roles, tenantId, userId });
   }
 
-  async changePassword(
-    userId: string,
-    tenantId: string,
-    currentPassword: string,
-    newPassword: string
-  ): Promise<void> {
+  async changePassword(userId: string, tenantId: string, currentPassword: string, newPassword: string): Promise<void> {
     if (!this.pool) throw new UnauthorizedException('Database not available.');
 
     const result = await this.pool.query<UserRow>(
       'SELECT id, password_hash, is_active FROM users WHERE id = $1 AND tenant_id = $2',
-      [userId, tenantId]
+      [userId, tenantId],
     );
 
     const user = result.rows[0];
@@ -300,7 +296,7 @@ export class AuthService {
 
     const result = await this.pool.query<RoleRow>(
       `SELECT r.name FROM roles r JOIN user_roles ur ON ur.role_id = r.id WHERE ur.user_id = $1 AND r.tenant_id = $2`,
-      [userId, tenantId]
+      [userId, tenantId],
     );
     return result.rows.map((row) => row.name);
   }
@@ -326,7 +322,7 @@ export class AuthService {
 
     const result = await this.pool.query<{ id: string; is_active: number }>(
       'SELECT id, is_active FROM users WHERE tenant_id = $1 AND email = $2',
-      [email, tenantId]
+      [email, tenantId],
     );
 
     const user = result.rows[0];
@@ -365,7 +361,7 @@ export class AuthService {
     // Rate limit: max 3 codes per phone per minute
     const rateResult = await this.pool.query(
       `SELECT COUNT(*)::text AS count FROM sms_codes WHERE phone = $1 AND created_at > now() - interval '1 minute'`,
-      [phone]
+      [phone],
     );
     if (parseInt(rateResult.rows[0]?.count ?? '0', 10) >= 3) {
       throw new UnauthorizedException('Too many SMS codes requested. Please try again later.');
@@ -376,7 +372,7 @@ export class AuthService {
 
     await this.pool.query(
       `INSERT INTO sms_codes (id, phone, code, expires_at) VALUES ($1, $2, $3, now() + interval '5 minutes')`,
-      [id, phone, code]
+      [id, phone, code],
     );
 
     // In production, send SMS via provider (Twilio, Alibaba Cloud SMS, etc.)
@@ -389,7 +385,7 @@ export class AuthService {
   async loginWithSms(
     phone: string,
     code: string,
-    tenantId: string
+    tenantId: string,
   ): Promise<{ name: string | null; roles: string[]; tokens: IssuedTokens; userId: string }> {
     if (!this.pool) throw new UnauthorizedException('Database not available.');
 
@@ -406,7 +402,7 @@ export class AuthService {
        LEFT JOIN users u ON u.phone = sc.phone AND u.tenant_id = $3
        WHERE sc.phone = $1 AND sc.code = $2 AND sc.used_at IS NULL AND sc.expires_at > now()
        ORDER BY sc.created_at DESC LIMIT 1`,
-      [phone, code, tenantId]
+      [phone, code, tenantId],
     );
 
     if (smsResult.rows.length === 0) {
@@ -430,10 +426,9 @@ export class AuthService {
     const tokens = this.issueTokens({ roles, tenantId, userId: smsRow.user_id });
 
     // Get user name
-    const userResult = await this.pool.query<{ name: string | null }>(
-      'SELECT name FROM users WHERE id = $1',
-      [smsRow.user_id]
-    );
+    const userResult = await this.pool.query<{ name: string | null }>('SELECT name FROM users WHERE id = $1', [
+      smsRow.user_id,
+    ]);
 
     return {
       name: userResult.rows[0]?.name ?? null,
@@ -450,11 +445,11 @@ export class AuthService {
   async loginWithOAuth(
     provider: string,
     code: string,
-    tenantId: string
+    tenantId: string,
   ): Promise<{ name: string | null; roles: string[]; tokens: IssuedTokens; userId: string }> {
     if (!this.pool) throw new UnauthorizedException('Database not available.');
 
-    if (!AuthService.VALID_OAUTH_PROVIDERS.includes(provider as any)) {
+    if (!AuthService.VALID_OAUTH_PROVIDERS.includes(provider as (typeof AuthService.VALID_OAUTH_PROVIDERS)[number])) {
       throw new UnauthorizedException(`Unsupported OAuth provider: ${provider}`);
     }
 
@@ -474,7 +469,7 @@ export class AuthService {
        FROM oauth_accounts oa
        JOIN users u ON u.id = oa.user_id
        WHERE oa.provider = $1 AND oa.provider_id = $2`,
-      [provider, providerUserInfo.providerId]
+      [provider, providerUserInfo.providerId],
     );
 
     if (existingResult.rows.length > 0) {
@@ -493,25 +488,24 @@ export class AuthService {
     try {
       await client.query('BEGIN');
       await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [tenantId]);
-      await client.query(
-        'INSERT INTO users (id, tenant_id, email, password_hash, name) VALUES ($1, $2, $3, $4, $5)',
-        [
-          userId,
-          tenantId,
-          providerUserInfo.email ?? `${userId}@oauth.${provider}`,
-          '',
-          providerUserInfo.name ?? null,
-        ]
-      );
+      await client.query('INSERT INTO users (id, tenant_id, email, password_hash, name) VALUES ($1, $2, $3, $4, $5)', [
+        userId,
+        tenantId,
+        providerUserInfo.email ?? `${userId}@oauth.${provider}`,
+        '',
+        providerUserInfo.name ?? null,
+      ]);
       // Assign viewer role
       await client.query(
         `INSERT INTO user_roles (user_id, role_id) SELECT $1, id FROM roles WHERE tenant_id = $2 AND name = 'viewer' LIMIT 1`,
-        [userId, tenantId]
+        [userId, tenantId],
       );
-      await client.query(
-        'INSERT INTO oauth_accounts (id, user_id, provider, provider_id) VALUES ($1, $2, $3, $4)',
-        [randomUUID(), userId, provider, providerUserInfo.providerId]
-      );
+      await client.query('INSERT INTO oauth_accounts (id, user_id, provider, provider_id) VALUES ($1, $2, $3, $4)', [
+        randomUUID(),
+        userId,
+        provider,
+        providerUserInfo.providerId,
+      ]);
       await client.query('COMMIT');
     } catch (error) {
       await client.query('ROLLBACK');
@@ -532,7 +526,7 @@ export class AuthService {
    */
   private async exchangeOAuthCode(
     provider: string,
-    code: string
+    code: string,
   ): Promise<{ providerId: string; email: string | null; name: string | null } | null> {
     // Dev mock: derive provider user ID from code
     if (code === 'fail-exchange') return null;
@@ -552,9 +546,7 @@ export class AuthService {
 
   // ─── OAuth Account Management ──────────────────────────────────
 
-  async listOAuthAccounts(
-    userId: string
-  ): Promise<{ provider: string; providerId: string; createdAt: string }[]> {
+  async listOAuthAccounts(userId: string): Promise<{ provider: string; providerId: string; createdAt: string }[]> {
     if (!this.pool) throw new UnauthorizedException('Database not available.');
 
     const result = await this.pool.query<{
@@ -573,10 +565,10 @@ export class AuthService {
   async unlinkOAuthAccount(userId: string, provider: string): Promise<void> {
     if (!this.pool) throw new UnauthorizedException('Database not available.');
 
-    const result = await this.pool.query(
-      'DELETE FROM oauth_accounts WHERE user_id = $1 AND provider = $2',
-      [userId, provider]
-    );
+    const result = await this.pool.query('DELETE FROM oauth_accounts WHERE user_id = $1 AND provider = $2', [
+      userId,
+      provider,
+    ]);
 
     if (result.rowCount === 0) {
       throw new UnauthorizedException('Linked account not found.');

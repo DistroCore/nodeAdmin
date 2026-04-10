@@ -1,7 +1,7 @@
 import { useMemo, lazy, type ComponentType } from 'react';
 
 export interface PluginLoaderResult {
-  Component: ComponentType<any> | null;
+  Component: ComponentType<Record<string, unknown>> | null;
   isLoading: boolean;
   error: Error | null;
 }

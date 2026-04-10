@@ -14,6 +14,19 @@ export interface MenuItem {
   children?: MenuItem[];
 }
 
+interface MenuRow {
+  id: string;
+  parent_id: string | null;
+  name: string;
+  path: string | null;
+  icon: string | null;
+  sort_order: number;
+  permission_code: string | null;
+  is_visible: boolean;
+  created_at: Date;
+  menu_id?: string;
+}
+
 @Injectable()
 export class MenusService {
   private readonly pool: Pool | null;
@@ -30,7 +43,7 @@ export class MenusService {
   async findAll(): Promise<MenuItem[]> {
     if (!this.pool) return [];
     const result = await this.pool.query(
-      'SELECT id, parent_id, name, path, icon, sort_order, permission_code, is_visible, created_at FROM menus ORDER BY sort_order, created_at'
+      'SELECT id, parent_id, name, path, icon, sort_order, permission_code, is_visible, created_at FROM menus ORDER BY sort_order, created_at',
     );
     return this.buildTree(result.rows);
   }
@@ -39,7 +52,7 @@ export class MenusService {
     if (!this.pool) throw new NotFoundException('Menu not found');
     const result = await this.pool.query(
       'SELECT id, parent_id, name, path, icon, sort_order, permission_code, is_visible, created_at FROM menus WHERE id = $1',
-      [id]
+      [id],
     );
     if (result.rows.length === 0) throw new NotFoundException('Menu not found');
     return result.rows[0];
@@ -67,7 +80,7 @@ export class MenusService {
         data.sortOrder ?? 0,
         data.permissionCode ?? null,
         data.isVisible !== false,
-      ]
+      ],
     );
     return this.findById(id);
   }
@@ -82,7 +95,7 @@ export class MenusService {
       sortOrder?: number;
       permissionCode?: string;
       isVisible?: boolean;
-    }
+    },
   ) {
     if (!this.pool) throw new Error('Database not available');
     const sets: string[] = [];
@@ -138,10 +151,8 @@ export class MenusService {
 
   async getRoleMenus(roleId: string): Promise<string[]> {
     if (!this.pool) return [];
-    const result = await this.pool.query('SELECT menu_id FROM role_menus WHERE role_id = $1', [
-      roleId,
-    ]);
-    return result.rows.map((r: any) => r.menu_id);
+    const result = await this.pool.query('SELECT menu_id FROM role_menus WHERE role_id = $1', [roleId]);
+    return result.rows.map((r: MenuRow) => r.menu_id ?? r.id);
   }
 
   async setRoleMenus(roleId: string, menuIds: string[]) {
@@ -151,10 +162,7 @@ export class MenusService {
       await client.query('BEGIN');
       await client.query('DELETE FROM role_menus WHERE role_id = $1', [roleId]);
       for (const menuId of menuIds) {
-        await client.query('INSERT INTO role_menus (role_id, menu_id) VALUES ($1, $2)', [
-          roleId,
-          menuId,
-        ]);
+        await client.query('INSERT INTO role_menus (role_id, menu_id) VALUES ($1, $2)', [roleId, menuId]);
       }
       await client.query('COMMIT');
     } catch (error) {
@@ -187,12 +195,12 @@ export class MenusService {
        SELECT id, parent_id, name, path, icon, sort_order, permission_code, is_visible, created_at
        FROM accessible_menus
        ORDER BY sort_order, created_at`,
-      [tenantId, userId]
+      [tenantId, userId],
     );
     return this.buildTree(result.rows);
   }
 
-  private buildTree(rows: any[]): MenuItem[] {
+  private buildTree(rows: MenuRow[]): MenuItem[] {
     const map = new Map<string, MenuItem>();
     const roots: MenuItem[] = [];
     for (const row of rows) {
@@ -209,10 +217,9 @@ export class MenusService {
     return this.sortTree(roots);
   }
 
-  private sortTree(nodes: any[]): MenuItem[] {
+  private sortTree(nodes: MenuItem[]): MenuItem[] {
     nodes.sort(
-      (left, right) =>
-        left.sort_order - right.sort_order || left.created_at.getTime() - right.created_at.getTime()
+      (left, right) => left.sort_order - right.sort_order || left.created_at.getTime() - right.created_at.getTime(),
     );
 
     for (const node of nodes) {
