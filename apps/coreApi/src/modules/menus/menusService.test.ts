@@ -1,10 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
 import { setupTestEnv, createMockPool, createMockClient } from '../../__tests__/helpers';
+import type { MockPool } from '../../__tests__/helpers';
 
 setupTestEnv();
 
 import { MenusService } from './menusService';
+
+function setMenusServicePool(service: MenusService, pool: MockPool): void {
+  (service as unknown as { pool: MockPool }).pool = pool;
+}
 
 describe('MenusService', () => {
   let service: MenusService;
@@ -47,7 +52,7 @@ describe('MenusService', () => {
         },
       ];
       const mockPool = createMockPool([{ rows, rowCount: 2 }]);
-      (service as any).pool = mockPool;
+      setMenusServicePool(service, mockPool);
 
       const result = await service.findAll();
       expect(result).toHaveLength(1);
@@ -71,7 +76,7 @@ describe('MenusService', () => {
         },
       ];
       const mockPool = createMockPool([{ rows, rowCount: 1 }]);
-      (service as any).pool = mockPool;
+      setMenusServicePool(service, mockPool);
 
       const result = await service.findAll();
 
@@ -90,16 +95,14 @@ describe('MenusService', () => {
 
     it('should throw NotFoundException when menu not found', async () => {
       const mockPool = createMockPool([{ rows: [], rowCount: 0 }]);
-      (service as any).pool = mockPool;
+      setMenusServicePool(service, mockPool);
 
       await expect(service.findById('nonexistent')).rejects.toThrow('Menu not found');
     });
 
     it('should return menu item', async () => {
-      const mockPool = createMockPool([
-        { rows: [{ id: 'm-1', name: 'Menu1', parent_id: null }], rowCount: 1 },
-      ]);
-      (service as any).pool = mockPool;
+      const mockPool = createMockPool([{ rows: [{ id: 'm-1', name: 'Menu1', parent_id: null }], rowCount: 1 }]);
+      setMenusServicePool(service, mockPool);
 
       const result = await service.findById('m-1');
       expect(result.id).toBe('m-1');
@@ -133,7 +136,7 @@ describe('MenusService', () => {
           rowCount: 1,
         }, // findById
       ]);
-      (service as any).pool = mockPool;
+      setMenusServicePool(service, mockPool);
 
       const result = await service.create({ name: 'Menu1' });
       expect(result.name).toBe('Menu1');
@@ -159,15 +162,20 @@ describe('MenusService', () => {
           rowCount: 1,
         },
       ]);
-      (service as any).pool = mockPool;
+      setMenusServicePool(service, mockPool);
 
       await service.create({ name: 'Defaults' });
 
-      expect(mockPool.query).toHaveBeenNthCalledWith(
-        1,
-        expect.stringContaining('INSERT INTO menus'),
-        [expect.any(String), null, 'Defaults', null, null, 0, null, true]
-      );
+      expect(mockPool.query).toHaveBeenNthCalledWith(1, expect.stringContaining('INSERT INTO menus'), [
+        expect.any(String),
+        null,
+        'Defaults',
+        null,
+        null,
+        0,
+        null,
+        true,
+      ]);
     });
   });
 
@@ -197,7 +205,7 @@ describe('MenusService', () => {
           rowCount: 1,
         },
       ]);
-      (service as any).pool = mockPool;
+      setMenusServicePool(service, mockPool);
 
       const result = await service.update('m-1', {});
       expect(result.id).toBe('m-1');
@@ -223,7 +231,7 @@ describe('MenusService', () => {
           rowCount: 1,
         }, // findById
       ]);
-      (service as any).pool = mockPool;
+      setMenusServicePool(service, mockPool);
 
       const result = await service.update('m-1', { name: 'Updated' });
       expect(result.name).toBe('Updated');
@@ -249,14 +257,14 @@ describe('MenusService', () => {
           rowCount: 1,
         },
       ]);
-      (service as any).pool = mockPool;
+      setMenusServicePool(service, mockPool);
 
       await service.update('m-1', { parentId: 'm-9', sortOrder: 3 });
 
       expect(mockPool.query).toHaveBeenNthCalledWith(
         1,
         'UPDATE menus SET parent_id = $2, sort_order = $3 WHERE id = $4',
-        ['m-9', 3, 'm-1']
+        ['m-9', 3, 'm-1'],
       );
     });
 
@@ -280,15 +288,14 @@ describe('MenusService', () => {
           rowCount: 1,
         },
       ]);
-      (service as any).pool = mockPool;
+      setMenusServicePool(service, mockPool);
 
       await service.update('m-1', { isVisible: false });
 
-      expect(mockPool.query).toHaveBeenNthCalledWith(
-        1,
-        'UPDATE menus SET is_visible = $2 WHERE id = $3',
-        [false, 'm-1']
-      );
+      expect(mockPool.query).toHaveBeenNthCalledWith(1, 'UPDATE menus SET is_visible = $2 WHERE id = $3', [
+        false,
+        'm-1',
+      ]);
     });
   });
 
@@ -309,7 +316,7 @@ describe('MenusService', () => {
         { rows: [{ id: 'm-2' }], rowCount: 1 }, // DELETE child menu
         { rows: [{ id: 'm-1' }], rowCount: 1 }, // DELETE parent menu
       ]);
-      (service as any).pool = mockPool;
+      setMenusServicePool(service, mockPool);
 
       await service.remove('m-1');
       // Verify all 6 queries were made
@@ -322,7 +329,7 @@ describe('MenusService', () => {
         { rows: [], rowCount: 0 }, // SELECT children (none)
         { rows: [], rowCount: 0 }, // DELETE menu RETURNING (empty)
       ]);
-      (service as any).pool = mockPool;
+      setMenusServicePool(service, mockPool);
 
       await expect(service.remove('nonexistent')).rejects.toThrow('Menu not found');
     });
@@ -337,10 +344,8 @@ describe('MenusService', () => {
     });
 
     it('should return menu IDs for a role', async () => {
-      const mockPool = createMockPool([
-        { rows: [{ menu_id: 'm-1' }, { menu_id: 'm-2' }], rowCount: 2 },
-      ]);
-      (service as any).pool = mockPool;
+      const mockPool = createMockPool([{ rows: [{ menu_id: 'm-1' }, { menu_id: 'm-2' }], rowCount: 2 }]);
+      setMenusServicePool(service, mockPool);
 
       const result = await service.getRoleMenus('r-1');
       expect(result).toEqual(['m-1', 'm-2']);
@@ -366,7 +371,7 @@ describe('MenusService', () => {
         { rows: [{ menu_id: 'm-1' }, { menu_id: 'm-2' }], rowCount: 2 }, // getRoleMenus after commit
       ]);
       mockPool.connect = vi.fn(async () => mockClient);
-      (service as any).pool = mockPool;
+      setMenusServicePool(service, mockPool);
 
       const result = await service.setRoleMenus('r-1', ['m-1', 'm-2']);
       expect(result).toEqual(['m-1', 'm-2']);
@@ -384,7 +389,7 @@ describe('MenusService', () => {
 
       const mockPool = createMockPool([]);
       mockPool.connect = vi.fn(async () => mockClient);
-      (service as any).pool = mockPool;
+      setMenusServicePool(service, mockPool);
 
       await expect(service.setRoleMenus('r-1', ['m-1'])).rejects.toThrow('DB error');
       expect(mockClient.calls.some((c) => c.sql === 'ROLLBACK')).toBe(true);
@@ -425,7 +430,7 @@ describe('MenusService', () => {
         },
       ];
       const mockPool = createMockPool([{ rows, rowCount: 2 }]);
-      (service as any).pool = mockPool;
+      setMenusServicePool(service, mockPool);
 
       const result = await service.getUserMenus('t-1', 'u-1');
       expect(result).toHaveLength(1);
@@ -458,14 +463,14 @@ describe('MenusService', () => {
         },
       ];
       const mockPool = createMockPool([{ rows, rowCount: 2 }]);
-      (service as any).pool = mockPool;
+      setMenusServicePool(service, mockPool);
 
       const result = await service.getUserMenus('default', 'u-1');
 
-      expect(mockPool.query).toHaveBeenCalledWith(
-        expect.stringContaining('WITH RECURSIVE accessible_menus AS'),
-        ['default', 'u-1']
-      );
+      expect(mockPool.query).toHaveBeenCalledWith(expect.stringContaining('WITH RECURSIVE accessible_menus AS'), [
+        'default',
+        'u-1',
+      ]);
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('group-1');
       expect(result[0].children).toHaveLength(1);
@@ -474,14 +479,14 @@ describe('MenusService', () => {
 
     it('should scope user menu queries by tenant to avoid cross-tenant leakage', async () => {
       const mockPool = createMockPool([{ rows: [], rowCount: 0 }]);
-      (service as any).pool = mockPool;
+      setMenusServicePool(service, mockPool);
 
       await service.getUserMenus('tenant-b', 'u-1');
 
-      expect(mockPool.query).toHaveBeenCalledWith(
-        expect.stringContaining('r.tenant_id = $1 AND ur.user_id = $2'),
-        ['tenant-b', 'u-1']
-      );
+      expect(mockPool.query).toHaveBeenCalledWith(expect.stringContaining('r.tenant_id = $1 AND ur.user_id = $2'), [
+        'tenant-b',
+        'u-1',
+      ]);
     });
   });
 });

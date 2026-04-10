@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { hash } from 'bcryptjs';
 import { verify } from 'jsonwebtoken';
 import { createMockClient, createMockPool, setupTestEnv } from '../../__tests__/helpers';
-import type { QueryResult } from '../../__tests__/helpers';
+import type { MockPool, QueryResult } from '../../__tests__/helpers';
 
 // Must set env before importing runtimeConfig (loaded at import time)
 setupTestEnv();
@@ -11,9 +11,11 @@ import { AuthService } from './authService';
 
 describe('AuthService', () => {
   let service: AuthService;
+  let serviceWithPool: AuthService & { pool: MockPool | null };
 
   beforeEach(() => {
     service = new AuthService();
+    serviceWithPool = service as unknown as AuthService & { pool: MockPool | null };
     // Pool is null because DATABASE_URL is empty
   });
 
@@ -108,9 +110,7 @@ describe('AuthService', () => {
         userId: 'user-1',
       });
 
-      expect(() => service.verifyAccessToken(accessToken + 'x')).toThrow(
-        'Invalid or expired access token.'
-      );
+      expect(() => service.verifyAccessToken(accessToken + 'x')).toThrow('Invalid or expired access token.');
     });
 
     it('should throw for a token with wrong type (refresh token)', () => {
@@ -123,9 +123,7 @@ describe('AuthService', () => {
       // Refresh token is signed with refreshSecret, not accessSecret.
       // verify() fails with "invalid signature" which maps to
       // "Invalid or expired access token." — the type-check is never reached.
-      expect(() => service.verifyAccessToken(refreshToken)).toThrow(
-        'Invalid or expired access token.'
-      );
+      expect(() => service.verifyAccessToken(refreshToken)).toThrow('Invalid or expired access token.');
     });
   });
 
@@ -134,16 +132,16 @@ describe('AuthService', () => {
   describe('register', () => {
     it('should throw when pool is null (no DATABASE_URL)', async () => {
       await expect(service.register('test@example.com', 'password123', 'tenant-1')).rejects.toThrow(
-        'Database not available.'
+        'Database not available.',
       );
     });
 
     it('should throw when email already exists', async () => {
       const mockPool = createMockPool([{ rows: [{ id: 'existing-user' }], rowCount: 1 }]);
-      (service as any).pool = mockPool;
+      serviceWithPool.pool = mockPool;
 
       await expect(service.register('test@example.com', 'password123', 'tenant-1')).rejects.toThrow(
-        'Email already registered'
+        'Email already registered',
       );
     });
 
@@ -156,9 +154,9 @@ describe('AuthService', () => {
       ]);
       // Override pool.query for the email check, and pool.connect for the transaction
       const mockPool = createMockPool([{ rows: [], rowCount: 0 }]);
-      mockPool.connect = vi.fn(async () => mockClient);
+      mockPool.connect = vi.fn<MockPool['connect']>(async () => mockClient);
 
-      (service as any).pool = mockPool;
+      serviceWithPool.pool = mockPool;
 
       const result = await service.register('test@example.com', 'password123', 'tenant-1', 'Test');
 
@@ -182,13 +180,11 @@ describe('AuthService', () => {
       });
 
       const mockPool = createMockPool([{ rows: [], rowCount: 0 }]);
-      mockPool.connect = vi.fn(async () => mockClient);
+      mockPool.connect = vi.fn<MockPool['connect']>(async () => mockClient);
 
-      (service as any).pool = mockPool;
+      serviceWithPool.pool = mockPool;
 
-      await expect(service.register('test@example.com', 'password123', 'tenant-1')).rejects.toThrow(
-        'DB insert error'
-      );
+      await expect(service.register('test@example.com', 'password123', 'tenant-1')).rejects.toThrow('DB insert error');
 
       // Verify ROLLBACK was called
       const rollbackCall = mockClient.calls.find((c) => c.sql === 'ROLLBACK');
@@ -201,16 +197,16 @@ describe('AuthService', () => {
   describe('login', () => {
     it('should throw when pool is null', async () => {
       await expect(service.login('test@example.com', 'password123', 'tenant-1')).rejects.toThrow(
-        'Database not available.'
+        'Database not available.',
       );
     });
 
     it('should throw for unknown email', async () => {
       const mockPool = createMockPool([{ rows: [], rowCount: 0 }]);
-      (service as any).pool = mockPool;
+      serviceWithPool.pool = mockPool;
 
       await expect(service.login('unknown@example.com', 'password123', 'tenant-1')).rejects.toThrow(
-        'Invalid email or password.'
+        'Invalid email or password.',
       );
     });
 
@@ -230,10 +226,10 @@ describe('AuthService', () => {
           rowCount: 1,
         },
       ] as QueryResult[]);
-      (service as any).pool = mockPool;
+      serviceWithPool.pool = mockPool;
 
       await expect(service.login('test@example.com', 'password123', 'tenant-1')).rejects.toThrow(
-        'Account is disabled.'
+        'Account is disabled.',
       );
     });
 
@@ -255,10 +251,10 @@ describe('AuthService', () => {
         { rows: [{ name: 'admin' }], rowCount: 1 }, // getUserRoles
       ]);
 
-      (service as any).pool = mockPool;
+      serviceWithPool.pool = mockPool;
 
       await expect(service.login('test@example.com', 'wrong-password', 'tenant-1')).rejects.toThrow(
-        'Invalid email or password.'
+        'Invalid email or password.',
       );
     });
 
@@ -280,7 +276,7 @@ describe('AuthService', () => {
         { rows: [{ name: 'admin' }], rowCount: 1 }, // getUserRoles
       ]);
 
-      (service as any).pool = mockPool;
+      serviceWithPool.pool = mockPool;
 
       const result = await service.login('test@example.com', 'password123', 'tenant-1');
       expect(result.userId).toBe('user-1');
@@ -308,9 +304,7 @@ describe('AuthService', () => {
     });
 
     it('should throw for an invalid refresh token', async () => {
-      await expect(service.refreshTokens('invalid-token')).rejects.toThrow(
-        'Invalid or expired refresh token.'
-      );
+      await expect(service.refreshTokens('invalid-token')).rejects.toThrow('Invalid or expired refresh token.');
     });
 
     it('should throw for a token with wrong type (access token used as refresh)', async () => {
@@ -323,9 +317,7 @@ describe('AuthService', () => {
       // Access token was signed with accessSecret but refreshTokens verifies with refreshSecret.
       // This means verify() fails with "invalid signature" which maps to
       // "Invalid or expired refresh token." — the type-check is never reached.
-      await expect(service.refreshTokens(accessToken)).rejects.toThrow(
-        'Invalid or expired refresh token.'
-      );
+      await expect(service.refreshTokens(accessToken)).rejects.toThrow('Invalid or expired refresh token.');
     });
   });
 
@@ -333,18 +325,18 @@ describe('AuthService', () => {
 
   describe('changePassword', () => {
     it('should throw when pool is null', async () => {
-      await expect(
-        service.changePassword('user-1', 'tenant-1', 'old', 'newpass123')
-      ).rejects.toThrow('Database not available.');
+      await expect(service.changePassword('user-1', 'tenant-1', 'old', 'newpass123')).rejects.toThrow(
+        'Database not available.',
+      );
     });
 
     it('should throw when user not found', async () => {
       const mockPool = createMockPool([{ rows: [], rowCount: 0 }]);
-      (service as any).pool = mockPool;
+      serviceWithPool.pool = mockPool;
 
-      await expect(
-        service.changePassword('nonexistent', 'tenant-1', 'old', 'newpass123')
-      ).rejects.toThrow('User not found.');
+      await expect(service.changePassword('nonexistent', 'tenant-1', 'old', 'newpass123')).rejects.toThrow(
+        'User not found.',
+      );
     });
 
     it('should throw when current password is incorrect', async () => {
@@ -355,11 +347,11 @@ describe('AuthService', () => {
           rowCount: 1,
         },
       ]);
-      (service as any).pool = mockPool;
+      serviceWithPool.pool = mockPool;
 
-      await expect(
-        service.changePassword('user-1', 'tenant-1', 'wrong-password', 'newpass123')
-      ).rejects.toThrow('Current password is incorrect.');
+      await expect(service.changePassword('user-1', 'tenant-1', 'wrong-password', 'newpass123')).rejects.toThrow(
+        'Current password is incorrect.',
+      );
     });
 
     it('should update password when current password is correct', async () => {
@@ -375,8 +367,8 @@ describe('AuthService', () => {
           rowCount: 1,
         },
       ]);
-      mockPool.connect = vi.fn(async () => mockClient);
-      (service as any).pool = mockPool;
+      mockPool.connect = vi.fn<MockPool['connect']>(async () => mockClient);
+      serviceWithPool.pool = mockPool;
 
       await service.changePassword('user-1', 'tenant-1', 'old-password', 'newpass123');
 
@@ -404,12 +396,12 @@ describe('AuthService', () => {
           rowCount: 1,
         },
       ]);
-      mockPool.connect = vi.fn(async () => mockClient);
-      (service as any).pool = mockPool;
+      mockPool.connect = vi.fn<MockPool['connect']>(async () => mockClient);
+      serviceWithPool.pool = mockPool;
 
-      await expect(
-        service.changePassword('user-1', 'tenant-1', 'old-password', 'newpass123')
-      ).rejects.toThrow('DB update error');
+      await expect(service.changePassword('user-1', 'tenant-1', 'old-password', 'newpass123')).rejects.toThrow(
+        'DB update error',
+      );
 
       const rollbackCall = mockClient.calls.find((c) => c.sql === 'ROLLBACK');
       expect(rollbackCall).toBeDefined();

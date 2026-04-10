@@ -1,10 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
 import { setupTestEnv, createMockPool, createMockClient } from '../../__tests__/helpers';
+import type { MockPool } from '../../__tests__/helpers';
 
 setupTestEnv();
 
 import { TenantsService } from './tenantsService';
+
+function setTenantsServicePool(service: TenantsService, pool: MockPool): void {
+  (service as unknown as { pool: MockPool }).pool = pool;
+}
 
 describe('TenantsService', () => {
   let service: TenantsService;
@@ -31,7 +36,7 @@ describe('TenantsService', () => {
           rowCount: 2,
         },
       ]);
-      (service as any).pool = mockPool;
+      setTenantsServicePool(service, mockPool);
 
       const result = await service.list();
       expect(result).toHaveLength(2);
@@ -47,16 +52,14 @@ describe('TenantsService', () => {
 
     it('should throw NotFoundException when tenant not found', async () => {
       const mockPool = createMockPool([{ rows: [], rowCount: 0 }]);
-      (service as any).pool = mockPool;
+      setTenantsServicePool(service, mockPool);
 
       await expect(service.findById('nonexistent')).rejects.toThrow('Tenant not found');
     });
 
     it('should return tenant by id', async () => {
-      const mockPool = createMockPool([
-        { rows: [{ id: 't-1', name: 'Tenant 1', slug: 't1' }], rowCount: 1 },
-      ]);
-      (service as any).pool = mockPool;
+      const mockPool = createMockPool([{ rows: [{ id: 't-1', name: 'Tenant 1', slug: 't1' }], rowCount: 1 }]);
+      setTenantsServicePool(service, mockPool);
 
       const result = await service.findById('t-1');
       expect(result.id).toBe('t-1');
@@ -67,18 +70,14 @@ describe('TenantsService', () => {
 
   describe('create', () => {
     it('should throw when pool is null', async () => {
-      await expect(service.create({ name: 'T', slug: 't' })).rejects.toThrow(
-        'Database not available'
-      );
+      await expect(service.create({ name: 'T', slug: 't' })).rejects.toThrow('Database not available');
     });
 
     it('should throw ConflictException for duplicate slug', async () => {
       const mockPool = createMockPool([{ rows: [{ id: 'existing' }], rowCount: 1 }]);
-      (service as any).pool = mockPool;
+      setTenantsServicePool(service, mockPool);
 
-      await expect(service.create({ name: 'T', slug: 'existing-slug' })).rejects.toThrow(
-        'Tenant slug already exists'
-      );
+      await expect(service.create({ name: 'T', slug: 'existing-slug' })).rejects.toThrow('Tenant slug already exists');
     });
 
     it('should create tenant and return it', async () => {
@@ -90,7 +89,7 @@ describe('TenantsService', () => {
           rowCount: 1,
         }, // findById
       ]);
-      (service as any).pool = mockPool;
+      setTenantsServicePool(service, mockPool);
 
       const result = await service.create({ name: 'New Tenant', slug: 'new-tenant' });
       expect(result.name).toBe('New Tenant');
@@ -105,7 +104,7 @@ describe('TenantsService', () => {
           rowCount: 1,
         },
       ]);
-      (service as any).pool = mockPool;
+      setTenantsServicePool(service, mockPool);
 
       const result = await service.create({
         name: 'Dormant Tenant',
@@ -117,7 +116,7 @@ describe('TenantsService', () => {
       expect(mockPool.query).toHaveBeenNthCalledWith(
         2,
         'INSERT INTO tenants (id, name, slug, logo, is_active, config_json) VALUES ($1, $2, $3, $4, $5, $6)',
-        [expect.any(String), 'Dormant Tenant', 'dormant', null, 0, '{}']
+        [expect.any(String), 'Dormant Tenant', 'dormant', null, 0, '{}'],
       );
     });
   });
@@ -130,10 +129,8 @@ describe('TenantsService', () => {
     });
 
     it('should return tenant unchanged when no fields provided', async () => {
-      const mockPool = createMockPool([
-        { rows: [{ id: 't-1', name: 'Tenant 1', slug: 't1' }], rowCount: 1 },
-      ]);
-      (service as any).pool = mockPool;
+      const mockPool = createMockPool([{ rows: [{ id: 't-1', name: 'Tenant 1', slug: 't1' }], rowCount: 1 }]);
+      setTenantsServicePool(service, mockPool);
 
       const result = await service.update('t-1', {});
       expect(result.id).toBe('t-1');
@@ -143,11 +140,9 @@ describe('TenantsService', () => {
       const mockPool = createMockPool([
         { rows: [], rowCount: 0 }, // UPDATE RETURNING (no rows)
       ]);
-      (service as any).pool = mockPool;
+      setTenantsServicePool(service, mockPool);
 
-      await expect(service.update('nonexistent', { name: 'X' })).rejects.toThrow(
-        'Tenant not found'
-      );
+      await expect(service.update('nonexistent', { name: 'X' })).rejects.toThrow('Tenant not found');
     });
 
     it('should update fields and return updated tenant', async () => {
@@ -155,7 +150,7 @@ describe('TenantsService', () => {
         { rows: [{ id: 't-1' }], rowCount: 1 }, // UPDATE RETURNING
         { rows: [{ id: 't-1', name: 'Updated', slug: 't1' }], rowCount: 1 }, // findById
       ]);
-      (service as any).pool = mockPool;
+      setTenantsServicePool(service, mockPool);
 
       const result = await service.update('t-1', { name: 'Updated' });
       expect(result.name).toBe('Updated');
@@ -166,7 +161,7 @@ describe('TenantsService', () => {
         { rows: [{ id: 't-1' }], rowCount: 1 },
         { rows: [{ id: 't-1', name: 'Tenant 1', slug: 't1', is_active: 0 }], rowCount: 1 },
       ]);
-      (service as any).pool = mockPool;
+      setTenantsServicePool(service, mockPool);
 
       const result = await service.update('t-1', { isActive: false });
 
@@ -174,7 +169,7 @@ describe('TenantsService', () => {
       expect(mockPool.query).toHaveBeenNthCalledWith(
         1,
         'UPDATE tenants SET is_active = $1, updated_at = now() WHERE id = $2 RETURNING id',
-        [0, 't-1']
+        [0, 't-1'],
       );
     });
 
@@ -183,7 +178,7 @@ describe('TenantsService', () => {
         { rows: [{ id: 't-1' }], rowCount: 1 },
         { rows: [{ id: 't-1', name: 'Tenant 1', slug: 't1', is_active: 1 }], rowCount: 1 },
       ]);
-      (service as any).pool = mockPool;
+      setTenantsServicePool(service, mockPool);
 
       const result = await service.update('t-1', { isActive: true });
 
@@ -200,7 +195,7 @@ describe('TenantsService', () => {
 
     it('should throw ConflictException for default tenant', async () => {
       const mockPool = createMockPool([]);
-      (service as any).pool = mockPool;
+      setTenantsServicePool(service, mockPool);
 
       await expect(service.remove('default')).rejects.toThrow('Cannot delete the default tenant');
     });
@@ -223,7 +218,7 @@ describe('TenantsService', () => {
       ]);
       const mockPool = createMockPool([]);
       mockPool.connect = vi.fn(async () => mockClient);
-      (service as any).pool = mockPool;
+      setTenantsServicePool(service, mockPool);
 
       await expect(service.remove('nonexistent')).rejects.toThrow('Tenant not found');
       expect(mockClient.calls.some((call) => call.sql === 'ROLLBACK')).toBe(true);
@@ -249,20 +244,12 @@ describe('TenantsService', () => {
       ]);
       const mockPool = createMockPool([]);
       mockPool.connect = vi.fn(async () => mockClient);
-      (service as any).pool = mockPool;
+      setTenantsServicePool(service, mockPool);
 
       await service.remove('t-1');
-      expect(
-        mockClient.calls.some((call) => call.sql === 'DELETE FROM users WHERE tenant_id = $1')
-      ).toBe(true);
-      expect(
-        mockClient.calls.some((call) => call.sql === 'DELETE FROM roles WHERE tenant_id = $1')
-      ).toBe(true);
-      expect(
-        mockClient.calls.some(
-          (call) => call.sql === 'DELETE FROM tenants WHERE id = $1 RETURNING id'
-        )
-      ).toBe(true);
+      expect(mockClient.calls.some((call) => call.sql === 'DELETE FROM users WHERE tenant_id = $1')).toBe(true);
+      expect(mockClient.calls.some((call) => call.sql === 'DELETE FROM roles WHERE tenant_id = $1')).toBe(true);
+      expect(mockClient.calls.some((call) => call.sql === 'DELETE FROM tenants WHERE id = $1 RETURNING id')).toBe(true);
       expect(mockClient.calls.some((call) => call.sql === 'COMMIT')).toBe(true);
     });
 
@@ -277,7 +264,7 @@ describe('TenantsService', () => {
       });
       const mockPool = createMockPool([]);
       mockPool.connect = vi.fn(async () => mockClient);
-      (service as any).pool = mockPool;
+      setTenantsServicePool(service, mockPool);
 
       await expect(service.remove('t-1')).rejects.toThrow('role delete failed');
       expect(mockClient.calls.some((call) => call.sql === 'ROLLBACK')).toBe(true);

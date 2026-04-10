@@ -1,10 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
 import { setupTestEnv, createMockPool, createMockClient } from '../../__tests__/helpers';
+import type { MockPool } from '../../__tests__/helpers';
 
 setupTestEnv();
 
 import { RolesService } from './rolesService';
+
+function setRolesServicePool(service: RolesService, pool: MockPool): void {
+  (service as unknown as { pool: MockPool }).pool = pool;
+}
 
 describe('RolesService', () => {
   let service: RolesService;
@@ -24,13 +29,11 @@ describe('RolesService', () => {
     it('should return roles with permissions', async () => {
       const mockPool = createMockPool([
         {
-          rows: [
-            { id: 'r-1', name: 'admin', description: 'Admin', is_system: false, permissions: [] },
-          ],
+          rows: [{ id: 'r-1', name: 'admin', description: 'Admin', is_system: false, permissions: [] }],
           rowCount: 1,
         },
       ]);
-      (service as any).pool = mockPool;
+      setRolesServicePool(service, mockPool);
 
       const result = await service.list('t-1');
       expect(result).toHaveLength(1);
@@ -47,7 +50,7 @@ describe('RolesService', () => {
 
     it('should throw NotFoundException when role not found', async () => {
       const mockPool = createMockPool([{ rows: [], rowCount: 0 }]);
-      (service as any).pool = mockPool;
+      setRolesServicePool(service, mockPool);
 
       await expect(service.findById('t-1', 'r-1')).rejects.toThrow('Role not found');
     });
@@ -67,7 +70,7 @@ describe('RolesService', () => {
           rowCount: 1,
         },
       ]);
-      (service as any).pool = mockPool;
+      setRolesServicePool(service, mockPool);
 
       const role = await service.findById('t-1', 'r-1');
       expect(role.id).toBe('r-1');
@@ -96,7 +99,7 @@ describe('RolesService', () => {
         },
       ]);
       mockPool.connect = vi.fn(async () => mockClient);
-      (service as any).pool = mockPool;
+      setRolesServicePool(service, mockPool);
 
       const result = await service.create('t-1', 'editor', 'Editor role', ['p-1']);
       expect(result.name).toBe('editor');
@@ -114,7 +117,7 @@ describe('RolesService', () => {
 
       const mockPool = createMockPool([]);
       mockPool.connect = vi.fn(async () => mockClient);
-      (service as any).pool = mockPool;
+      setRolesServicePool(service, mockPool);
 
       await expect(service.create('t-1', 'editor')).rejects.toThrow('DB error');
       expect(mockClient.calls.some((c) => c.sql === 'ROLLBACK')).toBe(true);
@@ -125,25 +128,21 @@ describe('RolesService', () => {
 
   describe('update', () => {
     it('should throw when pool is null', async () => {
-      await expect(service.update('t-1', 'r-1', { name: 'x' })).rejects.toThrow(
-        'Database not available'
-      );
+      await expect(service.update('t-1', 'r-1', { name: 'x' })).rejects.toThrow('Database not available');
     });
 
     it('should throw NotFoundException when role not found', async () => {
       const mockPool = createMockPool([{ rows: [], rowCount: 0 }]);
-      (service as any).pool = mockPool;
+      setRolesServicePool(service, mockPool);
 
       await expect(service.update('t-1', 'r-1', { name: 'x' })).rejects.toThrow('Role not found');
     });
 
     it('should throw BadRequestException for system roles', async () => {
       const mockPool = createMockPool([{ rows: [{ is_system: true }], rowCount: 1 }]);
-      (service as any).pool = mockPool;
+      setRolesServicePool(service, mockPool);
 
-      await expect(service.update('t-1', 'r-1', { name: 'x' })).rejects.toThrow(
-        'Cannot modify system roles'
-      );
+      await expect(service.update('t-1', 'r-1', { name: 'x' })).rejects.toThrow('Cannot modify system roles');
     });
 
     it('should update role and permissions in transaction', async () => {
@@ -160,7 +159,7 @@ describe('RolesService', () => {
         { rows: [{ id: 'r-1', name: 'updated', is_system: false, permissions: [] }], rowCount: 1 }, // findById
       ]);
       mockPool.connect = vi.fn(async () => mockClient);
-      (service as any).pool = mockPool;
+      setRolesServicePool(service, mockPool);
 
       const result = await service.update('t-1', 'r-1', {
         name: 'updated',
@@ -179,14 +178,14 @@ describe('RolesService', () => {
 
     it('should throw NotFoundException when role not found', async () => {
       const mockPool = createMockPool([{ rows: [], rowCount: 0 }]);
-      (service as any).pool = mockPool;
+      setRolesServicePool(service, mockPool);
 
       await expect(service.remove('t-1', 'r-1')).rejects.toThrow('Role not found');
     });
 
     it('should throw BadRequestException for system roles', async () => {
       const mockPool = createMockPool([{ rows: [{ is_system: true }], rowCount: 1 }]);
-      (service as any).pool = mockPool;
+      setRolesServicePool(service, mockPool);
 
       await expect(service.remove('t-1', 'r-1')).rejects.toThrow('Cannot delete system roles');
     });
@@ -202,13 +201,11 @@ describe('RolesService', () => {
       ]);
       const mockPool = createMockPool([{ rows: [{ is_system: false }], rowCount: 1 }]);
       mockPool.connect = vi.fn(async () => mockClient);
-      (service as any).pool = mockPool;
+      setRolesServicePool(service, mockPool);
 
       await service.remove('t-1', 'r-1');
 
-      expect(
-        mockClient.calls.some((call) => call.sql === 'DELETE FROM role_menus WHERE role_id = $1')
-      ).toBe(true);
+      expect(mockClient.calls.some((call) => call.sql === 'DELETE FROM role_menus WHERE role_id = $1')).toBe(true);
     });
 
     it('should delete role and related records in transaction', async () => {
@@ -222,7 +219,7 @@ describe('RolesService', () => {
       ]);
       const mockPool = createMockPool([{ rows: [{ is_system: false }], rowCount: 1 }]);
       mockPool.connect = vi.fn(async () => mockClient);
-      (service as any).pool = mockPool;
+      setRolesServicePool(service, mockPool);
 
       await service.remove('t-1', 'r-1');
       expect(mockClient.calls.some((c) => c.sql === 'COMMIT')).toBe(true);
@@ -236,7 +233,7 @@ describe('RolesService', () => {
 
     it('should return zero deletions when no role IDs are provided', async () => {
       const mockPool = createMockPool([]);
-      (service as any).pool = mockPool;
+      setRolesServicePool(service, mockPool);
 
       await expect(service.removeMany('t-1', [])).resolves.toEqual({ deletedCount: 0 });
       expect(mockPool.query).not.toHaveBeenCalled();
@@ -252,11 +249,9 @@ describe('RolesService', () => {
           rowCount: 2,
         },
       ]);
-      (service as any).pool = mockPool;
+      setRolesServicePool(service, mockPool);
 
-      await expect(service.removeMany('t-1', ['r-1', 'r-2'])).rejects.toThrow(
-        'Cannot delete system roles'
-      );
+      await expect(service.removeMany('t-1', ['r-1', 'r-2'])).rejects.toThrow('Cannot delete system roles');
     });
 
     it('should trim and deduplicate role IDs before running the tenant check', async () => {
@@ -276,14 +271,14 @@ describe('RolesService', () => {
         },
       ]);
       mockPool.connect = vi.fn(async () => mockClient);
-      (service as any).pool = mockPool;
+      setRolesServicePool(service, mockPool);
 
       const result = await service.removeMany('t-1', [' r-1 ', 'r-1', '   ']);
 
       expect(result).toEqual({ deletedCount: 1 });
       expect(mockPool.query).toHaveBeenCalledWith(
         'SELECT id, is_system FROM roles WHERE tenant_id = $1 AND id = ANY($2)',
-        ['t-1', ['r-1']]
+        ['t-1', ['r-1']],
       );
     });
 
@@ -294,14 +289,12 @@ describe('RolesService', () => {
           rowCount: 1,
         },
       ]);
-      (service as any).pool = mockPool;
+      setRolesServicePool(service, mockPool);
 
-      await expect(service.removeMany('t-1', ['r-1', 'r-2'])).rejects.toThrow(
-        'One or more roles not found'
-      );
+      await expect(service.removeMany('t-1', ['r-1', 'r-2'])).rejects.toThrow('One or more roles not found');
       expect(mockPool.query).toHaveBeenCalledWith(
         'SELECT id, is_system FROM roles WHERE tenant_id = $1 AND id = ANY($2)',
-        ['t-1', ['r-1', 'r-2']]
+        ['t-1', ['r-1', 'r-2']],
       );
     });
 
@@ -325,16 +318,12 @@ describe('RolesService', () => {
         },
       ]);
       mockPool.connect = vi.fn(async () => mockClient);
-      (service as any).pool = mockPool;
+      setRolesServicePool(service, mockPool);
 
       const result = await service.removeMany('t-1', ['r-1', 'r-2', 'r-1']);
 
       expect(result).toEqual({ deletedCount: 2 });
-      expect(
-        mockClient.calls.some(
-          (call) => call.sql === 'DELETE FROM role_menus WHERE role_id = ANY($1)'
-        )
-      ).toBe(true);
+      expect(mockClient.calls.some((call) => call.sql === 'DELETE FROM role_menus WHERE role_id = ANY($1)')).toBe(true);
       expect(mockClient.calls.some((call) => call.sql === 'COMMIT')).toBe(true);
     });
   });

@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MenusController } from './menusController';
+import { MenusService } from './menusService';
+import { CreateMenuDto } from './dto/createMenuDto';
+import { UpdateMenuDto } from './dto/updateMenuDto';
+import { SetRoleMenusDto } from './dto/setRoleMenusDto';
 
 function createMockMenusService() {
   return {
@@ -20,7 +24,7 @@ describe('MenusController', () => {
 
   beforeEach(() => {
     service = createMockMenusService();
-    controller = new MenusController(service as any);
+    controller = new MenusController(service as unknown as MenusService);
   });
 
   describe('findAll', () => {
@@ -44,14 +48,16 @@ describe('MenusController', () => {
   describe('create', () => {
     it('should delegate to service with dto fields', async () => {
       service.create.mockResolvedValue({ id: 'm-1' });
-      await controller.create({
+      const dto: CreateMenuDto = {
         name: 'Menu',
         path: '/menu',
         icon: 'icon',
         sortOrder: 1,
         permissionCode: 'perm',
         isVisible: true,
-      } as any);
+      };
+
+      await controller.create(dto);
       expect(service.create).toHaveBeenCalledWith({
         parentId: undefined,
         name: 'Menu',
@@ -67,7 +73,9 @@ describe('MenusController', () => {
   describe('update', () => {
     it('should delegate to service with mapped data', async () => {
       service.update.mockResolvedValue({ id: 'm-1' });
-      await controller.update('m-1', { name: 'Updated' } as any);
+      const dto: UpdateMenuDto = { name: 'Updated' };
+
+      await controller.update('m-1', dto);
       expect(service.update).toHaveBeenCalledWith('m-1', {
         parentId: undefined,
         name: 'Updated',
@@ -101,7 +109,9 @@ describe('MenusController', () => {
   describe('setRoleMenus', () => {
     it('should delegate to service with menu IDs', async () => {
       service.setRoleMenus.mockResolvedValue(['m-1']);
-      const result = await controller.setRoleMenus('r-1', { menuIds: ['m-1'] } as any);
+      const dto: SetRoleMenusDto = { menuIds: ['m-1'] };
+
+      const result = await controller.setRoleMenus('r-1', dto);
       expect(service.setRoleMenus).toHaveBeenCalledWith('r-1', ['m-1']);
       expect(result).toEqual(['m-1']);
     });

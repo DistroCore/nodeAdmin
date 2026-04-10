@@ -8,12 +8,14 @@ import { AuthService } from './authService';
 
 describe('AuthService SMS Login', () => {
   let service: AuthService;
+  let serviceWithPool: AuthService & { pool: MockPool | null };
   let pool: MockPool;
 
   beforeEach(() => {
     service = new AuthService();
+    serviceWithPool = service as unknown as AuthService & { pool: MockPool | null };
     pool = createMockPool();
-    (service as any).pool = pool;
+    serviceWithPool.pool = pool;
   });
 
   describe('sendSmsCode', () => {
@@ -41,9 +43,7 @@ describe('AuthService SMS Login', () => {
     it('should authenticate user with valid SMS code and return tokens', async () => {
       // 1. Find valid SMS code (join users to get user_id)
       pool.query.mockResolvedValueOnce({
-        rows: [
-          { id: 'sms-1', phone: '13800138000', code: '123456', user_id: 'user-1', is_active: 1 },
-        ],
+        rows: [{ id: 'sms-1', phone: '13800138000', code: '123456', user_id: 'user-1', is_active: 1 }],
         rowCount: 1,
       });
       // 2. Get user roles
@@ -61,29 +61,21 @@ describe('AuthService SMS Login', () => {
     it('should reject expired or invalid SMS codes', async () => {
       pool.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
 
-      await expect(service.loginWithSms('13800138000', '000000', 'tenant-1')).rejects.toThrow(
-        /invalid.*code|expired/i
-      );
+      await expect(service.loginWithSms('13800138000', '000000', 'tenant-1')).rejects.toThrow(/invalid.*code|expired/i);
     });
 
     it('should reject if user associated with phone is disabled', async () => {
       pool.query.mockResolvedValueOnce({
-        rows: [
-          { id: 'sms-1', phone: '13800138000', code: '123456', user_id: 'user-1', is_active: 0 },
-        ],
+        rows: [{ id: 'sms-1', phone: '13800138000', code: '123456', user_id: 'user-1', is_active: 0 }],
         rowCount: 1,
       });
 
-      await expect(service.loginWithSms('13800138000', '123456', 'tenant-1')).rejects.toThrow(
-        /disabled|inactive/i
-      );
+      await expect(service.loginWithSms('13800138000', '123456', 'tenant-1')).rejects.toThrow(/disabled|inactive/i);
     });
 
     it('should mark SMS code as used after successful login', async () => {
       pool.query.mockResolvedValueOnce({
-        rows: [
-          { id: 'sms-1', phone: '13800138000', code: '123456', user_id: 'user-1', is_active: 1 },
-        ],
+        rows: [{ id: 'sms-1', phone: '13800138000', code: '123456', user_id: 'user-1', is_active: 1 }],
         rowCount: 1,
       });
       pool.query.mockResolvedValueOnce({ rows: [{ name: 'admin' }] });
@@ -94,7 +86,7 @@ describe('AuthService SMS Login', () => {
 
       // Find the UPDATE sms_codes call
       const updateCall = pool.query.mock.calls.find(
-        (call: any[]) => typeof call[0] === 'string' && call[0].includes('UPDATE sms_codes')
+        (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('UPDATE sms_codes'),
       );
       expect(updateCall).toBeDefined();
       expect(updateCall![0]).toContain('used_at');

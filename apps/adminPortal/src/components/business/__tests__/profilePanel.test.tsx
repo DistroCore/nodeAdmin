@@ -4,6 +4,20 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProfilePanel } from '../profilePanel';
 
+interface MockAuthState {
+  tenantId: string;
+  userId: string;
+  userName: string;
+  userRoles: string[];
+}
+
+const mockAuthState: MockAuthState = {
+  tenantId: 'tenant-456',
+  userId: 'user-123',
+  userName: 'Test User',
+  userRoles: ['admin'],
+};
+
 const mockGet = vi.fn();
 const mockPost = vi.fn();
 const mockDel = vi.fn();
@@ -32,13 +46,7 @@ vi.mock('@/components/ui/toast', () => ({
 }));
 
 vi.mock('@/stores/useAuthStore', () => ({
-  useAuthStore: (selector: any) =>
-    selector({
-      userId: 'user-123',
-      tenantId: 'tenant-456',
-      userName: 'Test User',
-      userRoles: ['admin'],
-    }),
+  useAuthStore: <T,>(selector: (state: MockAuthState) => T) => selector(mockAuthState),
 }));
 
 function renderPanel(): void {
@@ -53,7 +61,7 @@ function renderPanel(): void {
   render(
     <QueryClientProvider client={queryClient}>
       <ProfilePanel />
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 

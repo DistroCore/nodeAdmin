@@ -1,10 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setupTestEnv } from '../../__tests__/helpers';
+import type { AuthService } from './authService';
 
 setupTestEnv();
 
-function createMockPool(queryResults: any[] = []) {
-  const mockQuery = vi.fn();
+interface MockQueryResult {
+  rowCount?: number;
+  rows: Array<Record<string, string | number | null>>;
+}
+
+interface MockPool {
+  query: (sql: string, params?: readonly unknown[]) => Promise<MockQueryResult>;
+}
+
+type AuthServiceWithPool = AuthService & { pool: MockPool | null };
+
+function createMockPool(queryResults: MockQueryResult[] = []) {
+  const mockQuery = vi.fn<(sql: string, params?: readonly unknown[]) => Promise<MockQueryResult>>();
   for (const result of queryResults) {
     mockQuery.mockResolvedValueOnce(result);
   }
@@ -14,7 +26,7 @@ function createMockPool(queryResults: any[] = []) {
     mockQuery,
     pool: {
       query: mockQuery,
-    } as any,
+    } satisfies MockPool,
   };
 }
 
@@ -34,7 +46,7 @@ describe('AuthService — OAuth Account Management', () => {
       });
 
       const { AuthService } = await import('./authService');
-      const service = new (AuthService as any)();
+      const service = new AuthService() as AuthServiceWithPool;
       service.pool = pool;
 
       const accounts = await service.listOAuthAccounts('user-1');
@@ -50,7 +62,7 @@ describe('AuthService — OAuth Account Management', () => {
       mockQuery.mockResolvedValueOnce({ rows: [] });
 
       const { AuthService } = await import('./authService');
-      const service = new (AuthService as any)();
+      const service = new AuthService() as AuthServiceWithPool;
       service.pool = pool;
 
       const accounts = await service.listOAuthAccounts('user-1');
@@ -59,7 +71,7 @@ describe('AuthService — OAuth Account Management', () => {
 
     it('should throw if database is not available', async () => {
       const { AuthService } = await import('./authService');
-      const service = new (AuthService as any)();
+      const service = new AuthService() as AuthServiceWithPool;
       service.pool = null;
 
       await expect(service.listOAuthAccounts('user-1')).rejects.toThrow('Database not available.');
@@ -72,15 +84,15 @@ describe('AuthService — OAuth Account Management', () => {
       mockQuery.mockResolvedValueOnce({ rowCount: 1 });
 
       const { AuthService } = await import('./authService');
-      const service = new (AuthService as any)();
+      const service = new AuthService() as AuthServiceWithPool;
       service.pool = pool;
 
       await service.unlinkOAuthAccount('user-1', 'github');
 
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('DELETE FROM oauth_accounts'),
-        ['user-1', 'github']
-      );
+      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM oauth_accounts'), [
+        'user-1',
+        'github',
+      ]);
     });
 
     it('should throw if account not found', async () => {
@@ -88,22 +100,18 @@ describe('AuthService — OAuth Account Management', () => {
       mockQuery.mockResolvedValueOnce({ rowCount: 0 });
 
       const { AuthService } = await import('./authService');
-      const service = new (AuthService as any)();
+      const service = new AuthService() as AuthServiceWithPool;
       service.pool = pool;
 
-      await expect(service.unlinkOAuthAccount('user-1', 'github')).rejects.toThrow(
-        'Linked account not found.'
-      );
+      await expect(service.unlinkOAuthAccount('user-1', 'github')).rejects.toThrow('Linked account not found.');
     });
 
     it('should throw if database is not available', async () => {
       const { AuthService } = await import('./authService');
-      const service = new (AuthService as any)();
+      const service = new AuthService() as AuthServiceWithPool;
       service.pool = null;
 
-      await expect(service.unlinkOAuthAccount('user-1', 'github')).rejects.toThrow(
-        'Database not available.'
-      );
+      await expect(service.unlinkOAuthAccount('user-1', 'github')).rejects.toThrow('Database not available.');
     });
   });
 });
