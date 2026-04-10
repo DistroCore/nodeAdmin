@@ -77,7 +77,7 @@ describe('TenantScopedExecutor', () => {
     await expect(
       executor.execute('tenant-1', async () => {
         throw new Error('boom');
-      })
+      }),
     ).rejects.toThrow('boom');
 
     expect(mockClient.calls).toEqual([

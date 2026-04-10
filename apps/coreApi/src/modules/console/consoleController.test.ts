@@ -84,7 +84,7 @@ describe('ConsoleController', () => {
       connectionRegistry as never,
       conversationRepository as never,
       databaseService as never,
-      tenantsService as never
+      tenantsService as never,
     );
   });
 
@@ -100,9 +100,7 @@ describe('ConsoleController', () => {
     connectionRegistry.totalUniqueUsers.mockReturnValue(3);
     vi.spyOn(controller as never, 'countAllConversations').mockResolvedValue(10);
     vi.spyOn(controller as never, 'countTodayMessages').mockResolvedValue(25);
-    vi.spyOn(controller as never, 'buildOverviewTodos').mockResolvedValue([
-      'Follow up high-priority backlog tasks',
-    ]);
+    vi.spyOn(controller as never, 'buildOverviewTodos').mockResolvedValue(['Follow up high-priority backlog tasks']);
     vi.spyOn(process, 'uptime').mockReturnValue(7500);
 
     const result = await controller.getOverview();
@@ -237,7 +235,7 @@ describe('ConsoleController', () => {
         tenantId: 'tenant-auth',
         userId: 'user-1',
       },
-      'tenant-query'
+      'tenant-query',
     );
 
     expect(conversationRepository.listByTenant).toHaveBeenCalledWith('tenant-query', 50);
@@ -286,7 +284,7 @@ describe('ConsoleController', () => {
       'auth.login',
       'user',
       '2026-03-01',
-      '2026-03-31'
+      '2026-03-31',
     );
 
     expect(auditLogService.listByFilter).toHaveBeenCalledWith(
@@ -299,7 +297,7 @@ describe('ConsoleController', () => {
         userId: 'user-9',
       },
       2,
-      100
+      100,
     );
     expect(result).toEqual({
       items: [{ id: 'log-1', action: 'auth.login' }],
@@ -331,7 +329,7 @@ describe('ConsoleController', () => {
         userId: 'user-1',
       },
       '2',
-      '200'
+      '200',
     );
 
     expect((controller as never).listRecentMessages).toHaveBeenCalledWith('tenant-1', 2, 100);

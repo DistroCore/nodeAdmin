@@ -9,9 +9,7 @@ test.describe('System Metrics', () => {
   test('renders metrics panel with CPU, memory, event loop, and uptime cards', async ({ page }) => {
     await page.goto('/metrics');
 
-    await expect(
-      page.getByRole('main').getByRole('heading', { name: /System Metrics/i })
-    ).toBeVisible();
+    await expect(page.getByRole('main').getByRole('heading', { name: /System Metrics/i })).toBeVisible();
     await expect(page.getByText(/Real-time performance/i)).toBeVisible();
 
     await expect(page.getByText(/CPU Usage/i).first()).toBeVisible();

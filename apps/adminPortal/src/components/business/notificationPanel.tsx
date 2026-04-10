@@ -34,8 +34,7 @@ export function NotificationPanel(): JSX.Element {
   };
 
   const getTypeLabel = (action: string) => {
-    if (action.includes('login') || action.includes('auth'))
-      return t({ id: 'notifications.type.auth' });
+    if (action.includes('login') || action.includes('auth')) return t({ id: 'notifications.type.auth' });
     if (action.includes('user')) return t({ id: 'notifications.type.user' });
     if (action.includes('tenant')) return t({ id: 'notifications.type.tenant' });
     if (action.includes('system')) return t({ id: 'notifications.type.system' });
@@ -54,12 +53,7 @@ export function NotificationPanel(): JSX.Element {
             <CardTitle className="text-base">{t({ id: 'notifications.title' })}</CardTitle>
             <CardDescription>{t({ id: 'notifications.desc' })}</CardDescription>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleMarkAllRead}
-            disabled={notifications.length === 0}
-          >
+          <Button variant="outline" size="sm" onClick={handleMarkAllRead} disabled={notifications.length === 0}>
             {t({ id: 'notifications.markAllRead' })}
           </Button>
         </CardHeader>
@@ -75,15 +69,11 @@ export function NotificationPanel(): JSX.Element {
               : null}
 
             {auditQuery.isError ? (
-              <div className="p-8 text-center text-destructive">
-                {t({ id: 'notifications.loadFailed' })}
-              </div>
+              <div className="p-8 text-center text-destructive">{t({ id: 'notifications.loadFailed' })}</div>
             ) : null}
 
             {!auditQuery.isLoading && !auditQuery.isError && notifications.length === 0 ? (
-              <div className="p-12 text-center text-muted-foreground">
-                {t({ id: 'notifications.empty' })}
-              </div>
+              <div className="p-12 text-center text-muted-foreground">{t({ id: 'notifications.empty' })}</div>
             ) : null}
 
             {notifications.map((notification) => {
@@ -116,11 +106,8 @@ export function NotificationPanel(): JSX.Element {
                     <p
                       className={`text-sm leading-snug ${isUnread ? 'font-medium text-foreground' : 'text-muted-foreground'}`}
                     >
-                      <span className="font-mono text-xs opacity-70 mr-1">
-                        [{notification.action}]
-                      </span>
-                      {notification.targetType}{' '}
-                      {notification.targetId ? `(${notification.targetId})` : ''}
+                      <span className="font-mono text-xs opacity-70 mr-1">[{notification.action}]</span>
+                      {notification.targetType} {notification.targetId ? `(${notification.targetId})` : ''}
                       {notification.userId && ` by ${notification.userId}`}
                     </p>
                   </div>

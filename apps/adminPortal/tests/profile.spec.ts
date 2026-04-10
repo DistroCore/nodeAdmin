@@ -5,9 +5,7 @@ test.describe('Profile', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto('/profile');
-    await expect(
-      page.getByRole('main').getByRole('heading', { name: /My Profile/i })
-    ).toBeVisible();
+    await expect(page.getByRole('main').getByRole('heading', { name: /My Profile/i })).toBeVisible();
   });
 
   test('displays user profile information', async ({ page }) => {

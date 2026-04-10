@@ -5,9 +5,7 @@ test.describe('Tenants Management', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto('/tenants');
-    await expect(
-      page.getByRole('main').getByRole('heading', { name: /Tenant Management/i })
-    ).toBeVisible();
+    await expect(page.getByRole('main').getByRole('heading', { name: /Tenant Management/i })).toBeVisible();
   });
 
   test('lists tenants', async ({ page }) => {

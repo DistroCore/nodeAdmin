@@ -1,13 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import nunjucks from 'nunjucks';
-import type {
-  ParsedColumn,
-  ParsedTable,
-  GeneratorConfig,
-  TemplateContext,
-  FrontendPaths,
-} from './types';
+import type { ParsedColumn, ParsedTable, GeneratorConfig, TemplateContext, FrontendPaths } from './types';
 import { mapColumn, shouldExcludeFromCreateDto, shouldExcludeFromUpdateDto } from './columnMapper';
 
 const BACKEND_TEMPLATES = [
@@ -61,9 +55,7 @@ function shouldExcludeFromDisplay(col: ParsedColumn): boolean {
 function buildContext(config: GeneratorConfig, table: ParsedTable): TemplateContext {
   const createDtoColumns = table.columns.filter((c) => !shouldExcludeFromCreateDto(c));
   const displayColumns = table.columns.filter((c) => !shouldExcludeFromDisplay(c));
-  const booleanColumns = displayColumns
-    .filter((c) => c.drizzleType === 'boolean')
-    .map((c) => c.propertyName);
+  const booleanColumns = displayColumns.filter((c) => c.drizzleType === 'boolean').map((c) => c.propertyName);
 
   return {
     entityName: config.entityName,
@@ -82,11 +74,7 @@ function buildContext(config: GeneratorConfig, table: ParsedTable): TemplateCont
   };
 }
 
-export function generateModule(
-  config: GeneratorConfig,
-  table: ParsedTable,
-  templateDir: string
-): Map<string, string> {
+export function generateModule(config: GeneratorConfig, table: ParsedTable, templateDir: string): Map<string, string> {
   const env = nunjucks.configure(templateDir, {
     autoescape: false,
     trimBlocks: true,
@@ -120,7 +108,7 @@ export function generateModule(
 export function generateFrontend(
   config: GeneratorConfig,
   table: ParsedTable,
-  templateDir: string
+  templateDir: string,
 ): Map<string, string> {
   const env = nunjucks.configure(templateDir, {
     autoescape: false,
@@ -152,7 +140,7 @@ export function generateFrontend(
 
 export function writeFiles(
   config: GeneratorConfig,
-  files: Map<string, string>
+  files: Map<string, string>,
 ): { written: string[]; skipped: string[] } {
   const written: string[] = [];
   const skipped: string[] = [];
@@ -176,7 +164,7 @@ export function writeFiles(
 export function writeFrontendFiles(
   config: GeneratorConfig,
   files: Map<string, string>,
-  frontendPaths: FrontendPaths
+  frontendPaths: FrontendPaths,
 ): { written: string[]; skipped: string[] } {
   const written: string[] = [];
   const skipped: string[] = [];
@@ -201,7 +189,7 @@ export function appendToAppModule(
   entityNameLower: string,
   _modulesDir: string,
   appModulePath: string,
-  dryRun: boolean
+  dryRun: boolean,
 ): string | null {
   const className = `${capitalize(entityNameLower)}sModule`;
   const importPath = `../modules/${entityNameLower}s/${entityNameLower}sModule`;
@@ -248,7 +236,7 @@ export function appendI18nKeys(
   displayColumns: ParsedColumn[],
   formColumns: ParsedColumn[],
   i18nDir: string,
-  dryRun: boolean
+  dryRun: boolean,
 ): { en: string[]; zh: string[] } {
   const en = generateEnKeys(entityNameLower, displayColumns, formColumns);
   const zh = generateZhKeys(entityNameLower, displayColumns, formColumns);
@@ -261,11 +249,7 @@ export function appendI18nKeys(
   return { en, zh };
 }
 
-function generateEnKeys(
-  entity: string,
-  displayCols: ParsedColumn[],
-  formCols: ParsedColumn[]
-): string[] {
+function generateEnKeys(entity: string, displayCols: ParsedColumn[], formCols: ParsedColumn[]): string[] {
   const keys = [
     `  "${entity}.title": "${capitalize(entity)} Management",`,
     `  "${entity}.desc": "Manage ${entity}s.",`,
@@ -284,25 +268,17 @@ function generateEnKeys(
   ];
 
   for (const col of displayCols) {
-    keys.push(
-      `  "${entity}.col${capitalize(col.propertyName)}": "${capitalize(col.propertyName)}",`
-    );
+    keys.push(`  "${entity}.col${capitalize(col.propertyName)}": "${capitalize(col.propertyName)}",`);
   }
 
   for (const col of formCols) {
-    keys.push(
-      `  "${entity}.field${capitalize(col.propertyName)}": "${capitalize(col.propertyName)}",`
-    );
+    keys.push(`  "${entity}.field${capitalize(col.propertyName)}": "${capitalize(col.propertyName)}",`);
   }
 
   return keys;
 }
 
-function generateZhKeys(
-  entity: string,
-  displayCols: ParsedColumn[],
-  formCols: ParsedColumn[]
-): string[] {
+function generateZhKeys(entity: string, displayCols: ParsedColumn[], formCols: ParsedColumn[]): string[] {
   const keys = [
     `  "${entity}.title": "${capitalize(entity)}管理",`,
     `  "${entity}.desc": "管理${entity}。",`,
@@ -321,15 +297,11 @@ function generateZhKeys(
   ];
 
   for (const col of displayCols) {
-    keys.push(
-      `  "${entity}.col${capitalize(col.propertyName)}": "${capitalize(col.propertyName)}",`
-    );
+    keys.push(`  "${entity}.col${capitalize(col.propertyName)}": "${capitalize(col.propertyName)}",`);
   }
 
   for (const col of formCols) {
-    keys.push(
-      `  "${entity}.field${capitalize(col.propertyName)}": "${capitalize(col.propertyName)}",`
-    );
+    keys.push(`  "${entity}.field${capitalize(col.propertyName)}": "${capitalize(col.propertyName)}",`);
   }
 
   return keys;
@@ -353,11 +325,7 @@ function appendKeysToFile(filePath: string, keys: string[]): void {
 /**
  * Append a nav item to navConfig.ts.
  */
-export function appendToNavConfig(
-  entityNameLower: string,
-  navConfigPath: string,
-  dryRun: boolean
-): string | null {
+export function appendToNavConfig(entityNameLower: string, navConfigPath: string, dryRun: boolean): string | null {
   let source = fs.readFileSync(navConfigPath, 'utf-8');
   const navKey = entityNameLower;
 
@@ -396,7 +364,7 @@ export function appendToAppRoot(
   entityName: string,
   entityNameLower: string,
   appRootPath: string,
-  dryRun: boolean
+  dryRun: boolean,
 ): string | null {
   let source = fs.readFileSync(appRootPath, 'utf-8');
   const component = `${entityName}ControlPanel`;
@@ -442,7 +410,7 @@ export function appendToSharedTypes(
   entityNameLower: string,
   table: ParsedTable,
   sharedTypesPath: string,
-  dryRun: boolean
+  dryRun: boolean,
 ): string | null {
   let source = fs.readFileSync(sharedTypesPath, 'utf-8');
   const interfaceName = `${entityName}Item`;

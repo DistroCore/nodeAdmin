@@ -12,7 +12,7 @@ interface TenantPool {
 export class TenantScopedExecutor {
   constructor(
     private readonly databaseService: DatabaseService,
-    private readonly tenantContextResolver: TenantContextResolver
+    private readonly tenantContextResolver: TenantContextResolver,
   ) {}
 
   async execute<T>(tenantId: string, callback: (client: PoolClient) => Promise<T>): Promise<T> {
@@ -39,7 +39,7 @@ export class TenantScopedExecutor {
 
   async executeForPrincipal<T>(
     principal: AuthPrincipal | undefined,
-    callback: (client: PoolClient) => Promise<T>
+    callback: (client: PoolClient) => Promise<T>,
   ): Promise<T> {
     const tenantContext = this.tenantContextResolver.resolve(principal);
     return this.execute(tenantContext.tenantId, callback);

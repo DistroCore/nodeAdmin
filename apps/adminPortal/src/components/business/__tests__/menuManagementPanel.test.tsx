@@ -34,8 +34,7 @@ vi.mock('@/app/layout/navIcon', () => ({
 }));
 
 vi.mock('../menuFormDialog', () => ({
-  MenuFormDialog: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="menu-form">MenuFormDialog</div> : null,
+  MenuFormDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="menu-form">MenuFormDialog</div> : null),
 }));
 
 function renderPanel(): void {
@@ -50,7 +49,7 @@ function renderPanel(): void {
   render(
     <QueryClientProvider client={queryClient}>
       <MenuManagementPanel />
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 

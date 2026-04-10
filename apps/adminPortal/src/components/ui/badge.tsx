@@ -16,11 +16,10 @@ const badgeVariants = cva(
         secondary: 'border-transparent bg-secondary text-secondary-foreground',
       },
     },
-  }
+  },
 );
 
-export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {}
+export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {}
 
 export function Badge({ className: customClassName, variant, ...props }: BadgeProps): JSX.Element {
   return <div className={className(badgeVariants({ variant }), customClassName)} {...props} />;

@@ -63,35 +63,17 @@ export function ToastContainer(): JSX.Element {
           {/* Icon */}
           <div className="mt-0.5 shrink-0">
             {toast.variant === 'destructive' ? (
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
-              >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M15 9l-6 6M9 9l6 6" strokeLinecap="round" />
               </svg>
             ) : toast.variant === 'success' ? (
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
-              >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             ) : (
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
-              >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M12 16v-4M12 8h.01" strokeLinecap="round" />
               </svg>
@@ -99,22 +81,14 @@ export function ToastContainer(): JSX.Element {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">{toast.title}</p>
-            {toast.description ? (
-              <p className="mt-1 text-xs opacity-90">{toast.description}</p>
-            ) : null}
+            {toast.description ? <p className="mt-1 text-xs opacity-90">{toast.description}</p> : null}
           </div>
           <button
             className="shrink-0 rounded-md p-1 opacity-70 hover:opacity-100"
             onClick={() => removeToast(toast.id)}
             type="button"
           >
-            <svg
-              className="h-3 w-3"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-            >
+            <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
             </svg>
           </button>

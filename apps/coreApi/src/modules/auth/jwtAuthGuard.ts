@@ -18,7 +18,7 @@ const EXCLUDED_PATHS = [
 export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly authService: AuthService,
-    private readonly tenantContextResolver: TenantContextResolver
+    private readonly tenantContextResolver: TenantContextResolver,
   ) {}
 
   canActivate(context: ExecutionContext): boolean {
@@ -38,9 +38,7 @@ export class JwtAuthGuard implements CanActivate {
 
     const parts = authHeader.split(' ');
     if (parts.length !== 2 || parts[0].toLowerCase() !== 'bearer') {
-      throw new UnauthorizedException(
-        'Invalid Authorization header format. Expected: Bearer <token>.'
-      );
+      throw new UnauthorizedException('Invalid Authorization header format. Expected: Bearer <token>.');
     }
 
     const token = parts[1].trim();
@@ -58,9 +56,7 @@ export class JwtAuthGuard implements CanActivate {
         throw error;
       }
 
-      throw new UnauthorizedException(
-        error instanceof Error ? error.message : 'Invalid access token payload.'
-      );
+      throw new UnauthorizedException(error instanceof Error ? error.message : 'Invalid access token payload.');
     }
 
     return true;

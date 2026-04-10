@@ -33,7 +33,7 @@ function renderPanel(): void {
   render(
     <QueryClientProvider client={queryClient}>
       <ManagementOverviewPanel />
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 

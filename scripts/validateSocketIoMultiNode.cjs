@@ -17,12 +17,10 @@ async function run() {
   await Promise.all(BASE_URLS.map((baseUrl) => waitForHealth(baseUrl)));
 
   const accessTokens = await Promise.all(
-    BASE_URLS.map((baseUrl, index) => issueAccessToken(baseUrl, `multinode-user-${index + 1}`))
+    BASE_URLS.map((baseUrl, index) => issueAccessToken(baseUrl, `multinode-user-${index + 1}`)),
   );
 
-  const sockets = await Promise.all(
-    BASE_URLS.map((baseUrl, index) => connectSocket(baseUrl, accessTokens[index]))
-  );
+  const sockets = await Promise.all(BASE_URLS.map((baseUrl, index) => connectSocket(baseUrl, accessTokens[index])));
 
   const conversationId = `multinode-${randomUUID()}`;
   const messageId = `message-${randomUUID()}`;
@@ -30,20 +28,18 @@ async function run() {
 
   try {
     await Promise.all(
-      sockets.map((socket) =>
-        emitWithAck(socket, 'joinConversation', { conversationId }, 'joinConversation')
-      )
+      sockets.map((socket) => emitWithAck(socket, 'joinConversation', { conversationId }, 'joinConversation')),
     );
 
     const receiverNode2 = waitForEvent(
       sockets[1],
       'messageReceived',
-      (payload) => payload && payload.messageId === messageId
+      (payload) => payload && payload.messageId === messageId,
     );
     const receiverNode3 = waitForEvent(
       sockets[2],
       'messageReceived',
-      (payload) => payload && payload.messageId === messageId
+      (payload) => payload && payload.messageId === messageId,
     );
 
     const sendAck = await emitWithAck(
@@ -55,7 +51,7 @@ async function run() {
         messageId,
         traceId,
       },
-      'sendMessage'
+      'sendMessage',
     );
 
     const [node2Message, node3Message] = await Promise.all([receiverNode2, receiverNode3]);
@@ -71,8 +67,8 @@ async function run() {
           sequenceIds: [node2Message.sequenceId, node3Message.sequenceId],
         },
         null,
-        2
-      )
+        2,
+      ),
     );
   } finally {
     for (const socket of sockets) {
@@ -99,7 +95,7 @@ function ensureScaleStack() {
     ],
     {
       stdio: 'inherit',
-    }
+    },
   );
 }
 

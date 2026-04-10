@@ -66,7 +66,7 @@ function renderPanel() {
   return render(
     <QueryClientProvider client={qc}>
       <NotificationPanel />
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 

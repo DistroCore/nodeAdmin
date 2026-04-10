@@ -14,7 +14,7 @@ describe('ModernizerController', () => {
     docSyncService = { generateDocs: vi.fn() };
     controller = new ModernizerController(
       analyzeService as unknown as AnalyzeService,
-      docSyncService as unknown as DocSyncService
+      docSyncService as unknown as DocSyncService,
     );
   });
 

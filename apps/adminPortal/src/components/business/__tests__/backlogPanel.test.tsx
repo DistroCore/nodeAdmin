@@ -92,7 +92,7 @@ function renderPanel() {
   return render(
     <QueryClientProvider client={qc}>
       <BacklogPanel />
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 

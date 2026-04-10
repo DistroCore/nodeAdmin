@@ -94,7 +94,7 @@ export class PluginMarketService {
       `SELECT COUNT(*)::int AS count
        FROM plugin_registry pr
        WHERE pr.is_public = true ${searchClause}`,
-      searchParams
+      searchParams,
     );
 
     const rowsResult = await this.pool.query<PluginRegistryRow>(
@@ -113,7 +113,7 @@ export class PluginMarketService {
        WHERE pr.is_public = true ${searchClause}
        ORDER BY pr.display_name ASC
        LIMIT $${searchParams.length + 1} OFFSET $${searchParams.length + 2}`,
-      [...searchParams, pageSize, offset]
+      [...searchParams, pageSize, offset],
     );
 
     return {
@@ -125,7 +125,7 @@ export class PluginMarketService {
         id: row.id,
         isCompatible: this.isVersionCompatible(
           this.platformVersion,
-          row.min_platform_version ?? `>=${this.platformVersion}`
+          row.min_platform_version ?? `>=${this.platformVersion}`,
         ),
         latestVersion: row.latest_version,
         minPlatformVersion: row.min_platform_version ?? null,
@@ -152,7 +152,7 @@ export class PluginMarketService {
               download_count
        FROM plugin_registry
        WHERE id = $1`,
-      [pluginId]
+      [pluginId],
     );
 
     const plugin = pluginResult.rows[0];
@@ -170,7 +170,7 @@ export class PluginMarketService {
        FROM plugin_versions
        WHERE plugin_id = $1
        ORDER BY published_at DESC`,
-      [pluginId]
+      [pluginId],
     );
 
     return {
@@ -187,7 +187,7 @@ export class PluginMarketService {
         changelog: row.changelog,
         isCompatible: this.isVersionCompatible(
           this.platformVersion,
-          row.min_platform_version ?? `>=${this.platformVersion}`
+          row.min_platform_version ?? `>=${this.platformVersion}`,
         ),
         minPlatformVersion: row.min_platform_version,
         publishedAt: this.toIsoString(row.published_at),
@@ -207,7 +207,7 @@ export class PluginMarketService {
         `SELECT version, min_platform_version, manifest, server_package
          FROM plugin_versions
          WHERE plugin_id = $1 AND version = $2`,
-        [pluginId, version]
+        [pluginId, version],
       );
 
       const selectedVersion = versionResult.rows[0];
@@ -231,7 +231,7 @@ export class PluginMarketService {
                        auto_update = EXCLUDED.auto_update,
                        installed_at = EXCLUDED.installed_at,
                        enabled_at = now()`,
-        [tenantId, pluginId, version]
+        [tenantId, pluginId, version],
       );
 
       await this.runLifecycleHook(client, {
@@ -269,7 +269,7 @@ export class PluginMarketService {
            ON pv.plugin_id = tp.plugin_name
           AND pv.version = tp.installed_version
          WHERE tp.tenant_id = $1 AND tp.plugin_name = $2`,
-        [tenantId, pluginId]
+        [tenantId, pluginId],
       );
 
       const installedPlugin = lifecycleResult.rows[0];
@@ -287,7 +287,7 @@ export class PluginMarketService {
         `DELETE FROM tenant_plugins
          WHERE tenant_id = $1 AND plugin_name = $2
          RETURNING plugin_name`,
-        [tenantId, pluginId]
+        [tenantId, pluginId],
       );
 
       return {
@@ -311,15 +311,12 @@ export class PluginMarketService {
 
       const currentVersionResult = await client.query<{ latest_version: string }>(
         `SELECT latest_version FROM plugin_registry WHERE id = $1`,
-        [manifest.id]
+        [manifest.id],
       );
       const currentLatestVersion = currentVersionResult.rows[0]?.latest_version ?? null;
       const nextLatestVersion =
         currentLatestVersion === null ||
-        this.compareVersions(
-          this.parseVersion(manifest.version),
-          this.parseVersion(currentLatestVersion)
-        ) > 0
+        this.compareVersions(this.parseVersion(manifest.version), this.parseVersion(currentLatestVersion)) > 0
           ? manifest.version
           : currentLatestVersion;
 
@@ -340,7 +337,7 @@ export class PluginMarketService {
           manifest.author.name,
           manifest.author.email ?? null,
           nextLatestVersion,
-        ]
+        ],
       );
 
       await client.query(
@@ -354,7 +351,7 @@ export class PluginMarketService {
           input.serverPackage,
           manifest.engines.nodeAdmin,
           input.changelog ?? null,
-        ]
+        ],
       );
 
       await client.query('COMMIT');
@@ -414,10 +411,7 @@ export class PluginMarketService {
     return this.compareVersions(version, this.parseVersion(normalizedRange)) === 0;
   }
 
-  private async withTenantContext<T>(
-    tenantId: string,
-    callback: (client: PoolClient) => Promise<T>
-  ): Promise<T> {
+  private async withTenantContext<T>(tenantId: string, callback: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.pool!.connect();
 
     try {
@@ -466,7 +460,7 @@ export class PluginMarketService {
       serverPackage: string | null;
       tenantId: string;
       version: string | null;
-    }
+    },
   ): Promise<void> {
     const hookPath = input.hookPath?.trim();
 
@@ -474,13 +468,8 @@ export class PluginMarketService {
       return;
     }
 
-    const packageRoot = dirname(
-      this.packageJsonResolver(this.extractPackageName(input.serverPackage))
-    );
-    const handler = this.resolveLifecycleHandler(
-      this.hookModuleLoader(resolve(packageRoot, hookPath)),
-      hookPath
-    );
+    const packageRoot = dirname(this.packageJsonResolver(this.extractPackageName(input.serverPackage)));
+    const handler = this.resolveLifecycleHandler(this.hookModuleLoader(resolve(packageRoot, hookPath)), hookPath);
 
     await handler({
       client,

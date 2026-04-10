@@ -106,9 +106,7 @@ function main() {
   if (staleCount === 0) pass('No stale last-updated dates detected');
 
   const indexContent = fs.readFileSync(INDEX_PATH, 'utf8');
-  const referenced = new Set(
-    [...indexContent.matchAll(/`(docs\/[\w./-]+\.md)`/g)].map((m) => m[1])
-  );
+  const referenced = new Set([...indexContent.matchAll(/`(docs\/[\w./-]+\.md)`/g)].map((m) => m[1]));
   let missingRefs = 0;
   for (const ref of referenced) {
     if (!fs.existsSync(path.join(ROOT, ref))) {
@@ -130,12 +128,8 @@ function main() {
   }
   if (unindexedCount === 0) pass('All markdown docs are referenced in docs/docIndex.md');
 
-  const governanceFiles = markdownFiles.filter((file) =>
-    /docs\/governance\/[^/]+\.md$/.test(relativePath(file))
-  );
-  const architectureFiles = markdownFiles.filter((file) =>
-    /docs\/architecture\/[^/]+\.md$/.test(relativePath(file))
-  );
+  const governanceFiles = markdownFiles.filter((file) => /docs\/governance\/[^/]+\.md$/.test(relativePath(file)));
+  const architectureFiles = markdownFiles.filter((file) => /docs\/architecture\/[^/]+\.md$/.test(relativePath(file)));
   let missingSections = 0;
   for (const filePath of [...governanceFiles, ...architectureFiles]) {
     const rel = relativePath(filePath);
@@ -148,8 +142,7 @@ function main() {
       error(`${rel} is missing a required 最近更新时间/Last updated section`);
     }
   }
-  if (missingSections === 0)
-    pass('Governance and architecture docs include required update sections');
+  if (missingSections === 0) pass('Governance and architecture docs include required update sections');
 
   const roadmap = fs.readFileSync(ROADMAP_PATH, 'utf8');
   const todo = fs.readFileSync(TODO_PATH, 'utf8');
@@ -176,15 +169,13 @@ function main() {
     const unchecked = countUncheckedTasks(todoSections[label]);
     if (unchecked > 0) {
       statusMismatches += 1;
-      error(
-        `${label} has ${unchecked} incomplete todo item(s) while roadmap marks ${milestone} complete`
-      );
+      error(`${label} has ${unchecked} incomplete todo item(s) while roadmap marks ${milestone} complete`);
     }
   }
   if (statusMismatches === 0) pass('Roadmap milestone statuses align with MVP todo completion');
 
   process.stdout.write(
-    `\n${BOLD}Summary${RESET} ${errors > 0 ? RED : GREEN}${errors} error(s)${RESET}, ${warnings > 0 ? YELLOW : GREEN}${warnings} warning(s)${RESET}\n`
+    `\n${BOLD}Summary${RESET} ${errors > 0 ? RED : GREEN}${errors} error(s)${RESET}, ${warnings > 0 ? YELLOW : GREEN}${warnings} warning(s)${RESET}\n`,
   );
   process.exit(errors > 0 ? 1 : 0);
 }

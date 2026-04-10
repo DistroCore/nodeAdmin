@@ -26,11 +26,7 @@ function walk(dir) {
       files.push(...walk(fullPath));
       continue;
     }
-    if (
-      !entry.name.endsWith('.ts') ||
-      entry.name.endsWith('.spec.ts') ||
-      entry.name.endsWith('.test.ts')
-    ) {
+    if (!entry.name.endsWith('.ts') || entry.name.endsWith('.spec.ts') || entry.name.endsWith('.test.ts')) {
       continue;
     }
     files.push(fullPath);
@@ -65,12 +61,7 @@ function getModuleScope(filePath) {
 
 function resolveImport(fromFile, importTarget) {
   const basePath = path.resolve(path.dirname(fromFile), importTarget);
-  const candidates = [
-    basePath,
-    `${basePath}.ts`,
-    `${basePath}.js`,
-    path.join(basePath, 'index.ts'),
-  ];
+  const candidates = [basePath, `${basePath}.ts`, `${basePath}.js`, path.join(basePath, 'index.ts')];
   return candidates.find((candidate) => fs.existsSync(candidate)) || null;
 }
 

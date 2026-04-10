@@ -15,8 +15,8 @@ module.exports = async function onUninstall(context) {
         tenantId: context.tenantId,
       },
       null,
-      2
+      2,
     ),
-    'utf8'
+    'utf8',
   );
 };

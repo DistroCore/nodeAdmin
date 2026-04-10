@@ -15,9 +15,7 @@ export interface IntegrationContext {
   uniqueId: (prefix: string) => string;
 }
 
-export async function createIntegrationContext(
-  envOverrides?: Record<string, string>
-): Promise<IntegrationContext> {
+export async function createIntegrationContext(envOverrides?: Record<string, string>): Promise<IntegrationContext> {
   ensureIntegrationEnv(envOverrides);
   ensureInfrastructure();
   buildCoreApi();

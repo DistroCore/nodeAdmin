@@ -1,10 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  createMockClient,
-  createMockPool,
-  setupTestEnv,
-  type MockPool,
-} from '../../__tests__/helpers';
+import { createMockClient, createMockPool, setupTestEnv, type MockPool } from '../../__tests__/helpers';
 
 setupTestEnv();
 
@@ -36,9 +31,7 @@ describe('AuthService OAuth Login', () => {
     const insertUserCall = mockClient.calls.find((call) => call.sql.includes('INSERT INTO users'));
     expect(insertUserCall).toBeDefined();
 
-    const insertOauthCall = mockClient.calls.find((call) =>
-      call.sql.includes('INSERT INTO oauth_accounts')
-    );
+    const insertOauthCall = mockClient.calls.find((call) => call.sql.includes('INSERT INTO oauth_accounts'));
     expect(insertOauthCall).toBeDefined();
     expect(insertOauthCall?.params[2]).toBe('github');
   });
@@ -65,9 +58,7 @@ describe('AuthService OAuth Login', () => {
     const mockPool = createMockPool();
     (service as unknown as { pool: MockPool }).pool = mockPool;
 
-    await expect(service.loginWithOAuth('wechat', 'oauth-code', 'tenant-1')).rejects.toThrow(
-      /provider/i
-    );
+    await expect(service.loginWithOAuth('wechat', 'oauth-code', 'tenant-1')).rejects.toThrow(/provider/i);
     expect(mockPool.query).not.toHaveBeenCalled();
   });
 
@@ -75,9 +66,7 @@ describe('AuthService OAuth Login', () => {
     const mockPool = createMockPool();
     (service as unknown as { pool: MockPool }).pool = mockPool;
 
-    await expect(service.loginWithOAuth('github', 'fail-exchange', 'tenant-1')).rejects.toThrow(
-      /exchange/i
-    );
+    await expect(service.loginWithOAuth('github', 'fail-exchange', 'tenant-1')).rejects.toThrow(/exchange/i);
     expect(mockPool.query).not.toHaveBeenCalled();
   });
 });

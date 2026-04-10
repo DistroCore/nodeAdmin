@@ -39,12 +39,7 @@ export function ReleaseControlPanel(): JSX.Element {
             <CardTitle className="text-base">{t({ id: 'release.title' })}</CardTitle>
             <CardDescription>{t({ id: 'release.desc' })}</CardDescription>
           </div>
-          <Button
-            size="sm"
-            onClick={handleRunChecks}
-            disabled={releaseQuery.isFetching}
-            className="w-full sm:w-auto"
-          >
+          <Button size="sm" onClick={handleRunChecks} disabled={releaseQuery.isFetching} className="w-full sm:w-auto">
             {releaseQuery.isFetching ? (
               <>
                 <svg className="mr-2 h-4 w-4 animate-spin" viewBox="0 0 24 24">
@@ -57,11 +52,7 @@ export function ReleaseControlPanel(): JSX.Element {
                     strokeWidth="4"
                     fill="none"
                   />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
                 {t({ id: 'release.running' })}
               </>
@@ -73,9 +64,7 @@ export function ReleaseControlPanel(): JSX.Element {
         <CardContent className="px-6 pb-6 pt-0">
           <div className="mb-6 rounded-lg border bg-muted/30 p-4">
             <div className="mb-2 flex items-center justify-between text-sm">
-              <span className="font-medium text-muted-foreground">
-                {t({ id: 'release.readiness' })}
-              </span>
+              <span className="font-medium text-muted-foreground">{t({ id: 'release.readiness' })}</span>
               <span className="font-bold text-primary">{completionPercent}%</span>
             </div>
             <div className="h-2.5 w-full rounded-full bg-muted">
@@ -130,9 +119,7 @@ export function ReleaseControlPanel(): JSX.Element {
                     <div className="flex items-center gap-3">
                       <div
                         className={`flex h-6 w-6 items-center justify-center rounded-full ${
-                          check.done
-                            ? 'bg-primary/10 text-primary'
-                            : 'bg-muted text-muted-foreground'
+                          check.done ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
                         }`}
                       >
                         {check.done ? (
@@ -155,10 +142,7 @@ export function ReleaseControlPanel(): JSX.Element {
                         {check.title}
                       </span>
                     </div>
-                    <Badge
-                      variant={check.done ? 'default' : 'destructive'}
-                      className="min-w-[3.75rem] justify-center"
-                    >
+                    <Badge variant={check.done ? 'default' : 'destructive'} className="min-w-[3.75rem] justify-center">
                       {check.done ? t({ id: 'release.pass' }) : t({ id: 'release.fail' })}
                     </Badge>
                   </div>

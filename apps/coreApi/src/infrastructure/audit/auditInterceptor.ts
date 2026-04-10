@@ -11,11 +11,7 @@ const METHOD_ACTION_MAP: Record<string, string> = {
   PUT: 'update',
 };
 
-const EXCLUDED_PATH_PREFIXES = [
-  '/api/v1/auth/login',
-  '/api/v1/auth/register',
-  '/api/v1/auth/refresh',
-];
+const EXCLUDED_PATH_PREFIXES = ['/api/v1/auth/login', '/api/v1/auth/register', '/api/v1/auth/refresh'];
 
 @Injectable()
 export class AuditInterceptor implements NestInterceptor {
@@ -56,14 +52,11 @@ export class AuditInterceptor implements NestInterceptor {
             url: string;
             user: AuthIdentity;
             body?: Record<string, unknown>;
-          }
+          },
         ).catch((error: unknown) => {
-          this.logger.error(
-            'Failed to record audit log',
-            error instanceof Error ? error.message : error
-          );
+          this.logger.error('Failed to record audit log', error instanceof Error ? error.message : error);
         });
-      })
+      }),
     );
   }
 
@@ -83,8 +76,7 @@ export class AuditInterceptor implements NestInterceptor {
 
     await this.auditLogService.record({
       action: targetType ? `${targetType}.${action}` : action,
-      context:
-        sanitizedContext && Object.keys(sanitizedContext).length > 0 ? sanitizedContext : undefined,
+      context: sanitizedContext && Object.keys(sanitizedContext).length > 0 ? sanitizedContext : undefined,
       targetId,
       targetType,
       tenantId: user.tenantId,
@@ -106,15 +98,12 @@ export class AuditInterceptor implements NestInterceptor {
     const id = segments[3] ?? null;
 
     // Singularize: remove trailing 's' if present and length > 2
-    const singularized =
-      resource && resource.length > 2 && resource.endsWith('s') ? resource.slice(0, -1) : resource;
+    const singularized = resource && resource.length > 2 && resource.endsWith('s') ? resource.slice(0, -1) : resource;
 
     return { targetId: id, targetType: singularized };
   }
 
-  private sanitizeBody(
-    body: Record<string, unknown> | undefined
-  ): Record<string, unknown> | undefined {
+  private sanitizeBody(body: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
     if (!body || typeof body !== 'object') {
       return undefined;
     }

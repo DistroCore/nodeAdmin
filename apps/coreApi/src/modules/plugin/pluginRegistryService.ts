@@ -7,10 +7,7 @@ import { ManifestValidationError, validatePluginManifest } from './manifestValid
 
 interface FileSystemLike {
   readFile(path: string, encoding: BufferEncoding): Promise<string>;
-  readdir(
-    path: string,
-    options: { withFileTypes: true }
-  ): Promise<Array<Pick<Dirent, 'isDirectory' | 'name'>>>;
+  readdir(path: string, options: { withFileTypes: true }): Promise<Array<Pick<Dirent, 'isDirectory' | 'name'>>>;
 }
 
 type ModuleLoader = (modulePath: string) => unknown;

@@ -48,7 +48,6 @@ export const useUiStore = create<UiState>((set) => ({
   },
   sidebarCollapsed: false,
   theme: getInitialTheme(),
-  toggleImConversationPanel: () =>
-    set((state) => ({ imConversationPanelOpen: !state.imConversationPanelOpen })),
+  toggleImConversationPanel: () => set((state) => ({ imConversationPanelOpen: !state.imConversationPanelOpen })),
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 }));

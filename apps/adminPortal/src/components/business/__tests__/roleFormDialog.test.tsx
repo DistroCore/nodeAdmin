@@ -106,9 +106,7 @@ describe('RoleFormDialog', () => {
   });
 
   it('2. Renders edit dialog with pre-filled fields', async () => {
-    renderWithProviders(
-      <RoleFormDialog open={true} onClose={onClose} onSaved={onSaved} role={mockRole} />
-    );
+    renderWithProviders(<RoleFormDialog open={true} onClose={onClose} onSaved={onSaved} role={mockRole} />);
 
     expect(screen.getByText('roles.edit')).toBeInTheDocument();
     await waitFor(() => {
@@ -189,9 +187,7 @@ describe('RoleFormDialog', () => {
 
   it('7. Submits edit form with PATCH', async () => {
     const user = userEvent.setup();
-    renderWithProviders(
-      <RoleFormDialog open={true} onClose={onClose} onSaved={onSaved} role={mockRole} />
-    );
+    renderWithProviders(<RoleFormDialog open={true} onClose={onClose} onSaved={onSaved} role={mockRole} />);
 
     await waitFor(() => {
       expect(screen.getByText('View Users')).toBeInTheDocument();
@@ -211,7 +207,7 @@ describe('RoleFormDialog', () => {
         expect.objectContaining({
           name: 'UpdatedRole',
           tenantId: 'tenant-1',
-        })
+        }),
       );
     });
   });

@@ -3,6 +3,6 @@ module.exports = async function onInstall(context) {
     `UPDATE tenant_plugins
      SET config = jsonb_set(config, '{lifecycleInstalled}', 'true'::jsonb, true)
      WHERE tenant_id = $1 AND plugin_name = $2`,
-    [context.tenantId, context.pluginId]
+    [context.tenantId, context.pluginId],
   );
 };

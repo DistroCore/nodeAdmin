@@ -9,7 +9,7 @@ const API_BASE = process.env.API_BASE_URL || 'http://127.0.0.1:11451';
 
 async function authenticate(
   page: import('@playwright/test').Page,
-  request: import('@playwright/test').APIRequestContext
+  request: import('@playwright/test').APIRequestContext,
 ): Promise<void> {
   const tokenResponse = await request.post(`${API_BASE}/api/v1/auth/dev-token`);
   if (!tokenResponse.ok()) {
@@ -27,7 +27,7 @@ async function authenticate(
         userId: auth.identity.userId,
         userName: 'Test User',
         userRoles: auth.identity.roles ?? [],
-      })
+      }),
     );
   }, tokenData);
 }

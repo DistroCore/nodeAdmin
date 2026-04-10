@@ -46,7 +46,7 @@ function renderPanel(): void {
   render(
     <QueryClientProvider client={queryClient}>
       <TenantControlPanel />
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 

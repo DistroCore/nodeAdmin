@@ -44,11 +44,7 @@ function flattenMenus(menus: MenuItem[]): MenuItem[] {
   return result;
 }
 
-function getInitialValues(
-  menu: MenuItem | undefined,
-  parentId: string | undefined,
-  isChildMode: boolean
-) {
+function getInitialValues(menu: MenuItem | undefined, parentId: string | undefined, isChildMode: boolean) {
   return {
     name: menu?.name ?? '',
     path: menu?.path ?? '',
@@ -60,14 +56,7 @@ function getInitialValues(
   };
 }
 
-export function MenuFormDialog({
-  onClose,
-  onSaved,
-  open,
-  menu,
-  parentId,
-  menus,
-}: MenuFormDialogProps): JSX.Element {
+export function MenuFormDialog({ onClose, onSaved, open, menu, parentId, menus }: MenuFormDialogProps): JSX.Element {
   const { formatMessage: t } = useIntl();
   const apiClient = useApiClient();
   const isEdit = menu !== undefined;
@@ -78,9 +67,7 @@ export function MenuFormDialog({
   const [name, setName] = useState(initialValues.name);
   const [path, setPath] = useState(initialValues.path);
   const [icon, setIcon] = useState(initialValues.icon);
-  const [selectedParentId, setSelectedParentId] = useState<string | null>(
-    initialValues.selectedParentId
-  );
+  const [selectedParentId, setSelectedParentId] = useState<string | null>(initialValues.selectedParentId);
   const [sortOrder, setSortOrder] = useState(initialValues.sortOrder);
   const [permissionCode, setPermissionCode] = useState(initialValues.permissionCode);
   const [isVisible, setIsVisible] = useState(initialValues.isVisible);
@@ -126,15 +113,9 @@ export function MenuFormDialog({
   };
 
   const flattenedMenus = flattenMenus(menus);
-  const availableParents = flattenedMenus.filter(
-    (m) => m.id !== menu?.id && !isDescendant(menu, m.id, menus)
-  );
+  const availableParents = flattenedMenus.filter((m) => m.id !== menu?.id && !isDescendant(menu, m.id, menus));
 
-  function isDescendant(
-    parentMenu: MenuItem | undefined,
-    potentialChildId: string,
-    allMenus: MenuItem[]
-  ): boolean {
+  function isDescendant(parentMenu: MenuItem | undefined, potentialChildId: string, allMenus: MenuItem[]): boolean {
     if (!parentMenu) return false;
     const children = allMenus.filter((m) => m.parent_id === parentMenu.id);
     if (children.some((c) => c.id === potentialChildId)) return true;
@@ -154,33 +135,15 @@ export function MenuFormDialog({
       <form key={menu?.id ?? (isChildMode ? `child-${parentId}` : 'new')} onSubmit={handleSubmit}>
         <div className="space-y-4">
           <FormField label={t({ id: 'menus.fieldName' })} htmlFor="menu-name">
-            <Input
-              id="menu-name"
-              required
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+            <Input id="menu-name" required type="text" value={name} onChange={(e) => setName(e.target.value)} />
           </FormField>
 
           <FormField label={t({ id: 'menus.fieldPath' })} htmlFor="menu-path">
-            <Input
-              id="menu-path"
-              required
-              type="text"
-              value={path}
-              onChange={(e) => setPath(e.target.value)}
-            />
+            <Input id="menu-path" required type="text" value={path} onChange={(e) => setPath(e.target.value)} />
           </FormField>
 
           <FormField label={t({ id: 'menus.fieldIcon' })} htmlFor="menu-icon">
-            <Input
-              id="menu-icon"
-              required
-              type="text"
-              value={icon}
-              onChange={(e) => setIcon(e.target.value)}
-            />
+            <Input id="menu-icon" required type="text" value={icon} onChange={(e) => setIcon(e.target.value)} />
           </FormField>
 
           <FormField label={t({ id: 'menus.fieldParent' })} htmlFor="menu-parent">
@@ -238,11 +201,7 @@ export function MenuFormDialog({
                     strokeWidth="4"
                     fill="none"
                   />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
                 {t({ id: 'common.saving' })}
               </>

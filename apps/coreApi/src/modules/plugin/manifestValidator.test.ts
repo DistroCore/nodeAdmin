@@ -67,9 +67,7 @@ describe('validatePluginManifest', () => {
     manifest.engines.nodeAdmin = 'stable';
 
     expect(() => validatePluginManifest(manifest)).toThrow('version must be a valid SemVer');
-    expect(() => validatePluginManifest(manifest)).toThrow(
-      'engines.nodeAdmin must be a valid SemVer range'
-    );
+    expect(() => validatePluginManifest(manifest)).toThrow('engines.nodeAdmin must be a valid SemVer range');
   });
 
   it('rejects invalid entrypoint paths and malformed route contributions', () => {
@@ -81,11 +79,9 @@ describe('validatePluginManifest', () => {
     };
 
     expect(() => validatePluginManifest(manifest)).toThrow(
-      'entrypoints.server must be a relative path starting with ./'
+      'entrypoints.server must be a relative path starting with ./',
     );
-    expect(() => validatePluginManifest(manifest)).toThrow(
-      'contributes.menus[0].route must start with /'
-    );
+    expect(() => validatePluginManifest(manifest)).toThrow('contributes.menus[0].route must start with /');
   });
 
   it('rejects empty permissions and invalid dependency values', () => {
@@ -93,11 +89,9 @@ describe('validatePluginManifest', () => {
     manifest.permissions = [''];
     manifest.dependencies = ['kanban'];
 
+    expect(() => validatePluginManifest(manifest)).toThrow('permissions must contain non-empty strings');
     expect(() => validatePluginManifest(manifest)).toThrow(
-      'permissions must contain non-empty strings'
-    );
-    expect(() => validatePluginManifest(manifest)).toThrow(
-      'dependencies must contain plugin ids in the @nodeadmin/plugin-* namespace'
+      'dependencies must contain plugin ids in the @nodeadmin/plugin-* namespace',
     );
   });
 });

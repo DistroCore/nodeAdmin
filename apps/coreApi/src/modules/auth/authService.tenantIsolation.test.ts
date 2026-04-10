@@ -23,18 +23,13 @@ describe('AuthService tenant isolation', () => {
 
     (service as unknown as { pool: typeof mockPool }).pool = mockPool;
 
-    const result = await service.register(
-      'shared@example.com',
-      'TenantScopedP@ss1',
-      'tenant-b',
-      'Tenant B User'
-    );
+    const result = await service.register('shared@example.com', 'TenantScopedP@ss1', 'tenant-b', 'Tenant B User');
 
     expect(result.roles).toEqual(['viewer']);
     expect(mockPool.query).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining('SELECT id FROM users WHERE tenant_id = $1 AND email = $2'),
-      ['tenant-b', 'shared@example.com']
+      ['tenant-b', 'shared@example.com'],
     );
 
     const insertUserCall = mockClient.calls.find((call) => call.sql.includes('INSERT INTO users'));
@@ -71,11 +66,10 @@ describe('AuthService tenant isolation', () => {
 
     expect(result.userId).toBe('tenant-b-user');
     expect(result.roles).toEqual(['admin']);
-    expect(mockPool.query).toHaveBeenNthCalledWith(
-      1,
-      expect.stringContaining('WHERE tenant_id = $1 AND email = $2'),
-      ['tenant-b', 'shared@example.com']
-    );
+    expect(mockPool.query).toHaveBeenNthCalledWith(1, expect.stringContaining('WHERE tenant_id = $1 AND email = $2'), [
+      'tenant-b',
+      'shared@example.com',
+    ]);
   });
 
   it('rejects cross-tenant logins when the email exists in another tenant only', async () => {
@@ -84,12 +78,12 @@ describe('AuthService tenant isolation', () => {
     (service as unknown as { pool: typeof mockPool }).pool = mockPool;
 
     await expect(service.login('shared@example.com', 'TenantBP@ss2', 'tenant-a')).rejects.toThrow(
-      'Invalid email or password.'
+      'Invalid email or password.',
     );
 
-    expect(mockPool.query).toHaveBeenCalledWith(
-      expect.stringContaining('WHERE tenant_id = $1 AND email = $2'),
-      ['tenant-a', 'shared@example.com']
-    );
+    expect(mockPool.query).toHaveBeenCalledWith(expect.stringContaining('WHERE tenant_id = $1 AND email = $2'), [
+      'tenant-a',
+      'shared@example.com',
+    ]);
   });
 });

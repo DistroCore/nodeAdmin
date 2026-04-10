@@ -165,7 +165,7 @@ function main() {
 
   process.stdout.write(`${BOLD}═══════════════════════════════════════${RESET}\n`);
   process.stdout.write(
-    `  ${errors.length > 0 ? `${RED}${BOLD}ACTION REQUIRED${RESET}` : `${YELLOW}${BOLD}REVIEW RECOMMENDED${RESET}`} — ${findings.length} findings\n`
+    `  ${errors.length > 0 ? `${RED}${BOLD}ACTION REQUIRED${RESET}` : `${YELLOW}${BOLD}REVIEW RECOMMENDED${RESET}`} — ${findings.length} findings\n`,
   );
   process.stdout.write(`${BOLD}═══════════════════════════════════════${RESET}\n`);
 

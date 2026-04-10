@@ -60,7 +60,7 @@ export class AuditLogService implements OnModuleDestroy {
       endDate?: string;
     },
     page: number,
-    pageSize: number
+    pageSize: number,
   ): Promise<{ items: StoredAuditLog[]; total: number }> {
     if (!this.repository) {
       const filtered = this.fallbackRows.filter((row) => {
@@ -90,11 +90,7 @@ export class AuditLogService implements OnModuleDestroy {
    * Compatibility wrapper for consoleController.
    * Task 4 will migrate the controller to use listByFilter directly.
    */
-  async listByTenant(
-    tenantId: string,
-    limit: number,
-    offset: number = 0
-  ): Promise<StoredAuditLog[]> {
+  async listByTenant(tenantId: string, limit: number, offset: number = 0): Promise<StoredAuditLog[]> {
     const page = Math.floor(offset / Math.max(limit, 1)) + 1;
     const { items } = await this.listByFilter({ tenantId }, page, limit);
     return items;

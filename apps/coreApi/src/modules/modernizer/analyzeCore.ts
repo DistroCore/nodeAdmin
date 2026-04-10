@@ -28,8 +28,7 @@ export interface AnalysisResult {
 
 const CONSOLE_REGEX = /\bconsole\.(log|warn|error)\s*\(/;
 const TODO_REGEX = /\/\/\s*(TODO|FIXME)\b/i;
-const BODY_NO_VALIDATION_REGEX =
-  /@Body\(\)\s+(\w+):\s+(?!Create|Update|List|Login|Register|Change)(\w+)/;
+const BODY_NO_VALIDATION_REGEX = /@Body\(\)\s+(\w+):\s+(?!Create|Update|List|Login|Register|Change)(\w+)/;
 const IMPORT_REGEX = /^import\s+(?:\{([^}]+)\}|(\w+))\s+from/;
 
 const IGNORED_DIRS = new Set(['node_modules', 'dist', '.git', 'coverage', '__tests__']);
@@ -131,7 +130,7 @@ function checkUnusedImports(lines: string[], filePath: string, issues: AnalysisI
             .trim()
             .split(/\s+as\s+/)
             .pop()!
-            .trim()
+            .trim(),
         )
         .filter(Boolean);
 

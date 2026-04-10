@@ -49,8 +49,8 @@ async function run() {
         rps: Math.round((totalRequests / Math.max(elapsedMs, 1)) * 1000),
       },
       null,
-      2
-    )
+      2,
+    ),
   );
 
   if (failed > 0) {

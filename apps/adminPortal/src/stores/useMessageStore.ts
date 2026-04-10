@@ -21,15 +21,11 @@ export const useMessageStore = create<MessageState>((set) => ({
   messages: [],
   resetMessages: (messages) =>
     set({
-      messages: messages
-        .map(normalizeMessage)
-        .sort((left, right) => left.sequenceId - right.sequenceId),
+      messages: messages.map(normalizeMessage).sort((left, right) => left.sequenceId - right.sequenceId),
     }),
   upsertMessage: (message) =>
     set((state) => {
-      const index = state.messages.findIndex(
-        (currentMessage) => currentMessage.messageId === message.messageId
-      );
+      const index = state.messages.findIndex((currentMessage) => currentMessage.messageId === message.messageId);
 
       let nextMessages: ChatMessageState[];
       if (index !== -1) {

@@ -7,8 +7,7 @@
 const { Client } = require('pg');
 const { hash } = require('bcryptjs');
 
-const DATABASE_URL =
-  process.env.DATABASE_URL || 'postgres://nodeadmin:nodeadmin@localhost:55432/nodeadmin';
+const DATABASE_URL = process.env.DATABASE_URL || 'postgres://nodeadmin:nodeadmin@localhost:55432/nodeadmin';
 const TENANT_ID = process.env.SEED_TENANT_ID || 'default';
 
 async function seedData() {
@@ -28,7 +27,7 @@ async function seedData() {
       `INSERT INTO users (id, tenant_id, email, password_hash, name, is_active)
        VALUES ($1, $2, $3, $4, $5, $6)
        ON CONFLICT DO NOTHING`,
-      ['user-admin', TENANT_ID, 'admin@nodeadmin.dev', adminPasswordHash, 'Admin', 1]
+      ['user-admin', TENANT_ID, 'admin@nodeadmin.dev', adminPasswordHash, 'Admin', 1],
     );
     console.log('✓ Ensured default admin user exists');
 
@@ -36,7 +35,7 @@ async function seedData() {
       `INSERT INTO user_roles (user_id, role_id)
        VALUES ($1, $2)
        ON CONFLICT DO NOTHING`,
-      ['user-admin', 'role-super-admin']
+      ['user-admin', 'role-super-admin'],
     );
     console.log('✓ Ensured default admin role assignment exists');
 
@@ -52,7 +51,7 @@ async function seedData() {
         `INSERT INTO conversations (tenant_id, id, created_at)
          VALUES ($1, $2, NOW())
          ON CONFLICT (tenant_id, id) DO NOTHING`,
-        [conv.tenantId, conv.id]
+        [conv.tenantId, conv.id],
       );
       console.log(`✓ Created conversation: ${conv.id}`);
     }
@@ -105,7 +104,7 @@ async function seedData() {
           msg.messageType,
           msg.sequenceId,
           msg.traceId,
-        ]
+        ],
       );
       console.log(`✓ Created message: ${msg.messageId} in ${msg.conversationId}`);
     }
@@ -113,7 +112,7 @@ async function seedData() {
     // Verify data
     const convResult = await client.query(
       `SELECT id, created_at FROM conversations WHERE tenant_id = $1 ORDER BY created_at`,
-      [TENANT_ID]
+      [TENANT_ID],
     );
     console.log(`\n✓ Total conversations: ${convResult.rows.length}`);
     convResult.rows.forEach((row) => {
@@ -122,7 +121,7 @@ async function seedData() {
 
     const msgResult = await client.query(
       `SELECT conversation_id, COUNT(*) as count FROM messages WHERE tenant_id = $1 GROUP BY conversation_id`,
-      [TENANT_ID]
+      [TENANT_ID],
     );
     console.log(`\n✓ Messages by conversation:`);
     msgResult.rows.forEach((row) => {

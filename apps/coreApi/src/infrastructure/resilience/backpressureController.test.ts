@@ -148,14 +148,14 @@ describe('BackpressureController', () => {
       expect(() =>
         controller.updateConfig({
           rejectThreshold: 6001,
-        })
+        }),
       ).toThrow('rejectThreshold cannot exceed maxQueueSize.');
 
       expect(() =>
         controller.updateConfig({
           rejectThreshold: 400,
           warnThreshold: 500,
-        })
+        }),
       ).toThrow('warnThreshold cannot exceed rejectThreshold.');
     });
   });

@@ -5,9 +5,7 @@ test.describe('Roles Management', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto('/roles');
-    await expect(
-      page.getByRole('main').getByRole('heading', { name: /Role Management/i })
-    ).toBeVisible();
+    await expect(page.getByRole('main').getByRole('heading', { name: /Role Management/i })).toBeVisible();
   });
 
   test('lists roles and identifies system roles', async ({ page }) => {

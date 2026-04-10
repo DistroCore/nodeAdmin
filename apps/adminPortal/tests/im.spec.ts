@@ -13,7 +13,7 @@ test.describe('IM Chat', () => {
       page
         .getByRole('main')
         .getByRole('heading', { name: /conversation/i })
-        .first()
+        .first(),
     ).toBeVisible();
   });
 
@@ -193,13 +193,10 @@ test.describe('IM Chat — message editing and deletion', () => {
       await firstMessage.hover();
 
       const editButton = firstMessage.locator('button[title*="edit" i], button[title*="Edit"]');
-      const deleteButton = firstMessage.locator(
-        'button[title*="delete" i], button[title*="Delete"]'
-      );
+      const deleteButton = firstMessage.locator('button[title*="delete" i], button[title*="Delete"]');
 
       const hasActions =
-        (await editButton.isVisible().catch(() => false)) ||
-        (await deleteButton.isVisible().catch(() => false));
+        (await editButton.isVisible().catch(() => false)) || (await deleteButton.isVisible().catch(() => false));
       expect(typeof hasActions).toBe('boolean');
     }
   });

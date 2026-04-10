@@ -29,23 +29,17 @@ test.describe('Overview Dashboard', () => {
 
     await page.getByRole('button', { name: /Create User/i }).click();
     await expect(page).toHaveURL(/\/users/);
-    await expect(
-      page.getByRole('main').getByRole('heading', { name: /User Management/i })
-    ).toBeVisible();
+    await expect(page.getByRole('main').getByRole('heading', { name: /User Management/i })).toBeVisible();
 
     await page.goto('/overview');
     await page.getByRole('button', { name: /Create Tenant/i }).click();
     await expect(page).toHaveURL(/\/tenants/);
-    await expect(
-      page.getByRole('main').getByRole('heading', { name: /Tenant Management/i })
-    ).toBeVisible();
+    await expect(page.getByRole('main').getByRole('heading', { name: /Tenant Management/i })).toBeVisible();
 
     await page.goto('/overview');
     await page.getByRole('button', { name: /Audit Logs/i }).click();
     await expect(page).toHaveURL(/\/audit/);
-    await expect(
-      page.getByRole('main').getByRole('heading', { name: /Audit Logs/i })
-    ).toBeVisible();
+    await expect(page.getByRole('main').getByRole('heading', { name: /Audit Logs/i })).toBeVisible();
   });
 
   test('shows recent activity or the empty state and refreshes cleanly', async ({ page }) => {

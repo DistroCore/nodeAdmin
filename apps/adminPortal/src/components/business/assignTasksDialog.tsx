@@ -16,12 +16,7 @@ interface AssignTasksDialogProps {
   onSaved: () => void;
 }
 
-export function AssignTasksDialog({
-  onClose,
-  onSaved,
-  open,
-  sprint,
-}: AssignTasksDialogProps): JSX.Element {
+export function AssignTasksDialog({ onClose, onSaved, open, sprint }: AssignTasksDialogProps): JSX.Element {
   const { formatMessage: t } = useIntl();
   const apiClient = useApiClient();
   const toast = useToast();
@@ -29,8 +24,7 @@ export function AssignTasksDialog({
 
   // Fetch unassigned tasks or tasks assigned to this sprint
   const tasksQuery = useQuery({
-    queryFn: () =>
-      apiClient.get<PaginatedResponse<BacklogTask>>('/api/v1/backlog/tasks?pageSize=200'),
+    queryFn: () => apiClient.get<PaginatedResponse<BacklogTask>>('/api/v1/backlog/tasks?pageSize=200'),
     queryKey: ['backlog', 'tasks', 'all-for-assign'],
     enabled: open,
   });
@@ -69,26 +63,18 @@ export function AssignTasksDialog({
     assignMutation.mutate(Array.from(selectedTaskIds));
   };
 
-  const tasks = (tasksQuery.data?.items ?? []).filter(
-    (task) => !task.sprint_id || task.sprint_id === sprint.id
-  );
+  const tasks = (tasksQuery.data?.items ?? []).filter((task) => !task.sprint_id || task.sprint_id === sprint.id);
 
   // Initialize selectedTaskIds when dialog opens
   useState(() => {
     const initial = new Set(
-      (tasksQuery.data?.items ?? [])
-        .filter((task) => task.sprint_id === sprint.id)
-        .map((task) => task.id)
+      (tasksQuery.data?.items ?? []).filter((task) => task.sprint_id === sprint.id).map((task) => task.id),
     );
     setSelectedTaskIds(initial);
   });
 
   return (
-    <Dialog
-      onClose={onClose}
-      open={open}
-      title={`${t({ id: 'backlog.assignTasks' })}: ${sprint.name}`}
-    >
+    <Dialog onClose={onClose} open={open} title={`${t({ id: 'backlog.assignTasks' })}: ${sprint.name}`}>
       <form onSubmit={handleSubmit}>
         <div className="max-h-80 space-y-2 overflow-y-auto rounded-md border p-3">
           {tasksQuery.isLoading ? (
@@ -103,17 +89,11 @@ export function AssignTasksDialog({
                   strokeWidth="4"
                   fill="none"
                 />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
             </div>
           ) : tasks.length === 0 ? (
-            <div className="text-center py-4 text-sm text-muted-foreground">
-              {t({ id: 'backlog.emptyTasks' })}
-            </div>
+            <div className="text-center py-4 text-sm text-muted-foreground">{t({ id: 'backlog.emptyTasks' })}</div>
           ) : (
             tasks.map((task) => (
               <div key={task.id} className="flex items-center gap-3 py-1">
@@ -129,12 +109,7 @@ export function AssignTasksDialog({
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
-          <Button
-            disabled={assignMutation.isPending}
-            type="button"
-            variant="secondary"
-            onClick={onClose}
-          >
+          <Button disabled={assignMutation.isPending} type="button" variant="secondary" onClick={onClose}>
             {t({ id: 'common.cancel' })}
           </Button>
           <Button disabled={assignMutation.isPending} type="submit">
@@ -150,11 +125,7 @@ export function AssignTasksDialog({
                     strokeWidth="4"
                     fill="none"
                   />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
                 {t({ id: 'common.saving' })}
               </>

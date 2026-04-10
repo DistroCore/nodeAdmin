@@ -62,7 +62,7 @@ async function testAuthentication() {
         tenantId: 'tenant-demo',
         userId: 'user-admin',
         roles: ['tenant:admin', 'im:operator'],
-      }
+      },
     );
 
     const pass = response.status === 201 && response.body?.accessToken;
@@ -71,9 +71,7 @@ async function testAuthentication() {
       'HTTP 201 with accessToken',
       `HTTP ${response.status} ${response.body?.accessToken ? 'with token' : 'no token'}`,
       pass,
-      response.body?.accessToken
-        ? `Token: ${response.body.accessToken.substring(0, 20)}...`
-        : 'No token'
+      response.body?.accessToken ? `Token: ${response.body.accessToken.substring(0, 20)}...` : 'No token',
     );
 
     return pass ? response.body.accessToken : null;
@@ -136,7 +134,7 @@ async function testConversationAPI(token) {
       'HTTP 200 with array',
       `HTTP ${response.status} ${Array.isArray(response.body) ? `with ${response.body.length} conversations` : 'invalid'}`,
       pass,
-      pass ? `Conversations: ${response.body.length}` : JSON.stringify(response.body)
+      pass ? `Conversations: ${response.body.length}` : JSON.stringify(response.body),
     );
 
     return pass ? response.body : [];
@@ -151,12 +149,7 @@ async function testJoinConversation(socket, conversationId) {
   console.log('\n=== TEST 4: Join Conversation ===');
   return new Promise((resolve) => {
     if (!socket || !conversationId) {
-      logTest(
-        'Join Conversation',
-        'Joined successfully',
-        'Skipped - no socket or conversation',
-        false
-      );
+      logTest('Join Conversation', 'Joined successfully', 'Skipped - no socket or conversation', false);
       resolve(false);
       return;
     }
@@ -174,7 +167,7 @@ async function testJoinConversation(socket, conversationId) {
         'Acknowledgment with ok:true',
         pass ? `Joined room: ${ack.roomKey}` : `Error: ${JSON.stringify(ack)}`,
         pass,
-        JSON.stringify(ack)
+        JSON.stringify(ack),
       );
       resolve(pass);
     });
@@ -214,10 +207,10 @@ async function testSendMessage(socket, conversationId) {
           'Acknowledgment with accepted:true',
           pass ? `Message sent, sequenceId: ${ack.sequenceId}` : `Error: ${JSON.stringify(ack)}`,
           pass,
-          JSON.stringify(ack)
+          JSON.stringify(ack),
         );
         resolve(pass);
-      }
+      },
     );
   });
 }
@@ -247,7 +240,7 @@ async function testReceiveMessage(socket, conversationId) {
         'Message received',
         pass ? `Received message: ${message.messageId}` : 'Invalid message',
         pass,
-        JSON.stringify(message)
+        JSON.stringify(message),
       );
       resolve(pass);
     });
@@ -268,12 +261,7 @@ async function testTypingIndicators(socket, conversationId) {
   console.log('\n=== TEST 7: Typing Indicators ===');
   return new Promise((resolve) => {
     if (!socket || !conversationId) {
-      logTest(
-        'Typing Indicators',
-        'Typing event received',
-        'Skipped - no socket or conversation',
-        false
-      );
+      logTest('Typing Indicators', 'Typing event received', 'Skipped - no socket or conversation', false);
       resolve(false);
       return;
     }
@@ -298,10 +286,10 @@ async function testTypingIndicators(socket, conversationId) {
           'Acknowledgment with ok:true',
           pass ? 'Typing event sent' : `Error: ${JSON.stringify(ack)}`,
           pass,
-          JSON.stringify(ack)
+          JSON.stringify(ack),
         );
         resolve(pass);
-      }
+      },
     );
   });
 }
@@ -342,7 +330,7 @@ async function testPresenceJoin(socket, conversationId) {
             'Join event received',
             pass ? `User joined: ${event.userId}` : 'Invalid event',
             pass,
-            JSON.stringify(event)
+            JSON.stringify(event),
           );
           resolve(pass);
         });
@@ -365,12 +353,7 @@ async function testPresenceLeave(socket, conversationId) {
   console.log('\n=== TEST 9: Presence - Leave Event ===');
   return new Promise((resolve) => {
     if (!socket || !conversationId) {
-      logTest(
-        'Presence Leave',
-        'Leave event received',
-        'Skipped - no socket or conversation',
-        false
-      );
+      logTest('Presence Leave', 'Leave event received', 'Skipped - no socket or conversation', false);
       resolve(false);
       return;
     }
@@ -400,7 +383,7 @@ async function testPresenceLeave(socket, conversationId) {
             'Leave event received',
             pass ? `User left: ${event.userId}` : 'Invalid event',
             pass,
-            JSON.stringify(event)
+            JSON.stringify(event),
           );
           resolve(pass);
         });
@@ -417,12 +400,7 @@ async function testConversationHistory(socket, conversationId) {
   console.log('\n=== TEST 10: Conversation History ===');
   return new Promise((resolve) => {
     if (!socket || !conversationId) {
-      logTest(
-        'Conversation History',
-        'History received',
-        'Skipped - no socket or conversation',
-        false
-      );
+      logTest('Conversation History', 'History received', 'Skipped - no socket or conversation', false);
       resolve(false);
       return;
     }
@@ -442,7 +420,7 @@ async function testConversationHistory(socket, conversationId) {
         'History array received',
         pass ? `Received ${history.length} messages` : 'Invalid history',
         pass,
-        `Messages: ${history.length}`
+        `Messages: ${history.length}`,
       );
       resolve(pass);
     });

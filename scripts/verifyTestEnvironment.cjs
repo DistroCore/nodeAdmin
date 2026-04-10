@@ -75,9 +75,7 @@ async function checkPgBouncerConfig() {
 
   try {
     // Check if PgBouncer container is running
-    const { stdout: containerCheck } = await execAsync(
-      'docker ps --filter "name=pgbouncer" --format "{{.Names}}"'
-    );
+    const { stdout: containerCheck } = await execAsync('docker ps --filter "name=pgbouncer" --format "{{.Names}}"');
 
     if (!containerCheck.trim()) {
       fail('✗ PgBouncer container not found');
@@ -88,9 +86,7 @@ async function checkPgBouncerConfig() {
 
     // Check max_client_conn
     try {
-      const { stdout: configOutput } = await execAsync(
-        `docker exec ${containerName} cat /etc/pgbouncer/pgbouncer.ini`
-      );
+      const { stdout: configOutput } = await execAsync(`docker exec ${containerName} cat /etc/pgbouncer/pgbouncer.ini`);
 
       const maxClientConnMatch = configOutput.match(/max_client_conn\s*=\s*(\d+)/);
       const defaultPoolSizeMatch = configOutput.match(/default_pool_size\s*=\s*(\d+)/);

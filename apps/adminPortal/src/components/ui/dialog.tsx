@@ -23,7 +23,7 @@ export function Dialog({ children, onClose, open, title }: DialogProps): JSX.Ele
 
       if (e.key === 'Tab' && dialogRef.current) {
         const focusableElements = dialogRef.current.querySelectorAll(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
         );
         const firstElement = focusableElements[0] as HTMLElement;
         const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
@@ -41,7 +41,7 @@ export function Dialog({ children, onClose, open, title }: DialogProps): JSX.Ele
         }
       }
     },
-    [onClose]
+    [onClose],
   );
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export function Dialog({ children, onClose, open, title }: DialogProps): JSX.Ele
     const timer = setTimeout(() => {
       if (dialogRef.current) {
         const firstElement = dialogRef.current.querySelector(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
         ) as HTMLElement;
         firstElement?.focus();
       }
@@ -117,7 +117,7 @@ export function Dialog({ children, onClose, open, title }: DialogProps): JSX.Ele
         {children}
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }
 
@@ -131,13 +131,7 @@ interface ConfirmDialogProps {
   title: string;
 }
 
-export function ConfirmDialog({
-  message,
-  onClose,
-  onConfirm,
-  open,
-  title,
-}: ConfirmDialogProps): JSX.Element {
+export function ConfirmDialog({ message, onClose, onConfirm, open, title }: ConfirmDialogProps): JSX.Element {
   const { formatMessage: t } = useIntl();
   const [loading, setLoading] = useState(false);
 

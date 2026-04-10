@@ -22,7 +22,7 @@ function run() {
       'redis-cluster-node-6',
       'redis-cluster-init',
     ],
-    { stdio: 'inherit' }
+    { stdio: 'inherit' },
   );
 
   const clusterInfo = waitForHealthyCluster();
@@ -42,7 +42,7 @@ function run() {
       'cluster',
       'nodes',
     ],
-    { encoding: 'utf8' }
+    { encoding: 'utf8' },
   );
 
   if (!clusterInfo.includes('cluster_state:ok')) {
@@ -62,8 +62,8 @@ function run() {
         result: 'ok',
       },
       null,
-      2
-    )
+      2,
+    ),
   );
 }
 
@@ -86,7 +86,7 @@ function waitForHealthyCluster() {
         'cluster',
         'info',
       ],
-      { encoding: 'utf8' }
+      { encoding: 'utf8' },
     );
 
     if (clusterInfo.includes('cluster_state:ok')) {

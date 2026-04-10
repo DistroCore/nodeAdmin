@@ -18,11 +18,7 @@ export class ApiClient {
     return headers;
   }
 
-  private async request<TResponse>(
-    method: string,
-    path: string,
-    body?: unknown
-  ): Promise<TResponse> {
+  private async request<TResponse>(method: string, path: string, body?: unknown): Promise<TResponse> {
     const headers = this.buildHeaders(body !== undefined);
     const response = await fetch(`${this.config.baseUrl}${path}`, {
       ...(body !== undefined && { body: JSON.stringify(body) }),

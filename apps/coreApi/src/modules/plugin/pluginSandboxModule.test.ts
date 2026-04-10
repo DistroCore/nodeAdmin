@@ -29,25 +29,20 @@ describe('PluginSandboxModule', () => {
           provide: PLUGIN_TENANT_CONTEXT,
           useValue: tenantContext,
         },
-      ])
+      ]),
     );
     expect(dynamicModule.exports).toEqual([DatabaseService, PLUGIN_TENANT_CONTEXT]);
   });
 
   it('allows permission declarations that are in the whitelist', () => {
     expect(() =>
-      PluginSandboxModule.validatePermissions([
-        'backlog:view',
-        'backlog:manage',
-        'task:read',
-        'task:write',
-      ])
+      PluginSandboxModule.validatePermissions(['backlog:view', 'backlog:manage', 'task:read', 'task:write']),
     ).not.toThrow();
   });
 
   it('rejects permission declarations outside the whitelist', () => {
     expect(() => PluginSandboxModule.validatePermissions(['backlog:view', 'root:shell'])).toThrow(
-      "Plugin permission 'root:shell' is not allowed"
+      "Plugin permission 'root:shell' is not allowed",
     );
   });
 

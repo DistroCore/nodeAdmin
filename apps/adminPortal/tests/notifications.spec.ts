@@ -9,9 +9,7 @@ test.describe('Notifications', () => {
   test('renders notifications panel with title and description', async ({ page }) => {
     await page.goto('/notifications');
 
-    await expect(
-      page.getByRole('main').getByRole('heading', { name: /Notifications/i })
-    ).toBeVisible();
+    await expect(page.getByRole('main').getByRole('heading', { name: /Notifications/i })).toBeVisible();
     await expect(page.getByText(/System events and recent audit logs/i)).toBeVisible();
   });
 
@@ -29,9 +27,7 @@ test.describe('Notifications', () => {
 
     // Either shows notifications or empty state
     const emptyState = page.getByText(/No notifications yet/i);
-    const actionLabels = page.getByText(
-      /Authentication|User Management|Tenant Change|System Event|Other/i
-    );
+    const actionLabels = page.getByText(/Authentication|User Management|Tenant Change|System Event|Other/i);
 
     const isEmpty = await emptyState.isVisible().catch(() => false);
     if (isEmpty) {

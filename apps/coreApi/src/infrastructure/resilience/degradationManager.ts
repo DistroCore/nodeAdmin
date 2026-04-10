@@ -17,18 +17,12 @@ export interface DegradationStatus {
 
 export class DegradationManager {
   private static readonly meter = metrics.getMeter('coreApi-resilience');
-  private static readonly degradationGauge = DegradationManager.meter.createObservableGauge(
-    'degradation_active',
-    {
-      description: 'Whether a feature is currently degraded (1=degraded, 0=normal)',
-    }
-  );
-  private static readonly degradationCounter = DegradationManager.meter.createCounter(
-    'degradation_events_total',
-    {
-      description: 'Total number of degradation events',
-    }
-  );
+  private static readonly degradationGauge = DegradationManager.meter.createObservableGauge('degradation_active', {
+    description: 'Whether a feature is currently degraded (1=degraded, 0=normal)',
+  });
+  private static readonly degradationCounter = DegradationManager.meter.createCounter('degradation_events_total', {
+    description: 'Total number of degradation events',
+  });
 
   private readonly logger = new Logger(DegradationManager.name);
   private readonly degradationState = new Map<DegradationFeature, DegradationStatus>();

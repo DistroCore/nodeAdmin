@@ -10,7 +10,7 @@ export class PluginGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly pluginService: PluginService,
-    private readonly tenantContextResolver: TenantContextResolver
+    private readonly tenantContextResolver: TenantContextResolver,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

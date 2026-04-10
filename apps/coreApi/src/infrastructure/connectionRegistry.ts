@@ -39,10 +39,10 @@ export class ConnectionRegistry {
       const current = this.countByTenantId.get(context.tenantId) ?? 0;
       if (current >= ConnectionRegistry.MAX_CONNECTIONS_PER_TENANT) {
         this.logger.warn(
-          `Tenant ${context.tenantId} hit connection limit (${ConnectionRegistry.MAX_CONNECTIONS_PER_TENANT}). Rejecting socket ${socketId}.`
+          `Tenant ${context.tenantId} hit connection limit (${ConnectionRegistry.MAX_CONNECTIONS_PER_TENANT}). Rejecting socket ${socketId}.`,
         );
         throw new WsException(
-          `Connection limit reached for tenant. Maximum ${ConnectionRegistry.MAX_CONNECTIONS_PER_TENANT} concurrent connections allowed.`
+          `Connection limit reached for tenant. Maximum ${ConnectionRegistry.MAX_CONNECTIONS_PER_TENANT} concurrent connections allowed.`,
         );
       }
       this.countByTenantId.set(context.tenantId, current + 1);

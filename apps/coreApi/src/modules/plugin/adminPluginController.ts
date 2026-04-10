@@ -1,13 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  ForbiddenException,
-  Get,
-  Param,
-  Post,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Param, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { PluginManifest } from '@nodeadmin/shared-types';
 import { CurrentUser } from '../auth/currentUser.decorator';
@@ -42,7 +33,7 @@ export class AdminPluginController {
     @CurrentUser() user: AuthIdentity,
     @Query('page') page = 1,
     @Query('pageSize') pageSize = 20,
-    @Query('search') search?: string
+    @Query('search') search?: string,
   ) {
     this.assertAdmin(user);
     return this.pluginMarketService.listMarketplacePlugins(page, pageSize, search);
@@ -64,11 +55,7 @@ export class AdminPluginController {
 
   @Post(':id/update')
   @ApiOperation({ summary: 'Update an installed marketplace plugin' })
-  async update(
-    @CurrentUser() user: AuthIdentity,
-    @Param('id') pluginId: string,
-    @Body() dto: UpdatePluginDto
-  ) {
+  async update(@CurrentUser() user: AuthIdentity, @Param('id') pluginId: string, @Body() dto: UpdatePluginDto) {
     this.assertAdmin(user);
     return this.pluginMarketService.updatePlugin(user.tenantId, pluginId, dto.version);
   }

@@ -48,8 +48,8 @@ export class ConversationRepository {
           latestMessageByConversation,
           and(
             eq(conversations.tenantId, latestMessageByConversation.tenantId),
-            eq(conversations.id, latestMessageByConversation.conversationId)
-          )
+            eq(conversations.id, latestMessageByConversation.conversationId),
+          ),
         )
         .where(eq(conversations.tenantId, tenantId))
         .orderBy(desc(latestMessageByConversation.lastMessageAt), desc(conversations.createdAt))

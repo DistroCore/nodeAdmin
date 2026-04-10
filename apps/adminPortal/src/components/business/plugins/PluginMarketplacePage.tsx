@@ -3,14 +3,7 @@ import { useIntl } from 'react-intl';
 import { Link } from 'react-router-dom';
 import { useMarketplace, usePluginManagement } from '@/hooks/useMarketplace';
 import { usePluginStore } from '@/stores/usePluginStore';
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -93,9 +86,7 @@ export function PluginMarketplacePage() {
           <div className="rounded-full bg-destructive/10 p-3 text-destructive">
             <NavIcon name="alert" />
           </div>
-          <h3 className="mt-4 text-lg font-semibold">
-            {t({ id: 'common.error', defaultMessage: 'Error' })}
-          </h3>
+          <h3 className="mt-4 text-lg font-semibold">{t({ id: 'common.error', defaultMessage: 'Error' })}</h3>
           <p className="mb-6 text-sm text-muted-foreground">
             {t({
               id: 'plugins.marketplace.load_failed',
@@ -192,12 +183,7 @@ export function PluginMarketplacePage() {
 
           {data && data.total > pageSize && (
             <div className="flex items-center justify-center space-x-2 py-8">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page === 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
+              <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
                 {t({ id: 'common.previous', defaultMessage: 'Previous' })}
               </Button>
               <span className="text-sm text-muted-foreground">
@@ -206,7 +192,7 @@ export function PluginMarketplacePage() {
                   {
                     page,
                     total: Math.ceil(data.total / pageSize),
-                  }
+                  },
                 )}
               </span>
               <Button

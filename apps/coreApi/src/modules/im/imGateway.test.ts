@@ -132,7 +132,7 @@ describe('ImGateway', () => {
       conversationService as never,
       messageService as never,
       presenceService as never,
-      auditLogService as never
+      auditLogService as never,
     );
 
     ({ roomTarget: serverRoomTarget, server } = createServer());
@@ -176,11 +176,7 @@ describe('ImGateway', () => {
       conversationId: context.conversationId,
     });
 
-    expect(conversationService.joinConversation).toHaveBeenCalledWith(
-      client.id,
-      context.conversationId,
-      identity
-    );
+    expect(conversationService.joinConversation).toHaveBeenCalledWith(client.id, context.conversationId, identity);
     expect(client.join).toHaveBeenCalledWith('tenant-1::conversation-1');
     expect(client.emit).toHaveBeenCalledWith('conversationHistory', history);
     expect(server.to).toHaveBeenCalledWith('tenant-1::conversation-1');
@@ -191,7 +187,7 @@ describe('ImGateway', () => {
         targetId: context.conversationId,
         tenantId: identity.tenantId,
         userId: identity.userId,
-      })
+      }),
     );
     expect(result).toEqual({ ok: true, roomKey: 'tenant-1::conversation-1' });
   });
@@ -221,7 +217,7 @@ describe('ImGateway', () => {
         conversationId: context.conversationId,
         messageId: appendedMessage.messageId,
       }),
-      identity
+      identity,
     );
     expect(client.to).toHaveBeenCalledWith('tenant-1::conversation-1');
     expect(roomTarget.emit).toHaveBeenCalledWith('messageReceived', appendedMessage);
@@ -286,7 +282,7 @@ describe('ImGateway', () => {
         conversationId: context.conversationId,
         messageId: 'message-3',
         traceId: 'trace-3',
-      })
+      }),
     ).rejects.toThrow(WsException);
   });
 });

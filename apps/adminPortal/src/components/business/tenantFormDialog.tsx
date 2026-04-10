@@ -16,12 +16,7 @@ interface TenantFormDialogProps {
   onSaved: () => void;
 }
 
-export function TenantFormDialog({
-  onClose,
-  onSaved,
-  open,
-  tenant,
-}: TenantFormDialogProps): JSX.Element {
+export function TenantFormDialog({ onClose, onSaved, open, tenant }: TenantFormDialogProps): JSX.Element {
   const { formatMessage: t } = useIntl();
   const apiClient = useApiClient();
 
@@ -63,20 +58,11 @@ export function TenantFormDialog({
   };
 
   return (
-    <Dialog
-      onClose={handleClose}
-      open={open}
-      title={t({ id: isEdit ? 'tenant.edit' : 'tenant.create' })}
-    >
+    <Dialog onClose={handleClose} open={open} title={t({ id: isEdit ? 'tenant.edit' : 'tenant.create' })}>
       <form onSubmit={handleSubmit}>
         <div className="space-y-4">
           <FormField label={t({ id: 'tenant.fieldName' })} htmlFor="tenant-name">
-            <Input
-              id="tenant-name"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+            <Input id="tenant-name" required value={name} onChange={(e) => setName(e.target.value)} />
           </FormField>
 
           <Checkbox
@@ -88,12 +74,7 @@ export function TenantFormDialog({
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
-          <Button
-            disabled={saveMutation.isPending}
-            type="button"
-            variant="secondary"
-            onClick={handleClose}
-          >
+          <Button disabled={saveMutation.isPending} type="button" variant="secondary" onClick={handleClose}>
             {t({ id: 'common.cancel' })}
           </Button>
           <Button disabled={saveMutation.isPending} type="submit">
@@ -109,11 +90,7 @@ export function TenantFormDialog({
                     strokeWidth="4"
                     fill="none"
                   />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
                 {t({ id: 'common.saving' })}
               </>

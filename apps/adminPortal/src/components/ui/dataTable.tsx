@@ -1,13 +1,6 @@
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export interface DataColumn<T> {
   header: string;
@@ -81,11 +74,7 @@ export function DataTable<T>({
                 <TableCell className="py-8 text-center" colSpan={colSpan}>
                   <p className="text-sm text-destructive">{errorMessage}</p>
                   {onRetry ? (
-                    <button
-                      className="mt-2 text-xs text-primary hover:underline"
-                      onClick={onRetry}
-                      type="button"
-                    >
+                    <button className="mt-2 text-xs text-primary hover:underline" onClick={onRetry} type="button">
                       {retryLabel}
                     </button>
                   ) : null}
@@ -94,10 +83,7 @@ export function DataTable<T>({
             ) : null}
             {!isLoading && !isError && data.length === 0 ? (
               <TableRow>
-                <TableCell
-                  className="py-8 text-center text-sm text-muted-foreground"
-                  colSpan={colSpan}
-                >
+                <TableCell className="py-8 text-center text-sm text-muted-foreground" colSpan={colSpan}>
                   {emptyMessage}
                 </TableCell>
               </TableRow>

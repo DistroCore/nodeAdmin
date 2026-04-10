@@ -62,9 +62,7 @@ export class DocSyncService {
       }
     }
 
-    return endpoints.sort(
-      (a, b) => a.path.localeCompare(b.path) || a.method.localeCompare(b.method)
-    );
+    return endpoints.sort((a, b) => a.path.localeCompare(b.path) || a.method.localeCompare(b.method));
   }
 
   private parseController(filePath: string): EndpointInfo[] {
@@ -112,12 +110,7 @@ export class DocSyncService {
       }
 
       // Reset summary if line is not related
-      if (
-        !line.startsWith('@') &&
-        !line.startsWith('//') &&
-        !line.startsWith('*') &&
-        line.length > 0
-      ) {
+      if (!line.startsWith('@') && !line.startsWith('//') && !line.startsWith('*') && line.length > 0) {
         currentSummary = '';
       }
     }

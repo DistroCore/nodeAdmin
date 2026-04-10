@@ -61,9 +61,7 @@ export class MetricsController {
     const memUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();
     const eventLoopLagMsRaw = eventLoopLagHistogram.mean / 1_000_000;
-    const eventLoopLagMs = Number.isFinite(eventLoopLagMsRaw)
-      ? Number(eventLoopLagMsRaw.toFixed(3))
-      : 0;
+    const eventLoopLagMs = Number.isFinite(eventLoopLagMsRaw) ? Number(eventLoopLagMsRaw.toFixed(3)) : 0;
 
     return {
       cpu: {
@@ -93,7 +91,7 @@ export class ConsoleController {
     private readonly connectionRegistry: ConnectionRegistry,
     private readonly conversationRepository: ConversationRepository,
     private readonly databaseService: DatabaseService,
-    private readonly tenantsService: TenantsService
+    private readonly tenantsService: TenantsService,
   ) {}
 
   @Get('overview')
@@ -104,9 +102,7 @@ export class ConsoleController {
       const tenants = await this.tenantsService.list();
       activeCount = tenants.filter((tenant) => tenant.is_active).length;
     } catch (error) {
-      this.logger.warn(
-        `Failed to load active tenant count for overview: ${this.formatError(error)}`
-      );
+      this.logger.warn(`Failed to load active tenant count for overview: ${this.formatError(error)}`);
     }
 
     const onlineUsers = this.connectionRegistry.totalUniqueUsers();
@@ -150,7 +146,7 @@ export class ConsoleController {
           roleCount,
           status: tenant.is_active ? 'active' : 'inactive',
         };
-      })
+      }),
     );
 
     return { rows: tenantsWithRoles };
@@ -174,7 +170,7 @@ export class ConsoleController {
   @ApiOperation({ summary: 'List recent conversations' })
   async getConversations(
     @CurrentUser() identity: AuthIdentity,
-    @Query('tenantId') tenantId?: string
+    @Query('tenantId') tenantId?: string,
   ): Promise<{ rows: ConversationListResponse[] }> {
     const effectiveTenantId = tenantId ?? identity.tenantId;
     const rows = await this.conversationRepository.listByTenant(effectiveTenantId, 50);
@@ -234,14 +230,13 @@ export class ConsoleController {
     @Query('action') action?: string,
     @Query('targetType') targetType?: string,
     @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string
+    @Query('endDate') endDate?: string,
   ) {
     const parsedPage = Number(pageRaw);
     const page = Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
 
     const parsedPageSize = Number(pageSizeRaw);
-    const pageSize =
-      Number.isInteger(parsedPageSize) && parsedPageSize > 0 ? Math.min(parsedPageSize, 100) : 20;
+    const pageSize = Number.isInteger(parsedPageSize) && parsedPageSize > 0 ? Math.min(parsedPageSize, 100) : 20;
 
     const { items, total } = await this.auditLogService.listByFilter(
       {
@@ -253,7 +248,7 @@ export class ConsoleController {
         endDate: endDate || undefined,
       },
       page,
-      pageSize
+      pageSize,
     );
 
     return {
@@ -269,7 +264,7 @@ export class ConsoleController {
   async getRecentMessages(
     @CurrentUser() identity: AuthIdentity,
     @Query('page') pageRaw?: string,
-    @Query('pageSize') pageSizeRaw?: string
+    @Query('pageSize') pageSizeRaw?: string,
   ) {
     const page = this.normalizePage(pageRaw);
     const pageSize = this.normalizePageSize(pageSizeRaw, 10);
@@ -289,15 +284,11 @@ export class ConsoleController {
     }
 
     try {
-      const result = await this.databaseService.drizzle
-        .select({ total: count() })
-        .from(conversations);
+      const result = await this.databaseService.drizzle.select({ total: count() }).from(conversations);
 
       return Number(result[0]?.total ?? 0);
     } catch (error) {
-      this.logger.warn(
-        `Failed to count conversations for overview statistics: ${this.formatError(error)}`
-      );
+      this.logger.warn(`Failed to count conversations for overview statistics: ${this.formatError(error)}`);
       return null;
     }
   }
@@ -318,9 +309,7 @@ export class ConsoleController {
 
       return Number(result[0]?.total ?? 0);
     } catch (error) {
-      this.logger.warn(
-        `Failed to count today's messages for overview statistics: ${this.formatError(error)}`
-      );
+      this.logger.warn(`Failed to count today's messages for overview statistics: ${this.formatError(error)}`);
       return null;
     }
   }
@@ -345,7 +334,7 @@ export class ConsoleController {
   private async listRecentMessages(
     tenantId: AuthIdentity['tenantId'],
     page: number,
-    pageSize: number
+    pageSize: number,
   ): Promise<RecentMessagesPage> {
     if (!this.databaseService.drizzle) {
       return { items: [], total: 0 };
@@ -366,10 +355,7 @@ export class ConsoleController {
           .orderBy(desc(messages.createdAt))
           .limit(pageSize)
           .offset((page - 1) * pageSize),
-        this.databaseService.drizzle
-          .select({ total: count() })
-          .from(messages)
-          .where(eq(messages.tenantId, tenantId)),
+        this.databaseService.drizzle.select({ total: count() }).from(messages).where(eq(messages.tenantId, tenantId)),
       ]);
 
       return {
@@ -377,9 +363,7 @@ export class ConsoleController {
         total: Number(totalResult[0]?.total ?? 0),
       };
     } catch (error) {
-      this.logger.warn(
-        `Failed to list recent messages for tenant ${tenantId}: ${this.formatError(error)}`
-      );
+      this.logger.warn(`Failed to list recent messages for tenant ${tenantId}: ${this.formatError(error)}`);
       return { items: [], total: 0 };
     }
   }

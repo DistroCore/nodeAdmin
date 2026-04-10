@@ -12,14 +12,14 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           'file:border-0 file:bg-transparent file:text-sm file:font-medium',
           'placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
           'disabled:cursor-not-allowed disabled:opacity-50',
-          customClassName
+          customClassName,
         )}
         ref={ref}
         type={type}
         {...props}
       />
     );
-  }
+  },
 );
 
 Input.displayName = 'Input';

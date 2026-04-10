@@ -31,9 +31,7 @@ vi.mock('react-intl', () => ({
 }));
 
 vi.mock('react-router-dom', () => ({
-  NavLink: ({ children, to }: { children: React.ReactNode; to: string }) => (
-    <a href={to}>{children}</a>
-  ),
+  NavLink: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
 }));
 
 vi.mock('@/hooks/useApiClient', () => ({
@@ -54,9 +52,7 @@ vi.mock('@/hooks/useImSocket', () => ({
 }));
 
 vi.mock('@/stores/usePermissionStore', () => ({
-  usePermissionStore: (
-    selector: (state: { hasPermission: (permission: string) => boolean }) => unknown
-  ) =>
+  usePermissionStore: (selector: (state: { hasPermission: (permission: string) => boolean }) => unknown) =>
     selector({
       hasPermission: (permission: string) => {
         if (permission === 'im:view') {
@@ -81,7 +77,7 @@ vi.mock('@/stores/useAuthStore', () => ({
       setAccessToken: (token: string | null) => void;
       setTenantId: (tenantId: string) => void;
       setUserId: (userId: string) => void;
-    }) => unknown
+    }) => unknown,
   ) =>
     selector({
       accessToken: 'existing-access-token',
@@ -112,7 +108,7 @@ vi.mock('@/stores/useMessageStore', () => ({
       }>;
       resetMessages: typeof mockResetMessages;
       upsertMessage: typeof mockUpsertMessage;
-    }) => unknown
+    }) => unknown,
   ) =>
     selector({
       messages: [],
@@ -126,7 +122,7 @@ vi.mock('@/stores/useSocketStore', () => ({
     selector: (state: {
       connectionState: 'connected' | 'connecting' | 'disconnected' | 'reconnecting';
       setConnectionState: typeof mockSetConnectionState;
-    }) => unknown
+    }) => unknown,
   ) =>
     selector({
       connectionState: 'connected',
@@ -140,7 +136,7 @@ vi.mock('@/stores/useUiStore', () => ({
       imConversationPanelOpen: boolean;
       setImConversationPanelOpen: typeof mockSetConversationPanelOpen;
       toggleImConversationPanel: typeof mockToggleConversationPanel;
-    }) => unknown
+    }) => unknown,
   ) =>
     selector({
       imConversationPanelOpen: true,
@@ -173,7 +169,7 @@ function renderPanel(): void {
   render(
     <QueryClientProvider client={queryClient}>
       <MessagePanel />
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 

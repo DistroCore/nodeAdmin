@@ -30,7 +30,7 @@ export class TenantsService {
   async list(): Promise<TenantRecord[]> {
     if (!this.pool) return [];
     const result = await this.pool.query<TenantRecord>(
-      'SELECT id, name, slug, logo, is_active, config_json, created_at, updated_at FROM tenants ORDER BY created_at'
+      'SELECT id, name, slug, logo, is_active, config_json, created_at, updated_at FROM tenants ORDER BY created_at',
     );
     return result.rows;
   }
@@ -39,7 +39,7 @@ export class TenantsService {
     if (!this.pool) throw new NotFoundException('Tenant not found');
     const result = await this.pool.query<TenantRecord>(
       'SELECT id, name, slug, logo, is_active, config_json, created_at, updated_at FROM tenants WHERE id = $1',
-      [id]
+      [id],
     );
     if (result.rows.length === 0) throw new NotFoundException('Tenant not found');
     return result.rows[0];
@@ -54,7 +54,7 @@ export class TenantsService {
     const id = randomUUID();
     await this.pool.query(
       'INSERT INTO tenants (id, name, slug, logo, is_active, config_json) VALUES ($1, $2, $3, $4, $5, $6)',
-      [id, data.name, data.slug, data.logo ?? null, data.isActive === false ? 0 : 1, '{}']
+      [id, data.name, data.slug, data.logo ?? null, data.isActive === false ? 0 : 1, '{}'],
     );
     return this.findById(id);
   }
@@ -85,7 +85,7 @@ export class TenantsService {
     params.push(id);
     const result = await this.pool.query(
       `UPDATE tenants SET ${sets.join(', ')} WHERE id = $${idx + 1} RETURNING id`,
-      params
+      params,
     );
     if (result.rows.length === 0) throw new NotFoundException('Tenant not found');
     return this.findById(id);
@@ -98,22 +98,14 @@ export class TenantsService {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
-      await client.query(
-        'DELETE FROM oauth_accounts WHERE user_id IN (SELECT id FROM users WHERE tenant_id = $1)',
-        [id]
-      );
-      await client.query(
-        'DELETE FROM user_roles WHERE user_id IN (SELECT id FROM users WHERE tenant_id = $1)',
-        [id]
-      );
-      await client.query(
-        'DELETE FROM role_permissions WHERE role_id IN (SELECT id FROM roles WHERE tenant_id = $1)',
-        [id]
-      );
-      await client.query(
-        'DELETE FROM role_menus WHERE role_id IN (SELECT id FROM roles WHERE tenant_id = $1)',
-        [id]
-      );
+      await client.query('DELETE FROM oauth_accounts WHERE user_id IN (SELECT id FROM users WHERE tenant_id = $1)', [
+        id,
+      ]);
+      await client.query('DELETE FROM user_roles WHERE user_id IN (SELECT id FROM users WHERE tenant_id = $1)', [id]);
+      await client.query('DELETE FROM role_permissions WHERE role_id IN (SELECT id FROM roles WHERE tenant_id = $1)', [
+        id,
+      ]);
+      await client.query('DELETE FROM role_menus WHERE role_id IN (SELECT id FROM roles WHERE tenant_id = $1)', [id]);
       await client.query('DELETE FROM users WHERE tenant_id = $1', [id]);
       await client.query('DELETE FROM roles WHERE tenant_id = $1', [id]);
       await client.query('DELETE FROM backlog_tasks WHERE tenant_id = $1', [id]);

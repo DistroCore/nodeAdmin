@@ -5,9 +5,7 @@ test.describe('Menus Management', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto('/menus');
-    await expect(
-      page.getByRole('main').getByRole('heading', { name: /Menu Management/i })
-    ).toBeVisible();
+    await expect(page.getByRole('main').getByRole('heading', { name: /Menu Management/i })).toBeVisible();
   });
 
   test('lists menus', async ({ page }) => {

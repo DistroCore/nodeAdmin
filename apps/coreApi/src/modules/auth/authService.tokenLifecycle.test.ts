@@ -41,12 +41,10 @@ describe('AuthService token lifecycle', () => {
         type: 'access',
       },
       runtimeConfig.auth.accessSecret,
-      { expiresIn: '-1s' }
+      { expiresIn: '-1s' },
     );
 
-    expect(() => service.verifyAccessToken(expiredToken)).toThrow(
-      'Invalid or expired access token.'
-    );
+    expect(() => service.verifyAccessToken(expiredToken)).toThrow('Invalid or expired access token.');
   });
 
   it('refreshes tokens with roles loaded from the same tenant scope', async () => {
@@ -68,10 +66,10 @@ describe('AuthService token lifecycle', () => {
     const refreshedTokens = await service.refreshTokens(issuedTokens.refreshToken);
     const identity = service.verifyAccessToken(refreshedTokens.accessToken);
 
-    expect(mockPool.query).toHaveBeenCalledWith(
-      expect.stringContaining('SELECT r.name FROM roles r'),
-      ['user-1', 'tenant-a']
-    );
+    expect(mockPool.query).toHaveBeenCalledWith(expect.stringContaining('SELECT r.name FROM roles r'), [
+      'user-1',
+      'tenant-a',
+    ]);
     expect(identity).toMatchObject({
       roles: ['admin', 'viewer'],
       tenantId: 'tenant-a',
@@ -85,7 +83,7 @@ describe('AuthService token lifecycle', () => {
         roles: ['admin'],
         tenantId: 'tenant-a',
         userId: 'user-1',
-      }).accessToken
+      }).accessToken,
     );
 
     const tenantBIdentity = service.verifyAccessToken(
@@ -93,7 +91,7 @@ describe('AuthService token lifecycle', () => {
         roles: ['admin'],
         tenantId: 'tenant-b',
         userId: 'user-1',
-      }).accessToken
+      }).accessToken,
     );
 
     expect(tenantAIdentity.tenantId).toBe('tenant-a');

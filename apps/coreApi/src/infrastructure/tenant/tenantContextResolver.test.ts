@@ -64,8 +64,8 @@ describe('TenantContextResolver', () => {
       resolver.resolve(
         createPrincipal({
           tenantId: undefined,
-        })
-      )
+        }),
+      ),
     ).toEqual({
       source: 'default',
       tenantId: 'tenant-system',
@@ -80,8 +80,8 @@ describe('TenantContextResolver', () => {
       resolver.resolve(
         createPrincipal({
           tenantId: undefined,
-        })
-      )
+        }),
+      ),
     ).toThrow('Tenant context is missing for the authenticated principal.');
   });
 });

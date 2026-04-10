@@ -20,7 +20,7 @@ import { OAuthLoginDto } from './dto/oauthLoginDto';
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    private readonly auditLogService: AuditLogService
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   @Post('register')
@@ -30,7 +30,7 @@ export class AuthController {
       dto.email,
       dto.password,
       dto.tenantId,
-      dto.name
+      dto.name,
     );
 
     return {
@@ -43,11 +43,7 @@ export class AuthController {
   @Post('login')
   @ApiOperation({ summary: 'Login with email and password', security: [] })
   async login(@Body() dto: LoginDto) {
-    const { name, roles, tokens, userId } = await this.authService.login(
-      dto.email,
-      dto.password,
-      dto.tenantId
-    );
+    const { name, roles, tokens, userId } = await this.authService.login(dto.email, dto.password, dto.tenantId);
 
     try {
       await this.auditLogService.record({
@@ -80,12 +76,7 @@ export class AuthController {
   @ApiSecurity('bearer')
   @ApiOperation({ summary: 'Change password for authenticated user' })
   async changePassword(@Body() dto: ChangePasswordDto, @CurrentUser() user: AuthIdentity) {
-    await this.authService.changePassword(
-      user.userId,
-      user.tenantId,
-      dto.currentPassword,
-      dto.newPassword
-    );
+    await this.authService.changePassword(user.userId, user.tenantId, dto.currentPassword, dto.newPassword);
     return { success: true };
   }
 
@@ -127,11 +118,7 @@ export class AuthController {
   @Post('login/sms')
   @ApiOperation({ summary: 'Login with SMS verification code', security: [] })
   async loginWithSms(@Body() dto: SmsLoginDto) {
-    const { name, roles, tokens, userId } = await this.authService.loginWithSms(
-      dto.phone,
-      dto.code,
-      dto.tenantId
-    );
+    const { name, roles, tokens, userId } = await this.authService.loginWithSms(dto.phone, dto.code, dto.tenantId);
 
     try {
       await this.auditLogService.record({
@@ -156,11 +143,7 @@ export class AuthController {
   @Post('login/oauth/:provider')
   @ApiOperation({ summary: 'Login with OAuth provider (github, google)', security: [] })
   async loginWithOAuth(@Body() dto: OAuthLoginDto) {
-    const { name, roles, tokens, userId } = await this.authService.loginWithOAuth(
-      dto.provider,
-      dto.code,
-      dto.tenantId
-    );
+    const { name, roles, tokens, userId } = await this.authService.loginWithOAuth(dto.provider, dto.code, dto.tenantId);
 
     try {
       await this.auditLogService.record({

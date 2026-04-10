@@ -46,19 +46,14 @@ describe('ConnectionRegistry', () => {
 
   it('rejects upsert when tenant connections reach limit', () => {
     const registry = new ConnectionRegistry() as unknown as RegistryTestAccess;
-    const maxConnectionsPerTenant = (
-      ConnectionRegistry as unknown as { MAX_CONNECTIONS_PER_TENANT: number }
-    ).MAX_CONNECTIONS_PER_TENANT;
+    const maxConnectionsPerTenant = (ConnectionRegistry as unknown as { MAX_CONNECTIONS_PER_TENANT: number })
+      .MAX_CONNECTIONS_PER_TENANT;
 
     registry.countByTenantId.set('tenant-x', maxConnectionsPerTenant);
 
-    expect(() =>
-      registry.upsert('socket-z', createContext('tenant-x', 'conversation-z'))
-    ).toThrowError(WsException);
+    expect(() => registry.upsert('socket-z', createContext('tenant-x', 'conversation-z'))).toThrowError(WsException);
 
-    expect(() =>
-      registry.upsert('socket-z', createContext('tenant-x', 'conversation-z'))
-    ).toThrowError(/limit/i);
+    expect(() => registry.upsert('socket-z', createContext('tenant-x', 'conversation-z'))).toThrowError(/limit/i);
   });
 
   it('does not increase count when existing socket rejoins same tenant', () => {

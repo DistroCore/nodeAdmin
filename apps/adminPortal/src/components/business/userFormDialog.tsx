@@ -44,9 +44,7 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
   const [password, setPassword] = useState('');
   const [name, setName] = useState(user?.name ?? '');
   const [isActive, setIsActive] = useState(Boolean(user?.is_active ?? true));
-  const [selectedRoleIds, setSelectedRoleIds] = useState<Set<string>>(
-    new Set(user?.roles.map((r) => r.id) ?? [])
-  );
+  const [selectedRoleIds, setSelectedRoleIds] = useState<Set<string>>(new Set(user?.roles.map((r) => r.id) ?? []));
 
   const rolesQuery = useQuery({
     queryFn: () => apiClient.get<RoleItem[]>(`/api/v1/roles?tenantId=${tenantId ?? 'default'}`),
@@ -76,10 +74,7 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
   const saveMutation = useMutation({
     mutationFn: async (data: CreateUserData | UpdateUserData) => {
       if (isEdit && user) {
-        await apiClient.patch<UserItem>(
-          `/api/v1/users/${user.id}?tenantId=${tenantId ?? 'default'}`,
-          data
-        );
+        await apiClient.patch<UserItem>(`/api/v1/users/${user.id}?tenantId=${tenantId ?? 'default'}`, data);
       } else {
         await apiClient.post<UserItem>('/api/v1/users', data);
       }
@@ -135,13 +130,7 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
       <form onSubmit={handleSubmit}>
         <div className="space-y-4">
           <FormField label={t({ id: 'auth.email' })} htmlFor="user-email">
-            <Input
-              id="user-email"
-              required
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+            <Input id="user-email" required type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </FormField>
 
           <FormField
@@ -164,13 +153,7 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
           </FormField>
 
           <FormField label={t({ id: 'auth.name' })} htmlFor="user-name">
-            <Input
-              id="user-name"
-              required
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+            <Input id="user-name" required type="text" value={name} onChange={(e) => setName(e.target.value)} />
           </FormField>
 
           {isEdit && (
@@ -202,25 +185,19 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
                       strokeWidth="4"
                       fill="none"
                     />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                    />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
                   {t({ id: 'users.loadingRoles' })}
                 </div>
               ) : roles.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-2 italic">
-                  {t({ id: 'users.noRoles' })}
-                </p>
+                <p className="text-sm text-muted-foreground py-2 italic">{t({ id: 'users.noRoles' })}</p>
               ) : (
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {roles.map((role) => (
                     <label
                       className={className(
                         'flex items-center gap-3 rounded-md border border-transparent p-2 transition-all cursor-pointer hover:bg-accent/50',
-                        selectedRoleIds.has(role.id) ? 'bg-primary/5 border-primary/20' : ''
+                        selectedRoleIds.has(role.id) ? 'bg-primary/5 border-primary/20' : '',
                       )}
                       key={role.id}
                     >
@@ -233,7 +210,7 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
                       <span
                         className={className(
                           'text-sm font-medium',
-                          selectedRoleIds.has(role.id) ? 'text-primary' : 'text-muted-foreground'
+                          selectedRoleIds.has(role.id) ? 'text-primary' : 'text-muted-foreground',
                         )}
                       >
                         {role.name}
@@ -247,12 +224,7 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
-          <Button
-            disabled={isPending}
-            onClick={handleDialogClose}
-            type="button"
-            variant="secondary"
-          >
+          <Button disabled={isPending} onClick={handleDialogClose} type="button" variant="secondary">
             {t({ id: 'common.cancel' })}
           </Button>
           <Button disabled={isPending} type="submit">
@@ -268,11 +240,7 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
                     strokeWidth="4"
                     fill="none"
                   />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
                 {t({ id: 'common.saving' })}
               </>

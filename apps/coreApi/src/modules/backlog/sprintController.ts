@@ -43,11 +43,7 @@ export class SprintController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a sprint' })
-  async update(
-    @Param('id') id: string,
-    @Body() dto: UpdateSprintDto,
-    @Query('tenantId') tenantId?: string
-  ) {
+  async update(@Param('id') id: string, @Body() dto: UpdateSprintDto, @Query('tenantId') tenantId?: string) {
     return this.backlogService.updateSprint(tenantId ?? 'default', id, dto);
   }
 
@@ -63,7 +59,7 @@ export class SprintController {
   async assignTasks(
     @Param('id') id: string,
     @Body() body: { taskIds: string[] },
-    @Query('tenantId') tenantId?: string
+    @Query('tenantId') tenantId?: string,
   ) {
     return this.backlogService.assignTasksToSprint(tenantId ?? 'default', id, body.taskIds);
   }

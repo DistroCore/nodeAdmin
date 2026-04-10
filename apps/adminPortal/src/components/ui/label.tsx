@@ -9,7 +9,7 @@ export function Label({ children, className: cls, ...props }: LabelProps): JSX.E
     <label
       className={className(
         'text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70',
-        cls
+        cls,
       )}
       {...props}
     >

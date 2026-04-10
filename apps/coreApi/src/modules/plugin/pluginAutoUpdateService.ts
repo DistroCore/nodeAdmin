@@ -66,7 +66,7 @@ export class PluginAutoUpdateService implements OnModuleInit, OnModuleDestroy {
       const installedPlugins = await client.query<AutoUpdateRow>(
         `SELECT tenant_id, plugin_name, installed_version
          FROM tenant_plugins
-         WHERE auto_update = true AND installed_version IS NOT NULL`
+         WHERE auto_update = true AND installed_version IS NOT NULL`,
       );
 
       for (const installedPlugin of installedPlugins.rows) {
@@ -75,14 +75,14 @@ export class PluginAutoUpdateService implements OnModuleInit, OnModuleDestroy {
            FROM plugin_versions
            WHERE plugin_id = $1
            ORDER BY published_at DESC`,
-          [installedPlugin.plugin_name]
+          [installedPlugin.plugin_name],
         );
 
         const compatibleVersion = this.pluginMarketService.resolveInstallableVersion(
           versionsResult.rows.map((row) => ({
             minPlatformVersion: row.min_platform_version,
             version: row.version,
-          }))
+          })),
         );
 
         if (
@@ -99,7 +99,7 @@ export class PluginAutoUpdateService implements OnModuleInit, OnModuleDestroy {
                installed_at = now(),
                enabled = true
            WHERE tenant_id = $2 AND plugin_name = $3`,
-          [compatibleVersion.version, installedPlugin.tenant_id, installedPlugin.plugin_name]
+          [compatibleVersion.version, installedPlugin.tenant_id, installedPlugin.plugin_name],
         );
       }
 

@@ -38,5 +38,5 @@ function LocalizedApp(): JSX.Element {
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <LocalizedApp />
-  </React.StrictMode>
+  </React.StrictMode>,
 );

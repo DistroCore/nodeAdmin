@@ -39,11 +39,9 @@ export const useNotificationStore = create<NotificationState>()(
       }),
       onRehydrateStorage: () => (state: NotificationState | undefined) => {
         if (state && Array.isArray(state.readIds as unknown)) {
-          (state as { readIds: Set<string> }).readIds = new Set(
-            state.readIds as unknown as string[]
-          );
+          (state as { readIds: Set<string> }).readIds = new Set(state.readIds as unknown as string[]);
         }
       },
-    }
-  )
+    },
+  ),
 );

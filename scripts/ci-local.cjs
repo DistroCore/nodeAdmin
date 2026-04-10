@@ -92,9 +92,7 @@ function printSummary() {
 // ── Stage 1: Static Analysis + Unit Tests + Build ──────────────────────────
 
 async function main() {
-  process.stdout.write(
-    `\n${BOLD}${CYAN}═══ Stage 1: Static Analysis + Unit Tests + Build ═══${RESET}\n`
-  );
+  process.stdout.write(`\n${BOLD}${CYAN}═══ Stage 1: Static Analysis + Unit Tests + Build ═══${RESET}\n`);
 
   let stage1Pass = true;
   stage1Pass = runStage('Format Check', 'npm run format:check') && stage1Pass;
@@ -106,10 +104,8 @@ async function main() {
   // ── Optional: Structural Checks ────────────────────────────────────────────
   if (runChecks) {
     process.stdout.write(`\n${BOLD}${CYAN}═══ Structural Checks ═══${RESET}\n`);
-    stage1Pass =
-      runStage('Naming Conventions', 'node scripts/checkNamingConventions.cjs') && stage1Pass;
-    stage1Pass =
-      runStage('Layer Dependencies', 'node scripts/checkLayerDependencies.cjs') && stage1Pass;
+    stage1Pass = runStage('Naming Conventions', 'node scripts/checkNamingConventions.cjs') && stage1Pass;
+    stage1Pass = runStage('Layer Dependencies', 'node scripts/checkLayerDependencies.cjs') && stage1Pass;
     stage1Pass = runStage('Doc Drift', 'node scripts/checkDocDrift.cjs') && stage1Pass;
   }
 
@@ -142,9 +138,7 @@ async function main() {
   }
 
   if (stage2Pass) {
-    stage2Pass =
-      runStage('Integration Tests', 'npm run test:coreApi:integration', { timeout: 120_000 }) &&
-      stage2Pass;
+    stage2Pass = runStage('Integration Tests', 'npm run test:coreApi:integration', { timeout: 120_000 }) && stage2Pass;
   }
 
   process.stdout.write(`\n${CYAN}Shutting down infra...${RESET}\n`);

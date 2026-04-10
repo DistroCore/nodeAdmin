@@ -49,7 +49,7 @@ export function RoleManagementPanel(): JSX.Element {
   const roles = rawRoles.filter(
     (role) =>
       role.name.toLowerCase().includes(search.toLowerCase()) ||
-      role.description?.toLowerCase().includes(search.toLowerCase())
+      role.description?.toLowerCase().includes(search.toLowerCase()),
   );
 
   return (

@@ -22,8 +22,7 @@ export function Header(): JSX.Element {
   const { readIds } = useNotificationStore();
 
   const auditQuery = useQuery({
-    queryFn: () =>
-      apiClient.get<{ items: Array<{ id: string }> }>('/api/v1/console/audit-logs?pageSize=50'),
+    queryFn: () => apiClient.get<{ items: Array<{ id: string }> }>('/api/v1/console/audit-logs?pageSize=50'),
     queryKey: ['notifications-badge-count'],
     refetchInterval: 30000,
   });

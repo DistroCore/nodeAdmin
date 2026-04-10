@@ -45,11 +45,7 @@ export class TaskController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a task' })
-  async update(
-    @Param('id') id: string,
-    @Body() dto: UpdateTaskDto,
-    @Query('tenantId') tenantId?: string
-  ) {
+  async update(@Param('id') id: string, @Body() dto: UpdateTaskDto, @Query('tenantId') tenantId?: string) {
     return this.backlogService.updateTask(tenantId ?? 'default', id, dto);
   }
 

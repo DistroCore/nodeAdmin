@@ -5,9 +5,7 @@ test.describe('Users Management', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto('/users');
-    await expect(
-      page.getByRole('main').getByRole('heading', { name: /User Management/i })
-    ).toBeVisible();
+    await expect(page.getByRole('main').getByRole('heading', { name: /User Management/i })).toBeVisible();
   });
 
   test('lists users and can search', async ({ page }) => {

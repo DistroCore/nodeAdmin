@@ -24,12 +24,9 @@ export const conversations = pgTable(
     tenantId: varchar('tenant_id', { length: 64 }).notNull(),
   },
   (table) => ({
-    conversationsTenantCreatedIdx: index('conversations_tenant_created_idx').on(
-      table.tenantId,
-      table.createdAt
-    ),
+    conversationsTenantCreatedIdx: index('conversations_tenant_created_idx').on(table.tenantId, table.createdAt),
     pk: primaryKey({ columns: [table.tenantId, table.id], name: 'conversations_pk' }),
-  })
+  }),
 );
 
 export const messages = pgTable(
@@ -50,23 +47,20 @@ export const messages = pgTable(
     messagesTenantConversationSequenceIdx: index('messages_tenant_conv_seq_idx').on(
       table.tenantId,
       table.conversationId,
-      table.sequenceId
+      table.sequenceId,
     ),
-    messagesTenantMessageIdUnique: uniqueIndex('messages_tenant_message_id_uniq').on(
-      table.tenantId,
-      table.messageId
-    ),
+    messagesTenantMessageIdUnique: uniqueIndex('messages_tenant_message_id_uniq').on(table.tenantId, table.messageId),
     messagesTenantUserCreatedIdx: index('messages_tenant_user_created_idx').on(
       table.tenantId,
       table.userId,
-      table.createdAt
+      table.createdAt,
     ),
     messagesConversationCreatedIdx: index('messages_conversation_created_idx').on(
       table.tenantId,
       table.conversationId,
-      table.createdAt
+      table.createdAt,
     ),
-  })
+  }),
 );
 
 export const outboxEvents = pgTable(
@@ -89,14 +83,14 @@ export const outboxEvents = pgTable(
     outboxPublishIdx: index('outbox_publish_idx').on(table.publishedAt),
     outboxEventsPublishedCreatedIdx: index('outbox_events_published_created_idx').on(
       table.publishedAt,
-      table.createdAt
+      table.createdAt,
     ),
     outboxEventsAggregateCreatedIdx: index('outbox_events_aggregate_created_idx').on(
       table.aggregateId,
-      table.createdAt
+      table.createdAt,
     ),
     pk: primaryKey({ columns: [table.id], name: 'outbox_events_pk' }),
-  })
+  }),
 );
 
 export const auditLogs = pgTable(
@@ -114,12 +108,9 @@ export const auditLogs = pgTable(
   },
   (table) => ({
     auditLogsCreatedIdx: index('audit_logs_created_idx').on(table.createdAt),
-    auditLogsTenantActionIdx: index('audit_logs_tenant_action_idx').on(
-      table.tenantId,
-      table.action
-    ),
+    auditLogsTenantActionIdx: index('audit_logs_tenant_action_idx').on(table.tenantId, table.action),
     pk: primaryKey({ columns: [table.id], name: 'audit_logs_pk' }),
-  })
+  }),
 );
 
 // ─── RBAC / Admin Platform Tables ────────────────────────────────
@@ -156,7 +147,7 @@ export const users = pgTable(
   (table) => ({
     usersTenantEmailUnique: uniqueIndex('users_tenant_email_uniq').on(table.tenantId, table.email),
     usersTenantIdx: index('users_tenant_idx').on(table.tenantId),
-  })
+  }),
 );
 
 export const roles = pgTable(
@@ -175,7 +166,7 @@ export const roles = pgTable(
   (table) => ({
     rolesTenantNameUnique: uniqueIndex('roles_tenant_name_uniq').on(table.tenantId, table.name),
     rolesTenantIdx: index('roles_tenant_idx').on(table.tenantId),
-  })
+  }),
 );
 
 export const permissions = pgTable('permissions', {
@@ -200,7 +191,7 @@ export const userRoles = pgTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.userId, table.roleId], name: 'user_roles_pk' }),
-  })
+  }),
 );
 
 export const rolePermissions = pgTable(
@@ -215,7 +206,7 @@ export const rolePermissions = pgTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.roleId, table.permissionId], name: 'role_permissions_pk' }),
-  })
+  }),
 );
 
 export const menus = pgTable(
@@ -235,7 +226,7 @@ export const menus = pgTable(
   },
   (table) => ({
     menusParentIdx: index('menus_parent_idx').on(table.parentId),
-  })
+  }),
 );
 
 export const roleMenus = pgTable(
@@ -250,7 +241,7 @@ export const roleMenus = pgTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.roleId, table.menuId], name: 'role_menus_pk' }),
-  })
+  }),
 );
 
 export const oauthAccounts = pgTable(
@@ -270,7 +261,7 @@ export const oauthAccounts = pgTable(
   },
   (table) => ({
     oauthProviderUnique: uniqueIndex('oauth_provider_uniq').on(table.provider, table.providerId),
-  })
+  }),
 );
 
 export const smsCodes = pgTable(
@@ -287,7 +278,7 @@ export const smsCodes = pgTable(
   },
   (table) => ({
     smsPhoneIdx: index('sms_phone_idx').on(table.phone, table.createdAt),
-  })
+  }),
 );
 
 export const pluginRegistry = pgTable(
@@ -307,7 +298,7 @@ export const pluginRegistry = pgTable(
   (table) => ({
     pluginRegistryDisplayNameIdx: index('plugin_registry_display_name_idx').on(table.displayName),
     pluginRegistryPublicIdx: index('plugin_registry_public_idx').on(table.isPublic),
-  })
+  }),
 );
 
 export const pluginVersions = pgTable(
@@ -328,13 +319,13 @@ export const pluginVersions = pgTable(
   (table) => ({
     pluginVersionsPluginPublishedIdx: index('plugin_versions_plugin_published_idx').on(
       table.pluginId,
-      table.publishedAt
+      table.publishedAt,
     ),
     pluginVersionsPluginVersionUnique: uniqueIndex('plugin_versions_plugin_version_uniq').on(
       table.pluginId,
-      table.version
+      table.version,
     ),
-  })
+  }),
 );
 
 export const tenantPlugins = pgTable(
@@ -355,7 +346,7 @@ export const tenantPlugins = pgTable(
     tenantPluginsEnabledIdx: index('tenant_plugins_enabled_idx').on(table.tenantId, table.enabled),
     tenantPluginsPluginNameIdx: index('tenant_plugins_plugin_name_idx').on(table.pluginName),
     pk: primaryKey({ columns: [table.tenantId, table.pluginName], name: 'tenant_plugins_pk' }),
-  })
+  }),
 );
 
 // ─── Backlog Tables ────────────────────────────────────────────────
@@ -380,15 +371,9 @@ export const backlogTasks = pgTable(
   },
   (table) => ({
     backlogTasksTenantIdx: index('backlog_tasks_tenant_idx').on(table.tenantId),
-    backlogTasksTenantStatusIdx: index('backlog_tasks_tenant_status_idx').on(
-      table.tenantId,
-      table.status
-    ),
-    backlogTasksTenantSprintIdx: index('backlog_tasks_tenant_sprint_idx').on(
-      table.tenantId,
-      table.sprintId
-    ),
-  })
+    backlogTasksTenantStatusIdx: index('backlog_tasks_tenant_status_idx').on(table.tenantId, table.status),
+    backlogTasksTenantSprintIdx: index('backlog_tasks_tenant_sprint_idx').on(table.tenantId, table.sprintId),
+  }),
 );
 
 export const backlogSprints = pgTable(
@@ -408,9 +393,6 @@ export const backlogSprints = pgTable(
   },
   (table) => ({
     backlogSprintsTenantIdx: index('backlog_sprints_tenant_idx').on(table.tenantId),
-    backlogSprintsTenantStatusIdx: index('backlog_sprints_tenant_status_idx').on(
-      table.tenantId,
-      table.status
-    ),
-  })
+    backlogSprintsTenantStatusIdx: index('backlog_sprints_tenant_status_idx').on(table.tenantId, table.status),
+  }),
 );

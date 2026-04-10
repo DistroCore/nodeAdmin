@@ -14,17 +14,12 @@ describe('PluginLoaderModule', () => {
   let routerRegisterSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    routerRegisterSpy = vi
-      .spyOn(RouterModule, 'register')
-      .mockReturnValue({ module: RouterModule } as DynamicModule);
+    routerRegisterSpy = vi.spyOn(RouterModule, 'register').mockReturnValue({ module: RouterModule } as DynamicModule);
   });
 
   it('scans installed plugins before building dynamic imports', async () => {
     const registry = {
-      getPluginModule: vi
-        .fn()
-        .mockReturnValueOnce(KanbanPluginModule)
-        .mockReturnValueOnce(ImPluginModule),
+      getPluginModule: vi.fn().mockReturnValueOnce(KanbanPluginModule).mockReturnValueOnce(ImPluginModule),
       scanInstalledPlugins: vi.fn().mockResolvedValue([
         {
           id: '@nodeadmin/plugin-kanban',
@@ -55,7 +50,7 @@ describe('PluginLoaderModule', () => {
     expect(permissionSpy).toHaveBeenNthCalledWith(1, ['backlog:view']);
     expect(permissionSpy).toHaveBeenNthCalledWith(2, ['im:view']);
     expect(dynamicModule.imports).toEqual(
-      expect.arrayContaining([{ module: RouterModule }, KanbanPluginModule, ImPluginModule])
+      expect.arrayContaining([{ module: RouterModule }, KanbanPluginModule, ImPluginModule]),
     );
   });
 

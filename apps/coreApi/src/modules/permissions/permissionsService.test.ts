@@ -47,7 +47,7 @@ describe('PermissionsService', () => {
     const result = await service.findAll();
 
     expect(pool.query).toHaveBeenCalledWith(
-      'SELECT id, code, name, module, description FROM permissions ORDER BY module, code'
+      'SELECT id, code, name, module, description FROM permissions ORDER BY module, code',
     );
     expect(result).toHaveLength(2);
     expect(result[0]?.code).toBe('users:read');
@@ -82,7 +82,7 @@ describe('PermissionsService', () => {
 
     expect(pool.query).toHaveBeenCalledWith(
       'SELECT id, code, name, module, description FROM permissions WHERE module = $1 ORDER BY code',
-      ['im']
+      ['im'],
     );
     expect(result).toEqual([
       {
@@ -117,7 +117,7 @@ describe('PermissionsService', () => {
 
     expect(pool.query).toHaveBeenCalledWith(
       'SELECT id, code, name, module, description FROM permissions WHERE module = $1 ORDER BY code',
-      ['im:admin']
+      ['im:admin'],
     );
   });
 

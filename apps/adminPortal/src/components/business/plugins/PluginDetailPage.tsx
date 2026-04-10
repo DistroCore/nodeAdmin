@@ -5,14 +5,7 @@ import { usePluginStore } from '@/stores/usePluginStore';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from '@/components/ui/table';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NavIcon } from '@/app/layout/navIcon';
 import { className } from '@/lib/className';
@@ -103,9 +96,7 @@ export function PluginDetailPage() {
           <Link className={buttonVariants({ variant: 'outline' })} to="/plugins/marketplace">
             {t({ id: 'common.back', defaultMessage: 'Back' })}
           </Link>
-          <Button onClick={() => refetch()}>
-            {t({ id: 'common.retry', defaultMessage: 'Retry' })}
-          </Button>
+          <Button onClick={() => refetch()}>{t({ id: 'common.retry', defaultMessage: 'Retry' })}</Button>
         </div>
       </div>
     );
@@ -115,19 +106,11 @@ export function PluginDetailPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex items-center space-x-4">
         <Link
-          className={className(
-            buttonVariants({ variant: 'ghost', size: 'sm' }),
-            'flex items-center'
-          )}
+          className={className(buttonVariants({ variant: 'ghost', size: 'sm' }), 'flex items-center')}
           to="/plugins/marketplace"
         >
           <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              d="M15 19l-7-7 7-7"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-            />
+            <path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
           </svg>
           {t({ id: 'common.back', defaultMessage: 'Back' })}
         </Link>
@@ -156,11 +139,7 @@ export function PluginDetailPage() {
                     variant="outline"
                     className="border-destructive text-destructive hover:bg-destructive/10"
                     onClick={() => {
-                      if (
-                        window.confirm(
-                          t({ id: 'plugins.uninstall.confirm', defaultMessage: 'Are you sure?' })
-                        )
-                      ) {
+                      if (window.confirm(t({ id: 'plugins.uninstall.confirm', defaultMessage: 'Are you sure?' }))) {
                         uninstall.mutate(data.id);
                       }
                     }}
@@ -173,11 +152,7 @@ export function PluginDetailPage() {
                   </Button>
                 </>
               ) : (
-                <Button
-                  size="lg"
-                  onClick={() => install.mutate({ pluginId: data.id })}
-                  disabled={install.isPending}
-                >
+                <Button size="lg" onClick={() => install.mutate({ pluginId: data.id })} disabled={install.isPending}>
                   {install.isPending && (
                     <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                   )}
@@ -189,9 +164,7 @@ export function PluginDetailPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>
-                {t({ id: 'plugins.detail.description', defaultMessage: 'Description' })}
-              </CardTitle>
+              <CardTitle>{t({ id: 'plugins.detail.description', defaultMessage: 'Description' })}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="whitespace-pre-wrap text-sm text-muted-foreground leading-relaxed">
@@ -206,9 +179,7 @@ export function PluginDetailPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>
-                {t({ id: 'plugins.detail.versions', defaultMessage: 'Version History' })}
-              </CardTitle>
+              <CardTitle>{t({ id: 'plugins.detail.versions', defaultMessage: 'Version History' })}</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
@@ -224,9 +195,7 @@ export function PluginDetailPage() {
                   {data.versions.map((v) => (
                     <TableRow key={v.version}>
                       <TableCell className="font-mono pl-6">v{v.version}</TableCell>
-                      <TableCell className="max-w-md truncate text-sm">
-                        {v.changelog || '-'}
-                      </TableCell>
+                      <TableCell className="max-w-md truncate text-sm">{v.changelog || '-'}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {new Date(v.publishedAt).toLocaleDateString()}
                       </TableCell>
@@ -235,13 +204,11 @@ export function PluginDetailPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() =>
-                              install.mutate({ pluginId: data.id, version: v.version })
-                            }
+                            onClick={() => install.mutate({ pluginId: data.id, version: v.version })}
                           >
                             {t(
                               { id: 'plugins.install_v', defaultMessage: 'Install v{version}' },
-                              { version: v.version }
+                              { version: v.version },
                             )}
                           </Button>
                         )}

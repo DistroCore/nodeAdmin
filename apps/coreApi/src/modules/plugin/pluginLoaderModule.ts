@@ -5,9 +5,7 @@ import { PluginSandboxModule } from './pluginSandboxModule';
 
 @Module({})
 export class PluginLoaderModule {
-  static async forRootAsync(
-    registry: PluginRegistryService = new PluginRegistryService()
-  ): Promise<DynamicModule> {
+  static async forRootAsync(registry: PluginRegistryService = new PluginRegistryService()): Promise<DynamicModule> {
     const registrations = await registry.scanInstalledPlugins();
     const pluginModules = registrations.map((registration) => {
       PluginSandboxModule.validatePermissions(registration.manifest.permissions);

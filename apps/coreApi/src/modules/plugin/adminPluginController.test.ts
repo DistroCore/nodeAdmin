@@ -52,9 +52,9 @@ describe('AdminPluginController', () => {
   it('returns plugin details for an admin user', async () => {
     service.getPluginDetails.mockResolvedValue({ id: '@nodeadmin/plugin-kanban' });
 
-    await expect(
-      controller.getDetails(createAdminIdentity(), '@nodeadmin/plugin-kanban')
-    ).resolves.toEqual({ id: '@nodeadmin/plugin-kanban' });
+    await expect(controller.getDetails(createAdminIdentity(), '@nodeadmin/plugin-kanban')).resolves.toEqual({
+      id: '@nodeadmin/plugin-kanban',
+    });
   });
 
   it('installs a plugin for the current tenant', async () => {
@@ -69,7 +69,7 @@ describe('AdminPluginController', () => {
       controller.install(createAdminIdentity(), {
         pluginId: '@nodeadmin/plugin-kanban',
         version: '1.2.0',
-      })
+      }),
     ).resolves.toEqual({
       enabled: true,
       pluginId: '@nodeadmin/plugin-kanban',
@@ -77,11 +77,7 @@ describe('AdminPluginController', () => {
       version: '1.2.0',
     });
 
-    expect(service.installPlugin).toHaveBeenCalledWith(
-      'tenant-1',
-      '@nodeadmin/plugin-kanban',
-      '1.2.0'
-    );
+    expect(service.installPlugin).toHaveBeenCalledWith('tenant-1', '@nodeadmin/plugin-kanban', '1.2.0');
   });
 
   it('updates an installed plugin to a specified version', async () => {
@@ -95,7 +91,7 @@ describe('AdminPluginController', () => {
     await expect(
       controller.update(createAdminIdentity(), '@nodeadmin/plugin-kanban', {
         version: '1.3.0',
-      })
+      }),
     ).resolves.toEqual({
       enabled: true,
       pluginId: '@nodeadmin/plugin-kanban',
@@ -111,9 +107,7 @@ describe('AdminPluginController', () => {
       tenantId: 'tenant-1',
     });
 
-    await expect(
-      controller.remove(createAdminIdentity(), '@nodeadmin/plugin-kanban')
-    ).resolves.toEqual({
+    await expect(controller.remove(createAdminIdentity(), '@nodeadmin/plugin-kanban')).resolves.toEqual({
       pluginId: '@nodeadmin/plugin-kanban',
       removed: true,
       tenantId: 'tenant-1',
@@ -141,7 +135,7 @@ describe('AdminPluginController', () => {
           version: '1.2.0',
         },
         serverPackage: '@nodeadmin/plugin-kanban@1.2.0',
-      })
+      }),
     ).resolves.toEqual({
       pluginId: '@nodeadmin/plugin-kanban',
       publishedVersion: '1.2.0',

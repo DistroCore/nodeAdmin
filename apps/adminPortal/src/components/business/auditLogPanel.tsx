@@ -55,8 +55,7 @@ export function AuditLogPanel(): JSX.Element {
   }, [page, actionFilter, startDate, endDate]);
 
   const query = useQuery({
-    queryFn: () =>
-      apiClient.get<PaginatedResponse<AuditLogItem>>(`/api/v1/console/audit-logs?${queryParams}`),
+    queryFn: () => apiClient.get<PaginatedResponse<AuditLogItem>>(`/api/v1/console/audit-logs?${queryParams}`),
     queryKey: ['audit-logs', queryParams],
   });
 
@@ -69,7 +68,7 @@ export function AuditLogPanel(): JSX.Element {
       ? rawItems.filter(
           (item) =>
             item.userId.toLowerCase().includes(search.toLowerCase()) ||
-            item.action.toLowerCase().includes(search.toLowerCase())
+            item.action.toLowerCase().includes(search.toLowerCase()),
         )
       : rawItems;
 
@@ -90,8 +89,7 @@ export function AuditLogPanel(): JSX.Element {
       ),
       title: (
         <span>
-          <span className="font-medium">{item.userId}</span>{' '}
-          {t({ id: `audit.action.${getActionVerb(item.action)}` })}{' '}
+          <span className="font-medium">{item.userId}</span> {t({ id: `audit.action.${getActionVerb(item.action)}` })}{' '}
           <span className="font-medium">{item.targetType ?? ''}</span>
         </span>
       ),

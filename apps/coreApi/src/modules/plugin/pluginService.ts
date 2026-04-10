@@ -41,7 +41,7 @@ export class PluginService {
          FROM tenant_plugins
          WHERE tenant_id = $1
          ORDER BY plugin_name ASC`,
-        [tenantId]
+        [tenantId],
       );
 
       return result.rows.map((row) => ({
@@ -66,7 +66,7 @@ export class PluginService {
          FROM tenant_plugins
          WHERE tenant_id = $1 AND plugin_name = $2 AND enabled = true
          LIMIT 1`,
-        [tenantId, pluginName]
+        [tenantId, pluginName],
       );
 
       return result.rows[0]?.enabled === true;
@@ -79,10 +79,7 @@ export class PluginService {
     }
   }
 
-  private async withTenantContext<T>(
-    tenantId: string,
-    callback: (client: PoolClient) => Promise<T>
-  ): Promise<T> {
+  private async withTenantContext<T>(tenantId: string, callback: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.pool!.connect();
 
     try {

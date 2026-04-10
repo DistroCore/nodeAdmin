@@ -45,7 +45,7 @@ function persistAuth(state: Partial<AuthState>): void {
         userId: state.userId,
         userName: state.userName,
         userRoles: state.userRoles,
-      })
+      }),
     );
   } catch {
     // localStorage unavailable

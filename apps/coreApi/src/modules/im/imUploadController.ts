@@ -32,10 +32,7 @@ export class ImUploadController {
   @Post('upload')
   @ApiSecurity('bearer')
   @ApiOperation({ summary: 'Upload an image file for IM messages' })
-  async upload(
-    @Req() request: FastifyRequest,
-    @CurrentUser() user: AuthIdentity
-  ): Promise<UploadResult> {
+  async upload(@Req() request: FastifyRequest, @CurrentUser() user: AuthIdentity): Promise<UploadResult> {
     if (!user?.tenantId || !user?.userId) {
       throw new UnauthorizedException('Authentication required.');
     }
@@ -59,7 +56,7 @@ export class ImUploadController {
 
     if (!runtimeConfig.upload.allowedMimeTypes.includes(data.mimetype)) {
       throw new BadRequestException(
-        `Unsupported file type: ${data.mimetype}. Allowed: ${runtimeConfig.upload.allowedMimeTypes.join(', ')}`
+        `Unsupported file type: ${data.mimetype}. Allowed: ${runtimeConfig.upload.allowedMimeTypes.join(', ')}`,
       );
     }
 
@@ -76,7 +73,7 @@ export class ImUploadController {
     const url = `/${runtimeConfig.upload.storagePath}/${user.tenantId}/${storedFileName}`;
 
     this.logger.log(
-      `File uploaded: tenant=${user.tenantId} file=${storedFileName} size=${buffer.length} mime=${data.mimetype}`
+      `File uploaded: tenant=${user.tenantId} file=${storedFileName} size=${buffer.length} mime=${data.mimetype}`,
     );
 
     return {

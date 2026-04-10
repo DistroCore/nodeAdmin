@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import type {
-  ImMessage,
-  ImMessageType,
-  ImPresenceStatus,
-  MessageMetadata,
-} from '@nodeadmin/shared-types';
+import type { ImMessage, ImMessageType, ImPresenceStatus, MessageMetadata } from '@nodeadmin/shared-types';
 import { SocketConnectionState } from '@/stores/useSocketStore';
 
 export type ImSocketMessage = ImMessage;
@@ -82,10 +77,7 @@ export function useImSocket(options: UseImSocketOptions): {
   emitMarkAsRead: (payload: { conversationId: string; lastReadMessageId: string }) => void;
   emitSetPresenceStatus: (status: ImPresenceStatus) => void;
   emitTyping: (payload: { conversationId: string; isTyping: boolean }) => void;
-  emitWithAck: (
-    payload: ImSendMessagePayload,
-    timeoutMs: number
-  ) => Promise<ImSendMessageAck | null>;
+  emitWithAck: (payload: ImSendMessagePayload, timeoutMs: number) => Promise<ImSendMessageAck | null>;
 } {
   const {
     accessToken,
@@ -238,17 +230,14 @@ export function useImSocket(options: UseImSocketOptions): {
         });
       });
     },
-    []
+    [],
   );
 
-  const emitEdit = useCallback(
-    (payload: { conversationId: string; messageId: string; content: string }) => {
-      const socket = socketRef.current;
-      if (!socket) return;
-      socket.emit('editMessage', payload);
-    },
-    []
-  );
+  const emitEdit = useCallback((payload: { conversationId: string; messageId: string; content: string }) => {
+    const socket = socketRef.current;
+    if (!socket) return;
+    socket.emit('editMessage', payload);
+  }, []);
 
   const emitDelete = useCallback((payload: { conversationId: string; messageId: string }) => {
     const socket = socketRef.current;
@@ -256,14 +245,11 @@ export function useImSocket(options: UseImSocketOptions): {
     socket.emit('deleteMessage', payload);
   }, []);
 
-  const emitMarkAsRead = useCallback(
-    (payload: { conversationId: string; lastReadMessageId: string }) => {
-      const socket = socketRef.current;
-      if (!socket) return;
-      socket.emit('markAsRead', payload);
-    },
-    []
-  );
+  const emitMarkAsRead = useCallback((payload: { conversationId: string; lastReadMessageId: string }) => {
+    const socket = socketRef.current;
+    if (!socket) return;
+    socket.emit('markAsRead', payload);
+  }, []);
 
   const emitSetPresenceStatus = useCallback((status: ImPresenceStatus) => {
     const socket = socketRef.current;

@@ -33,7 +33,7 @@ function renderPanel() {
   return render(
     <QueryClientProvider client={qc}>
       <SystemMetricsPanel />
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 

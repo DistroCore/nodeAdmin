@@ -18,24 +18,14 @@ const SUMMARY_INTERVAL_MS = 5000;
 const HTTP_TIMEOUT_MS = readPositiveIntEnv('MONITOR_HTTP_TIMEOUT_MS', 1500);
 const REDIS_TIMEOUT_MS = readPositiveIntEnv('MONITOR_REDIS_TIMEOUT_MS', 1500);
 
-const coreApiBaseUrl = trimTrailingSlash(
-  readStringEnv('CORE_API_BASE_URL', 'http://127.0.0.1:11451')
-);
-const preferredMetricsPath = normalizePath(
-  readStringEnv('MONITOR_METRICS_PATH', '/api/v1/metrics')
-);
+const coreApiBaseUrl = trimTrailingSlash(readStringEnv('CORE_API_BASE_URL', 'http://127.0.0.1:11451'));
+const preferredMetricsPath = normalizePath(readStringEnv('MONITOR_METRICS_PATH', '/api/v1/metrics'));
 const fallbackMetricsPath = '/api/v1/console/metrics';
 const outputPath = path.resolve(
-  readStringEnv(
-    'MONITOR_OUTPUT_CSV',
-    path.resolve(__dirname, '..', 'reports', 'performance-monitor.csv')
-  )
+  readStringEnv('MONITOR_OUTPUT_CSV', path.resolve(__dirname, '..', 'reports', 'performance-monitor.csv')),
 );
 const pgConnectionString = readStringEnv('MONITOR_DATABASE_URL', process.env.DATABASE_URL || '');
-const redisUrl = readStringEnv(
-  'MONITOR_REDIS_URL',
-  process.env.REDIS_URL || 'redis://127.0.0.1:6379'
-);
+const redisUrl = readStringEnv('MONITOR_REDIS_URL', process.env.REDIS_URL || 'redis://127.0.0.1:6379');
 const redisCliCommand = readStringEnv('MONITOR_REDIS_CLI', 'redis-cli');
 
 const CSV_HEADERS = [
@@ -75,9 +65,7 @@ async function main() {
   ensureCsvFile(outputPath, CSV_HEADERS);
 
   process.stdout.write(`[monitor] CSV output: ${outputPath}\n`);
-  process.stdout.write(
-    `[monitor] Node metrics endpoint: ${coreApiBaseUrl}${runtimeState.activeMetricsPath}\n`
-  );
+  process.stdout.write(`[monitor] Node metrics endpoint: ${coreApiBaseUrl}${runtimeState.activeMetricsPath}\n`);
   process.stdout.write('[monitor] Sampling every 1 second. Press Ctrl+C to stop.\n');
 
   await sampleAndWrite();
@@ -289,8 +277,7 @@ async function collectPostgresMetrics() {
     let tps = null;
     if (totalTransactions !== null && runtimeState.previousPgTransactions) {
       const elapsedSec = (nowMs - runtimeState.previousPgTransactions.timestampMs) / 1000;
-      const deltaTransactions =
-        totalTransactions - runtimeState.previousPgTransactions.totalTransactions;
+      const deltaTransactions = totalTransactions - runtimeState.previousPgTransactions.totalTransactions;
       if (elapsedSec > 0 && deltaTransactions >= 0) {
         tps = roundTo(deltaTransactions / elapsedSec, 2);
       }
@@ -371,9 +358,7 @@ function collectSystemMetrics() {
   const totalMemoryMb = bytesToMb(os.totalmem());
   const availableMemoryMb = bytesToMb(os.freemem());
   const usedMemoryMb =
-    totalMemoryMb !== null && availableMemoryMb !== null
-      ? roundTo(totalMemoryMb - availableMemoryMb, 2)
-      : null;
+    totalMemoryMb !== null && availableMemoryMb !== null ? roundTo(totalMemoryMb - availableMemoryMb, 2) : null;
 
   return {
     availableMemoryMb,
@@ -459,7 +444,7 @@ async function shutdown(signalName) {
 
   const durationSec = roundTo((Date.now() - runtimeState.startedAtMs) / 1000, 1);
   process.stdout.write(
-    `[monitor] Stopped. samples=${runtimeState.sampleCount} duration=${durationSec}s output=${outputPath}\n`
+    `[monitor] Stopped. samples=${runtimeState.sampleCount} duration=${durationSec}s output=${outputPath}\n`,
   );
   process.exit(0);
 }
@@ -595,9 +580,7 @@ function sleep(ms) {
 
 main().catch((error) => {
   const message =
-    error && typeof error === 'object' && typeof error.message === 'string'
-      ? error.message
-      : 'unknown_error';
+    error && typeof error === 'object' && typeof error.message === 'string' ? error.message : 'unknown_error';
   process.stderr.write(`[monitor] fatal error: ${message}\n`);
   process.exit(1);
 });

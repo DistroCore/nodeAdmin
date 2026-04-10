@@ -1,7 +1,6 @@
 import { defineConfig } from 'drizzle-kit';
 
-const databaseUrl =
-  process.env.DATABASE_URL ?? 'postgres://nodeadmin:nodeadmin@localhost:5432/nodeadmin';
+const databaseUrl = process.env.DATABASE_URL ?? 'postgres://nodeadmin:nodeadmin@localhost:5432/nodeadmin';
 
 export default defineConfig({
   dbCredentials: {

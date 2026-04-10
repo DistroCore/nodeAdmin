@@ -21,7 +21,7 @@ export class BacklogService {
     tenantId: string,
     page = 1,
     pageSize = 20,
-    filters?: { status?: string; sprintId?: string; search?: string }
+    filters?: { status?: string; sprintId?: string; search?: string },
   ) {
     if (!this.pool) return { items: [], total: 0, page, pageSize };
     const offset = (page - 1) * pageSize;
@@ -44,17 +44,14 @@ export class BacklogService {
 
     const where = `WHERE ${conditions.join(' AND ')}`;
 
-    const countResult = await this.pool.query(
-      `SELECT COUNT(*)::int as count FROM backlog_tasks t ${where}`,
-      params
-    );
+    const countResult = await this.pool.query(`SELECT COUNT(*)::int as count FROM backlog_tasks t ${where}`, params);
     const total = countResult.rows[0].count;
 
     const result = await this.pool.query(
       `SELECT t.* FROM backlog_tasks t ${where}
        ORDER BY t.sort_order ASC, t.created_at DESC
        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
-      [...params, pageSize, offset]
+      [...params, pageSize, offset],
     );
 
     return { items: result.rows, total, page, pageSize };
@@ -62,10 +59,10 @@ export class BacklogService {
 
   async findTaskById(tenantId: string, taskId: string) {
     if (!this.pool) throw new NotFoundException('Task not found');
-    const result = await this.pool.query(
-      'SELECT * FROM backlog_tasks WHERE tenant_id = $1 AND id = $2',
-      [tenantId, taskId]
-    );
+    const result = await this.pool.query('SELECT * FROM backlog_tasks WHERE tenant_id = $1 AND id = $2', [
+      tenantId,
+      taskId,
+    ]);
     if (result.rows.length === 0) throw new NotFoundException('Task not found');
     return result.rows[0];
   }
@@ -80,7 +77,7 @@ export class BacklogService {
       assigneeId?: string;
       sprintId?: string;
       createdBy?: string;
-    }
+    },
   ) {
     if (!this.pool) throw new Error('Database not available');
     const taskId = randomUUID();
@@ -101,7 +98,7 @@ export class BacklogService {
           data.assigneeId ?? null,
           data.sprintId ?? null,
           data.createdBy ?? null,
-        ]
+        ],
       );
       await client.query('COMMIT');
     } catch (error) {
@@ -123,7 +120,7 @@ export class BacklogService {
       priority?: string;
       assigneeId?: string;
       sprintId?: string;
-    }
+    },
   ) {
     if (!this.pool) throw new Error('Database not available');
     const client = await this.pool.connect();
@@ -165,7 +162,7 @@ export class BacklogService {
         params.push(tenantId, taskId);
         await client.query(
           `UPDATE backlog_tasks SET ${sets.join(', ')} WHERE tenant_id = $${paramIdx + 1} AND id = $${paramIdx + 2}`,
-          params
+          params,
         );
       }
 
@@ -185,10 +182,10 @@ export class BacklogService {
     try {
       await client.query('BEGIN');
       await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [tenantId]);
-      const result = await client.query(
-        'DELETE FROM backlog_tasks WHERE tenant_id = $1 AND id = $2 RETURNING id',
-        [tenantId, taskId]
-      );
+      const result = await client.query('DELETE FROM backlog_tasks WHERE tenant_id = $1 AND id = $2 RETURNING id', [
+        tenantId,
+        taskId,
+      ]);
       await client.query('COMMIT');
       if (result.rows.length === 0) throw new NotFoundException('Task not found');
     } catch (error) {
@@ -201,12 +198,7 @@ export class BacklogService {
 
   // ─── Sprints ──────────────────────────────────────────────────────
 
-  async listSprints(
-    tenantId: string,
-    page = 1,
-    pageSize = 20,
-    filters?: { status?: string; search?: string }
-  ) {
+  async listSprints(tenantId: string, page = 1, pageSize = 20, filters?: { status?: string; search?: string }) {
     if (!this.pool) return { items: [], total: 0, page, pageSize };
     const offset = (page - 1) * pageSize;
 
@@ -224,17 +216,14 @@ export class BacklogService {
 
     const where = `WHERE ${conditions.join(' AND ')}`;
 
-    const countResult = await this.pool.query(
-      `SELECT COUNT(*)::int as count FROM backlog_sprints s ${where}`,
-      params
-    );
+    const countResult = await this.pool.query(`SELECT COUNT(*)::int as count FROM backlog_sprints s ${where}`, params);
     const total = countResult.rows[0].count;
 
     const result = await this.pool.query(
       `SELECT s.* FROM backlog_sprints s ${where}
        ORDER BY s.created_at DESC
        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
-      [...params, pageSize, offset]
+      [...params, pageSize, offset],
     );
 
     return { items: result.rows, total, page, pageSize };
@@ -242,10 +231,10 @@ export class BacklogService {
 
   async findSprintById(tenantId: string, sprintId: string) {
     if (!this.pool) throw new NotFoundException('Sprint not found');
-    const result = await this.pool.query(
-      'SELECT * FROM backlog_sprints WHERE tenant_id = $1 AND id = $2',
-      [tenantId, sprintId]
-    );
+    const result = await this.pool.query('SELECT * FROM backlog_sprints WHERE tenant_id = $1 AND id = $2', [
+      tenantId,
+      sprintId,
+    ]);
     if (result.rows.length === 0) throw new NotFoundException('Sprint not found');
     return result.rows[0];
   }
@@ -258,7 +247,7 @@ export class BacklogService {
       status?: string;
       startDate?: string;
       endDate?: string;
-    }
+    },
   ) {
     if (!this.pool) throw new Error('Database not available');
     const sprintId = randomUUID();
@@ -277,7 +266,7 @@ export class BacklogService {
           data.status ?? 'planning',
           data.startDate ?? null,
           data.endDate ?? null,
-        ]
+        ],
       );
       await client.query('COMMIT');
     } catch (error) {
@@ -298,7 +287,7 @@ export class BacklogService {
       status?: string;
       startDate?: string;
       endDate?: string;
-    }
+    },
   ) {
     if (!this.pool) throw new Error('Database not available');
     const client = await this.pool.connect();
@@ -336,7 +325,7 @@ export class BacklogService {
         params.push(tenantId, sprintId);
         await client.query(
           `UPDATE backlog_sprints SET ${sets.join(', ')} WHERE tenant_id = $${paramIdx + 1} AND id = $${paramIdx + 2}`,
-          params
+          params,
         );
       }
 
@@ -356,10 +345,10 @@ export class BacklogService {
     try {
       await client.query('BEGIN');
       await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [tenantId]);
-      const result = await client.query(
-        'DELETE FROM backlog_sprints WHERE tenant_id = $1 AND id = $2 RETURNING id',
-        [tenantId, sprintId]
-      );
+      const result = await client.query('DELETE FROM backlog_sprints WHERE tenant_id = $1 AND id = $2 RETURNING id', [
+        tenantId,
+        sprintId,
+      ]);
       await client.query('COMMIT');
       if (result.rows.length === 0) throw new NotFoundException('Sprint not found');
     } catch (error) {
@@ -384,7 +373,7 @@ export class BacklogService {
       for (const taskId of taskIds) {
         await client.query(
           'UPDATE backlog_tasks SET sprint_id = $1, updated_at = now() WHERE tenant_id = $2 AND id = $3',
-          [sprintId, tenantId, taskId]
+          [sprintId, tenantId, taskId],
         );
       }
 

@@ -82,15 +82,12 @@ describe.sequential('CoreApi integration', () => {
     const accessToken = await context.issueDevToken(context.uniqueId('crud-admin'));
     const email = `${context.uniqueId('crud')}@example.com`;
 
-    const createResponse = await context.http
-      .post('/api/v1/users')
-      .set('Authorization', `Bearer ${accessToken}`)
-      .send({
-        email,
-        name: 'CRUD User',
-        password: 'UserP@ssword1',
-        tenantId: 'default',
-      });
+    const createResponse = await context.http.post('/api/v1/users').set('Authorization', `Bearer ${accessToken}`).send({
+      email,
+      name: 'CRUD User',
+      password: 'UserP@ssword1',
+      tenantId: 'default',
+    });
 
     expect(createResponse.status).toBe(201);
     expect(createResponse.body.email).toBe(email);
@@ -142,9 +139,7 @@ describe.sequential('CoreApi integration', () => {
 
   it('covers IM websocket join and message delivery', async () => {
     const senderToken = await context.issueDevToken(context.uniqueId('im-sender'), ['im:operator']);
-    const receiverToken = await context.issueDevToken(context.uniqueId('im-receiver'), [
-      'im:operator',
-    ]);
+    const receiverToken = await context.issueDevToken(context.uniqueId('im-receiver'), ['im:operator']);
     const conversationId = context.uniqueId('conversation');
     const messageId = context.uniqueId('message');
     const traceId = context.uniqueId('trace');
@@ -156,7 +151,7 @@ describe.sequential('CoreApi integration', () => {
       const receiverMessage = waitForEvent(
         receiver,
         'messageReceived',
-        (payload: { messageId?: string }) => payload?.messageId === messageId
+        (payload: { messageId?: string }) => payload?.messageId === messageId,
       );
 
       await emitWithAck(sender, 'joinConversation', { conversationId });
@@ -238,15 +233,12 @@ describe.sequential('CoreApi integration', () => {
     const email = `${context.uniqueId('managed-user')}@example.com`;
     const password = 'ManagedUserP@ss1';
 
-    const createResponse = await context.http
-      .post('/api/v1/users')
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({
-        email,
-        name: 'Managed User',
-        password,
-        tenantId: 'default',
-      });
+    const createResponse = await context.http.post('/api/v1/users').set('Authorization', `Bearer ${adminToken}`).send({
+      email,
+      name: 'Managed User',
+      password,
+      tenantId: 'default',
+    });
 
     expect(createResponse.status).toBe(201);
     const userId = createResponse.body.id as string;
@@ -286,11 +278,7 @@ describe.sequential('CoreApi integration', () => {
 
     expect(tenantResponse.status).toBe(201);
     const tenantId = tenantResponse.body.id as string;
-    const tenantAdminToken = await context.issueDevToken(
-      context.uniqueId('tenant-admin'),
-      ['admin'],
-      tenantId
-    );
+    const tenantAdminToken = await context.issueDevToken(context.uniqueId('tenant-admin'), ['admin'], tenantId);
     const email = `${context.uniqueId('tenant-user')}@example.com`;
 
     const createUserResponse = await context.http
@@ -311,9 +299,7 @@ describe.sequential('CoreApi integration', () => {
       .set('Authorization', `Bearer ${tenantAdminToken}`);
 
     expect(listResponse.status).toBe(200);
-    expect(listResponse.body.items.some((item: { email: string }) => item.email === email)).toBe(
-      true
-    );
+    expect(listResponse.body.items.some((item: { email: string }) => item.email === email)).toBe(true);
   });
 
   it('covers permissions + roles by assigning seeded permissions to a new role', async () => {
@@ -327,9 +313,7 @@ describe.sequential('CoreApi integration', () => {
     expect(Array.isArray(permissionsResponse.body)).toBe(true);
     expect(permissionsResponse.body.length).toBeGreaterThan(0);
 
-    const permissionIds = permissionsResponse.body
-      .slice(0, 2)
-      .map((permission: { id: string }) => permission.id);
+    const permissionIds = permissionsResponse.body.slice(0, 2).map((permission: { id: string }) => permission.id);
 
     const createRoleResponse = await context.http
       .post('/api/v1/roles')
@@ -350,9 +334,9 @@ describe.sequential('CoreApi integration', () => {
       .set('Authorization', `Bearer ${adminToken}`);
 
     expect(roleResponse.status).toBe(200);
-    expect(
-      roleResponse.body.permissions.map((permission: { id: string }) => permission.id)
-    ).toEqual(expect.arrayContaining(permissionIds));
+    expect(roleResponse.body.permissions.map((permission: { id: string }) => permission.id)).toEqual(
+      expect.arrayContaining(permissionIds),
+    );
   });
 });
 
@@ -386,7 +370,7 @@ async function connectSocket(baseUrl: string, token: string): Promise<Socket> {
 async function emitWithAck<TPayload extends object, TAck>(
   socket: Socket,
   eventName: string,
-  payload: TPayload
+  payload: TPayload,
 ): Promise<TAck> {
   return await new Promise<TAck>((resolve, reject) => {
     const timeout = setTimeout(() => {
@@ -403,7 +387,7 @@ async function emitWithAck<TPayload extends object, TAck>(
 async function waitForEvent<TPayload>(
   socket: Socket,
   eventName: string,
-  predicate: (payload: TPayload) => boolean
+  predicate: (payload: TPayload) => boolean,
 ): Promise<TPayload> {
   return await new Promise<TPayload>((resolve, reject) => {
     const timeout = setTimeout(() => {

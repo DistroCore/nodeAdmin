@@ -88,12 +88,7 @@ export class InMemoryMessageStore {
     return currentMessages.slice(-limit);
   }
 
-  updateContent(
-    tenantId: string,
-    conversationId: string,
-    messageId: string,
-    content: string
-  ): StoredMessage | null {
+  updateContent(tenantId: string, conversationId: string, messageId: string, content: string): StoredMessage | null {
     const streamKey = this.toStreamKey(tenantId, conversationId);
     const messageById = this.messageByIdByStream.get(streamKey);
     if (!messageById) return null;

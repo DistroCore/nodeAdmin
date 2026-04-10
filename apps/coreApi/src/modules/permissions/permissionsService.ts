@@ -26,7 +26,7 @@ export class PermissionsService {
   async findAll(): Promise<PermissionItem[]> {
     if (!this.pool) return [];
     const result = await this.pool.query(
-      'SELECT id, code, name, module, description FROM permissions ORDER BY module, code'
+      'SELECT id, code, name, module, description FROM permissions ORDER BY module, code',
     );
     return result.rows;
   }
@@ -35,7 +35,7 @@ export class PermissionsService {
     if (!this.pool) return [];
     const result = await this.pool.query(
       'SELECT id, code, name, module, description FROM permissions WHERE module = $1 ORDER BY code',
-      [module]
+      [module],
     );
     return result.rows;
   }

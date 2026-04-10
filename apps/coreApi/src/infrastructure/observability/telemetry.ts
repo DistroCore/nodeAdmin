@@ -37,7 +37,7 @@ export async function startTelemetry(): Promise<void> {
 
   await sdk.start();
   logger.log(
-    `OpenTelemetry started (service=${runtimeConfig.telemetry.serviceName}, metrics=:${runtimeConfig.telemetry.metricsPort}).`
+    `OpenTelemetry started (service=${runtimeConfig.telemetry.serviceName}, metrics=:${runtimeConfig.telemetry.metricsPort}).`,
   );
 }
 

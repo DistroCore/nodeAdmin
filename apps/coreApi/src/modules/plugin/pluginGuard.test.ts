@@ -91,9 +91,7 @@ describe('PluginGuard', () => {
       userId: 'user-1',
     });
 
-    await expect(guard.canActivate(context)).rejects.toThrow(
-      "Plugin 'modernizer' is not enabled for this tenant"
-    );
+    await expect(guard.canActivate(context)).rejects.toThrow("Plugin 'modernizer' is not enabled for this tenant");
   });
 
   it('rejects plugin-protected routes when tenant context is missing', async () => {
@@ -104,9 +102,7 @@ describe('PluginGuard', () => {
     const guard = new PluginGuard(reflector, pluginService as never, tenantContextResolver);
     const context = createHttpExecutionContext();
 
-    await expect(guard.canActivate(context)).rejects.toThrow(
-      'Tenant context is required for plugin-protected routes'
-    );
+    await expect(guard.canActivate(context)).rejects.toThrow('Tenant context is required for plugin-protected routes');
   });
 
   it('uses the resolved default tenant in single-tenant mode', async () => {

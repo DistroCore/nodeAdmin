@@ -72,7 +72,7 @@ describe('AuthController dev token flow', () => {
         roles: ['admin'],
         tenantId: 'tenant-a',
         userId: 'dev-user',
-      })
+      }),
     ).rejects.toThrow(ForbiddenException);
   });
 });

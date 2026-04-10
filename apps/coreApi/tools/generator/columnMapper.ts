@@ -1,9 +1,6 @@
 import type { ParsedColumn, TypeMapping } from './types';
 
-const TYPE_MAP: Record<
-  string,
-  { tsType: string; validators: string[]; imports: string[]; extraImports: string[] }
-> = {
+const TYPE_MAP: Record<string, { tsType: string; validators: string[]; imports: string[]; extraImports: string[] }> = {
   varchar: {
     tsType: 'string',
     validators: ['@IsString()'],

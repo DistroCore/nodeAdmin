@@ -54,16 +54,12 @@ function main() {
   for (const finding of findings) {
     if (finding.status === 'expired') {
       hasFailure = true;
-      console.error(
-        `[audit-expiry] EXPIRED ${finding.dateString} (${-finding.daysRemaining} day(s) ago)`
-      );
+      console.error(`[audit-expiry] EXPIRED ${finding.dateString} (${-finding.daysRemaining} day(s) ago)`);
     } else if (finding.status === 'invalid') {
       hasFailure = true;
       console.error(`[audit-expiry] INVALID date: ${finding.dateString}`);
     } else {
-      console.warn(
-        `[audit-expiry] WARN ${finding.dateString} expires in ${finding.daysRemaining} day(s)`
-      );
+      console.warn(`[audit-expiry] WARN ${finding.dateString} expires in ${finding.daysRemaining} day(s)`);
     }
   }
 
@@ -71,7 +67,7 @@ function main() {
     console.error(
       '[audit-expiry] Allowlist entries past their review deadline must be ' +
         're-evaluated (upstream fix? still accepted? extended with fresh ' +
-        'justification?) before CI can pass.'
+        'justification?) before CI can pass.',
     );
     process.exit(1);
   }

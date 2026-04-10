@@ -25,7 +25,7 @@ function fetchJson(url) {
             reject(error);
           }
         });
-      }
+      },
     );
 
     request.on('error', reject);
@@ -45,8 +45,8 @@ async function run() {
         targetUrl,
       },
       null,
-      2
-    )
+      2,
+    ),
   );
 }
 

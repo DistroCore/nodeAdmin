@@ -57,8 +57,8 @@ async function run() {
         result: allPassed ? 'pass' : 'fail',
       },
       null,
-      2
-    )
+      2,
+    ),
   );
 
   if (!allPassed) {

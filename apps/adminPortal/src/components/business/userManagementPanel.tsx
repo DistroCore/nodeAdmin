@@ -28,7 +28,7 @@ export function UserManagementPanel(): JSX.Element {
   const usersQuery = useQuery({
     queryFn: () =>
       apiClient.get<PaginatedResponse<UserItem>>(
-        `/api/v1/users?pageSize=${PAGE_SIZE}&page=${page + 1}&search=${encodeURIComponent(search)}`
+        `/api/v1/users?pageSize=${PAGE_SIZE}&page=${page + 1}&search=${encodeURIComponent(search)}`,
       ),
     queryKey: ['users', page, search],
   });

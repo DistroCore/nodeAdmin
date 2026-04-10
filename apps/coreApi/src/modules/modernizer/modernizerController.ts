@@ -11,7 +11,7 @@ import { Plugin } from '../plugin/plugin.decorator';
 export class ModernizerController {
   constructor(
     private readonly analyzeService: AnalyzeService,
-    private readonly docSyncService: DocSyncService
+    private readonly docSyncService: DocSyncService,
   ) {}
 
   @Get('analyze')

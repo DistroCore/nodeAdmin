@@ -14,13 +14,13 @@ export interface JoinConversationResult {
 export class ImConversationService {
   constructor(
     private readonly connectionRegistry: ConnectionRegistry,
-    private readonly messageRepository: ImMessageRepository
+    private readonly messageRepository: ImMessageRepository,
   ) {}
 
   async joinConversation(
     clientId: string,
     conversationId: string,
-    identity: AuthIdentity
+    identity: AuthIdentity,
   ): Promise<JoinConversationResult> {
     const context: SocketContext = {
       conversationId,
