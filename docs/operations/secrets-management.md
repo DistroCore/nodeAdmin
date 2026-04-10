@@ -220,7 +220,7 @@ openssl rand -base64 32
 
 - [x] Modify runtimeConfig.ts (`readSecret()` function with `_FILE` fallback)
 - [x] Update docker-compose.yml (`_FILE` environment variables added)
-- [ ] Test secret loading
+- [x] Test secret loading
 
 ### Step 4: Verify and Deploy
 

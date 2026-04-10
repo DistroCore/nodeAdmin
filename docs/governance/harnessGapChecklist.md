@@ -1,5 +1,7 @@
 # Harness 补强清单
 
+> **status**: draft | **last-reviewed**: 2026-04-10
+
 ## 1. 背景
 
 - 评估日期：2026-04-10
@@ -28,7 +30,7 @@
 - [x] 统一测试现状描述，删除"暂无测试"这类已过期信息，并与 `package.json`、GitHub CI 保持一致
 - [x] 统一 tech debt 真源，确保 `README.md`、`roadmapPlan.md`、`decisionLog.md` 对同一债务项的状态描述一致
 - [x] 在 `AGENTS.md` 中明确 agent 首读顺序，固定为项目级上下文入口，避免不同 agent 自行猜测
-- [ ] 为关键治理文档补充状态字段（如 `draft` / `approved` / `archived`），避免 agent 误读草稿
+- [x] 为关键治理文档补充状态字段（如 `draft` / `approved` / `archived`），避免 agent 误读草稿
 
 ## 5. P0：规则机器化
 
@@ -36,7 +38,7 @@
 - [x] 增加 `no console.log` 规则，覆盖 TS、JS、CJS 文件
 - [x] 增加命名规范扫描，校验目录名、业务文件名、测试文件名是否符合约定
 - [x] 增加后端分层依赖检查，限制 `controller -> service -> repository` 的单向调用
-- [ ] 增加架构约束检查，覆盖 IM 事件字段完整性、outbox 模式、防止双写等关键约束
+- [x] 增加架构约束检查，覆盖 IM 事件字段完整性、outbox 模式、防止双写等关键约束
 - [x] 增加文档漂移检查，至少校验"最近更新时间""doc index 引用存在""核心文档之间的状态一致性"
 - [x] 将以上检查全部接入 `npm run ci:local` 与 GitHub Actions，而不是仅保留在文档描述中
 
@@ -46,7 +48,7 @@
 - [x] 将前端单元测试纳入 `ci:local` 默认路径，使其更贴近 GitHub CI 的真实行为
 - [x] 为 integration / acceptance 失败输出标准诊断产物，包括 docker logs、迁移状态、关键端口和最近失败阶段摘要
 - [x] 为高风险能力提供"一条命令复现"入口，覆盖 WebSocket 多节点、outbox + Kafka、RLS、PgBouncer 等场景
-- [ ] 为 smoke / load / regression 输出固定格式结论，而不只是原始日志和 JSON 报告
+- [x] 为 smoke / load / regression 输出固定格式结论，而不只是原始日志和 JSON 报告
 
 ## 7. P1：Agent Harness 化
 
@@ -105,4 +107,4 @@
 
 ## 12. 最近更新时间
 
-- 2026-04-10（P0 真源收敛完成、P0 规则机器化大部分完成、P0 验证闭环部分完成、P1 Agent Harness 和可观测性部分完成、P2 代码垃圾回收完成）
+- 2026-04-10（P0 全部完成：真源收敛、规则机器化、验证闭环（除 E2E flaky TD-3）；Secrets 管理测试完成；MVP 冒烟脚本验证通过）

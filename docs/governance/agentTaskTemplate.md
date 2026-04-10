@@ -1,5 +1,7 @@
 # Agent Task Template
 
+> **status**: approved | **last-reviewed**: 2026-04-10
+
 ## Purpose
 
 Standardized template for delegating work to AI agents in this project.
