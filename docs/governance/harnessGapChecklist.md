@@ -52,20 +52,20 @@
 
 ## 7. P1：Agent Harness 化
 
-- [ ] 扩展项目技能面，不再只保留 `dev`、`verify`、`verify-full`，补充 `investigate-runtime`、`review-diff`、`triage-flake`、`docs-sync`
+- [x] 扩展项目技能面，不再只保留 `dev`、`verify`、`verify-full`，补充 `investigate-runtime`、`review-diff`、`triage-flake`、`docs-sync`
 - [x] 为 agent 定义统一任务模板，要求固定输出目标、边界、验证命令、风险和回滚方式
-- [ ] 引入 `git worktree` 任务隔离模式，支持多 agent 并行而不污染同一工作目录
-- [ ] 建立 agent review 流程，由实现 agent 之外的 review agent 执行结构检查与验证复跑
+- [x] 引入 `git worktree` 任务隔离模式，支持多 agent 并行而不污染同一工作目录
+- [x] 建立 agent review 流程，由实现 agent 之外的 review agent 执行结构检查与验证复跑
 - [x] 增加后台治理任务，定期扫描文档漂移、未接线代码、重复实现、临时补丁和测试缺口
 - [x] 生成项目级"当前状态卡"，概括当前阶段、开放 tech debt、阻塞项和下一步治理焦点
 
 ## 8. P1：可观测性 Agent 化
 
 - [x] 为日志、指标、告警提供统一诊断脚本，让 agent 可直接读取最近故障上下文
-- [ ] 将监控 runbook 提升为可执行查询入口，而不是仅描述"人如何操作"
+- [x] 将监控 runbook 提升为可执行查询入口，而不是仅描述"人如何操作"
 - [x] 固化常见故障查询 playbook，覆盖连接暴涨、Kafka 积压、Redis 适配器异常、PgBouncer 池耗尽、消息投递延迟
-- [ ] 为性能验证形成固定入口：`smoke -> load -> report -> conclusion`
-- [ ] 让 agent 能自动生成运行时结论，而不是仅输出 Prometheus/Grafana 原始数据位置
+- [x] 为性能验证形成固定入口：`smoke -> load -> report -> conclusion`
+- [x] 让 agent 能自动生成运行时结论，而不是仅输出 Prometheus/Grafana 原始数据位置
 
 ## 9. P2：向 Agent-First 工程靠拢
 
@@ -73,7 +73,7 @@
 - [ ] 为后端增加更严格的结构测试，如模块边界、禁止跨模块 repo 注入、插件注册约束
 - [ ] 建立实现 agent、自审 agent、回归验证 agent、发布检查 agent 的固定分工流
 - [x] 建立持续"代码垃圾回收"流程，清理 AI 残留、重复实现、过时文档和临时补丁
-- [ ] 建立 repo 级质量评分卡，覆盖文档一致性、测试完整性、运行时可观测性、架构约束遵守度和 tech debt 热点
+- [x] 建立 repo 级质量评分卡，覆盖文档一致性、测试完整性、运行时可观测性、架构约束遵守度和 tech debt 热点
 
 ## 10. 建议执行顺序
 
@@ -107,4 +107,4 @@
 
 ## 12. 最近更新时间
 
-- 2026-04-10（P0 全部完成：真源收敛、规则机器化、验证闭环（除 E2E flaky TD-3）；Secrets 管理测试完成；MVP 冒烟脚本验证通过）
+- 2026-04-10（P0 全部完成：真源收敛、规则机器化、验证闭环（除 E2E flaky TD-3）；P1 技能扩展、监控 runbook 可执行化、性能验证入口、文档治理自动化完成；P2 质量评分卡脚本完成）
