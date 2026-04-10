@@ -29,6 +29,12 @@ jobs:
       - run: npm ci
       - run: npm run format:check
       - run: npm run lint
+      - name: Naming conventions
+        run: node scripts/checkNamingConventions.cjs
+      - name: Layer dependencies
+        run: node scripts/checkLayerDependencies.cjs
+      - name: Doc drift
+        run: node scripts/checkDocDrift.cjs
 
   # ── Parallel: Unit Tests (backend + frontend) ────────────────────────────
   unit-test:
