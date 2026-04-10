@@ -44,7 +44,7 @@
 
 ## 6. P0：验证闭环
 
-- [ ] 修复 Playwright E2E 在 CI 中的 flaky 根因，并将 E2E gate 重新接回主流程
+- [x] 修复 Playwright E2E 在 CI 中的 flaky 根因，并将 E2E gate 重新接回主流程
 - [x] 将前端单元测试纳入 `ci:local` 默认路径，使其更贴近 GitHub CI 的真实行为
 - [x] 为 integration / acceptance 失败输出标准诊断产物，包括 docker logs、迁移状态、关键端口和最近失败阶段摘要
 - [x] 为高风险能力提供"一条命令复现"入口，覆盖 WebSocket 多节点、outbox + Kafka、RLS、PgBouncer 等场景
@@ -107,4 +107,4 @@
 
 ## 12. 最近更新时间
 
-- 2026-04-10（P0 全部完成：真源收敛、规则机器化、验证闭环（除 E2E flaky TD-3）；P1 技能扩展、监控 runbook 可执行化、性能验证入口、文档治理自动化完成；P2 质量评分卡脚本完成）
+- 2026-04-10（P0 全部完成：真源收敛、规则机器化、验证闭环；P1 技能扩展、监控 runbook 可执行化、性能验证入口、文档治理自动化完成；P2 质量评分卡脚本完成；TD-3 E2E flaky 根因修复并重新接入 CI）
