@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useApiClient } from '@/hooks/useApiClient';
 import { useNotificationStore } from '@/stores/useNotificationStore';
+import { POLL_INTERVALS } from '@/lib/pollingIntervals';
 import type { AuditLogItem } from '@nodeadmin/shared-types';
 
 function NotificationIcon({ action }: { action: string }): JSX.Element {
@@ -104,7 +105,7 @@ export function NotificationPanel(): JSX.Element {
   const auditQuery = useQuery({
     queryFn: () => apiClient.get<AuditLogResponse>('/api/v1/console/audit-logs?pageSize=50'),
     queryKey: ['notifications-logs'],
-    refetchInterval: 30000, // Refresh every 30s
+    refetchInterval: POLL_INTERVALS.notifications,
   });
 
   const notifications = auditQuery.data?.items ?? [];

@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { DEFAULT_TENANT_ID } from './constants';
 
 interface RuntimeConfig {
   auth: {
@@ -214,7 +215,7 @@ export const runtimeConfig: RuntimeConfig = {
     pingTimeout: readPositiveInt('SOCKETIO_PING_TIMEOUT', 60000),
   },
   tenant: {
-    defaultTenantId: process.env.DEFAULT_TENANT_ID?.trim() || 'default',
+    defaultTenantId: process.env.DEFAULT_TENANT_ID?.trim() || DEFAULT_TENANT_ID,
     singleTenantMode: readBooleanEnv('SINGLE_TENANT_MODE', false),
   },
   database: {

@@ -4,6 +4,7 @@ import { Card, CardDescription, CardHeader, CardTitle, CardContent } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useApiClient } from '@/hooks/useApiClient';
+import { POLL_INTERVALS } from '@/lib/pollingIntervals';
 
 interface MetricsResponse {
   cpu: {
@@ -27,7 +28,7 @@ export function SystemMetricsPanel(): JSX.Element {
   const metricsQuery = useQuery({
     queryFn: () => apiClient.get<MetricsResponse>('/api/v1/metrics'),
     queryKey: ['system-metrics'],
-    refetchInterval: 5000, // Poll every 5 seconds
+    refetchInterval: POLL_INTERVALS.metrics,
   });
 
   const metrics = metricsQuery.data;

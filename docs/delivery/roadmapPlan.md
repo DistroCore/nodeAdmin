@@ -184,15 +184,15 @@ M1/M2/M3 的 MVP 目标已全部通过。以下是自 2026-03-01 以来的增量
 | TD-12 | 前端 5 个文件 (`loginPage`, `registerPage`, `resetPasswordPage`, `useApiClient`, `messagePanel`) | API URL 硬编码 `http://${hostname}:11451` 回退                             |
 | TD-13 | 前端 3 个页面                                                                                    | `useState('default')` 硬编码 tenantId 初始值                               |
 | TD-14 | 前端 4 处 (`appLayout`, `moduleErrorBoundary`, `usePluginLoader`, `main`)                        | 使用 `console.error` 而非结构化日志                                        |
-| TD-15 | `runtimeConfig.ts`                                                                               | 6 处硬编码默认值 (PORT, KAFKA_TOPIC, REDIS, DEFAULT_TENANT, UPLOAD_PATH)   |
+| TD-15 | ~~`runtimeConfig.ts`~~ ✅ 闭环                                                                   | `defaultTenantId` 改引用 `DEFAULT_TENANT_ID` 常量                          |
 
 #### 🟢 P2 — 配置优化
 
-| 编号  | 位置                    | 问题                                                      |
-| ----- | ----------------------- | --------------------------------------------------------- |
-| TD-16 | 前端 5 处               | 硬编码 polling interval (5s/10s/30s/60s)                  |
-| TD-17 | `notificationPanel.tsx` | 使用 emoji 图标 (🔐👤🏢⚙️🔔) 而非 SVG design system 图标  |
-| TD-18 | `messagePanel.tsx`      | `/api/v1/auth/dev-token` 作为开发回退，生产环境需确保禁用 |
+| 编号  | 位置                    | 问题                                                        |
+| ----- | ----------------------- | ----------------------------------------------------------- |
+| TD-16 | ~~前端 5 处~~ ✅ 闭环   | 集中 `pollingIntervals.ts`，支持 `VITE_POLL_*` 环境变量覆盖 |
+| TD-17 | `notificationPanel.tsx` | 使用 emoji 图标 (🔐👤🏢⚙️🔔) 而非 SVG design system 图标    |
+| TD-18 | `messagePanel.tsx`      | `/api/v1/auth/dev-token` 作为开发回退，生产环境需确保禁用   |
 
 ### 9.3 规划中（未启动）
 
@@ -218,8 +218,8 @@ M1/M2/M3 的 MVP 目标已全部通过。以下是自 2026-03-01 以来的增量
 | TD-12 | ~~前端 5 文件硬编码 API URL `http://${hostname}:11451` 回退~~ **2026-04-12 闭环：移除硬编码 fallback，使用相对路径（Vite proxy）**                                                                                                                                                                                                        | 已闭环                    | §9.2 审计 → 2026-04-12        |
 | TD-13 | ~~前端 3 页面 `useState('default')` 硬编码 tenantId~~ **2026-04-12 闭环：改为空字符串初始值 + 提交验证**                                                                                                                                                                                                                                  | 已闭环                    | §9.2 审计 → 2026-04-12        |
 | TD-14 | ~~前端 4 处使用 `console.error` 而非结构化日志~~ **2026-04-12 闭环：创建 `lib/logger.ts` 结构化日志工具，替换 4 处调用**                                                                                                                                                                                                                  | 已闭环                    | §9.2 审计 → 2026-04-12        |
-| TD-15 | `runtimeConfig.ts` 6 处硬编码默认值                                                                                                                                                                                                                                                                                                       | 🟢 低（配置级，可接受）   | §9.2 审计                     |
-| TD-16 | 前端 5 处硬编码 polling interval                                                                                                                                                                                                                                                                                                          | 🟢 低（配置级，可接受）   | §9.2 审计                     |
+| TD-15 | ~~`runtimeConfig.ts` 6 处硬编码默认值~~ **2026-04-12 闭环：`defaultTenantId` 改为引用 `DEFAULT_TENANT_ID` 常量（其余 5 项为 NestJS config 标准默认值，保留原样）**                                                                                                                                                                        | 已闭环                    | §9.2 审计 → 2026-04-12        |
+| TD-16 | ~~前端 5 处硬编码 polling interval~~ **2026-04-12 闭环：创建 `lib/pollingIntervals.ts` 集中配置，支持 `VITE_POLL_*` 环境变量覆盖，4 处（header/messagePanel/notificationPanel/systemMetricsPanel）统一引用**                                                                                                                              | 已闭环                    | §9.2 审计 → 2026-04-12        |
 | TD-17 | ~~`notificationPanel.tsx` 使用 emoji 图标而非 SVG design system~~ **2026-04-12 闭环：替换为 inline stroke SVG**                                                                                                                                                                                                                           | 已闭环                    | §9.2 审计 → 2026-04-12        |
 | TD-18 | ~~`messagePanel.tsx` dev-token 端点回退，生产需确保禁用~~ **2026-04-12 闭环：添加 `import.meta.env.MODE === 'production'` guard**                                                                                                                                                                                                         | 已闭环                    | §9.2 审计 → 2026-04-12        |
 
@@ -227,7 +227,7 @@ M1/M2/M3 的 MVP 目标已全部通过。以下是自 2026-03-01 以来的增量
 
 ## 10. 最近更新时间
 
-- 2026-04-12（**Tech Debt 清理**：TD-8 ~ TD-14、TD-17、TD-18 共 10 项闭环。后端：DEFAULT_TENANT_ID 常量提取（5 Controller）、crypto.randomUUID 替换 Math.random、SMS 明文日志脱敏、audit 内存 fallback 加警告。前端：移除硬编码 API URL、tenantId 初始值改为空串+提交验证、console.error→结构化 logger、emoji→inline SVG、dev-token 生产环境 guard。E2E 97/97 通过。剩余 TD-6/7（需真实 OAuth/SMS 供应商接入）、TD-15/16（配置级可接受））
+- 2026-04-12（**Tech Debt 清理**：TD-8 ~ TD-16、TD-17、TD-18 共 12 项闭环。后端：DEFAULT*TENANT_ID 常量提取（5 Controller + runtimeConfig）、crypto.randomUUID 替换 Math.random、SMS 明文日志脱敏、audit 内存 fallback 加警告。前端：移除硬编码 API URL、tenantId 初始值改为空串+提交验证、console.error→结构化 logger、emoji→inline SVG、dev-token 生产环境 guard、polling interval 集中配置（`lib/pollingIntervals.ts`，4 处统一引用，支持 `VITE_POLL*\*` 环境变量覆盖）。E2E 97/97 通过。剩余 TD-6/7（需真实 OAuth/SMS 供应商接入））
 - 2026-04-11（**Mock/Stub 全量审计**：§9.2 新增 TD-6 ~ TD-18 共 13 项假数据/硬编码技术债务；根目录清理：9 PNG 截图移入 `docs/assets/screenshots/`，3 个临时任务文件删除，`start-backend.sh` 移入 `scripts/`；Dialog 焦点跳转 bug 修复；IM 会话创建 bug 审计完成：upload 403、标题不更新、图片粘贴位置、侧边栏 i18n、IM 路由缺失）
 - 2026-04-08（**P5 框架加固阶段全部收尾**：单一工作窗口内 BE/FE 各 5 个工作项落地为 7 个 PR 全部合入 master：BE-01 swagger 调研 → D-020 defer、BE-02 后端覆盖率基线 + audit/im 关键链路补强、BE-03 OpenAPI snapshot drift guard、BE-04 plugin lifecycle hooks 含真实 PG 集成测试、FE-01 react-intl 降级解 D-021、FE-02 hooks/stores 6 文件覆盖率、FE-03 plugin marketplace UI polish + a11y、FE-04 design token 一致性扫盲。governance commit 11546bb 含 D-020/D-021；后续 7 笔 squash merge 提交 67fba6f → e10cbb4。TD-1 / TD-2 状态全部更新；新增 D-021 addendum 关于 react-intl 7.x API surface 限制；新增 Phase 5 章节，同步 2026-03-01 以来的增量工作、未启动规划与 tech debt）
 - 2026-03-01（全量完成标记同步，Docker 全栈部署验证，全量测试通过）

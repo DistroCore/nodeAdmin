@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
+import { POLL_INTERVALS } from '@/lib/pollingIntervals';
 import {
   ImSendMessagePayload,
   ImSocketMessage,
@@ -281,7 +282,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
       return apiClient.get<ConversationListResponse>(url);
     },
     queryKey: ['console-conversations', imConfig?.tenantId ?? authTenantId],
-    refetchInterval: 10000,
+    refetchInterval: POLL_INTERVALS.conversations,
   });
 
   const activeConversationLabel = useMemo(() => {

@@ -7,6 +7,7 @@ import { useUiStore } from '@/stores/useUiStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useApiClient } from '@/hooks/useApiClient';
 import { resolveCurrentPageTitle } from './navConfig';
+import { POLL_INTERVALS } from '@/lib/pollingIntervals';
 
 export function Header(): JSX.Element {
   const location = useLocation();
@@ -24,7 +25,7 @@ export function Header(): JSX.Element {
   const auditQuery = useQuery({
     queryFn: () => apiClient.get<{ items: Array<{ id: string }> }>('/api/v1/console/audit-logs?pageSize=50'),
     queryKey: ['notifications-badge-count'],
-    refetchInterval: 30000,
+    refetchInterval: POLL_INTERVALS.auth,
   });
 
   const unreadCount = (auditQuery.data?.items ?? []).filter((n) => !readIds.has(n.id)).length;
