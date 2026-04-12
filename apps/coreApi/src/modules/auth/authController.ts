@@ -1,6 +1,5 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Param, Post, Query, Res } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Param, Post, Query, Redirect } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import type { FastifyReply } from 'fastify';
 import { runtimeConfig } from '../../app/runtimeConfig';
 import { AuditLogService } from '../../infrastructure/audit/auditLogService';
 import { AuthService } from './authService';
@@ -169,14 +168,16 @@ export class AuthController {
   /**
    * GitHub OAuth callback — GitHub redirects here after user authorizes.
    * Exchanges the code for user info, creates/finds user, then redirects
-   * to the frontend with tokens in the URL hash.
+   * to the frontend with tokens in the URL query params.
    */
   @Get('github/callback')
   @ApiOperation({ summary: 'GitHub OAuth callback (browser redirect)', security: [] })
-  async githubCallback(@Query('code') code: string, @Query('state') state: string, @Res() reply: FastifyReply) {
+  @Redirect()
+  async githubCallback(@Query('code') code: string, @Query('state') state: string) {
+    const frontendUrl = runtimeConfig.corsOrigins[0] ?? 'http://localhost:3000';
+
     if (!code) {
-      const frontendUrl = runtimeConfig.corsOrigins[0] ?? 'http://localhost:3000';
-      return reply.redirect(`${frontendUrl}/login?error=oauth_no_code`);
+      return { statusCode: 302, url: `${frontendUrl}/login?error=oauth_no_code` };
     }
 
     // Decode state to get tenantId (base64-encoded JSON)
@@ -206,7 +207,6 @@ export class AuthController {
         // Don't block login if audit fails
       }
 
-      const frontendUrl = runtimeConfig.corsOrigins[0] ?? 'http://localhost:3000';
       const params = new URLSearchParams({
         accessToken: tokens.accessToken,
         name: name ?? '',
@@ -217,11 +217,10 @@ export class AuthController {
         userId,
       });
 
-      return reply.redirect(`${frontendUrl}/auth/callback?${params.toString()}`);
+      return { statusCode: 302, url: `${frontendUrl}/auth/callback?${params.toString()}` };
     } catch (error) {
-      const frontendUrl = runtimeConfig.corsOrigins[0] ?? 'http://localhost:3000';
       const message = error instanceof Error ? error.message : 'OAuth login failed';
-      return reply.redirect(`${frontendUrl}/login?error=${encodeURIComponent(message)}`);
+      return { statusCode: 302, url: `${frontendUrl}/login?error=${encodeURIComponent(message)}` };
     }
   }
 
