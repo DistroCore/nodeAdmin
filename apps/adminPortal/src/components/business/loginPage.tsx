@@ -121,6 +121,20 @@ export function LoginPage(): JSX.Element {
   };
 
   const handleOAuthLogin = (provider: 'github' | 'google') => {
+    if (provider === 'github') {
+      // Build state parameter with tenantId
+      const statePayload = JSON.stringify({ tenantId: tenantId || 'default' });
+      const state = btoa(statePayload);
+      const params = new URLSearchParams({
+        client_id: (import.meta.env.VITE_GITHUB_OAUTH_CLIENT_ID as string) || 'Ov23liqNOTXCkucuCcIi',
+        redirect_uri: `${window.location.origin}/api/v1/auth/github/callback`,
+        scope: 'read:user user:email',
+        state,
+      });
+      window.location.href = `https://github.com/login/oauth/authorize?${params.toString()}`;
+      return;
+    }
+    // Google OAuth: not yet implemented
     window.open(`${resolveApiBaseUrl()}/api/v1/auth/login/oauth/${provider}`, '_self');
   };
 

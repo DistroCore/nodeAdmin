@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { LoginPage } from '@/components/business/loginPage';
+import { OAuthCallbackPage } from '@/components/business/oauthCallbackPage';
 import { ResetPasswordPage } from '@/components/business/resetPasswordPage';
 import { ManagementOverviewPanel } from '@/components/business/managementOverviewPanel';
 import { MenuManagementPanel } from '@/components/business/menuManagementPanel';
@@ -44,6 +45,7 @@ export function AppRoot(): JSX.Element {
     <Routes>
       {/* Public routes */}
       <Route element={<LoginPage />} path="/login" />
+      <Route element={<OAuthCallbackPage />} path="/auth/callback" />
       <Route element={<RegisterPage />} path="/register" />
       <Route element={<ResetPasswordPage />} path="/reset-password" />
 

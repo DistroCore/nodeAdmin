@@ -7,7 +7,6 @@ import { Pool } from 'pg';
 import { runtimeConfig } from '../../app/runtimeConfig';
 import type { AuthPrincipal } from '../../infrastructure/tenant/authPrincipal';
 import { AuthIdentity } from './authIdentity';
-
 interface AccessTokenClaims {
   jti: string;
   roles: string[];
@@ -521,27 +520,115 @@ export class AuthService {
 
   /**
    * Exchange OAuth authorization code for provider user info.
-   * In production, this would call the provider's token endpoint + user info endpoint.
-   * For dev/testing, we mock it based on the code value.
+   * GitHub: POST to token endpoint → GET user info API.
+   * Google: Placeholder — falls back to dev mock if no config.
    */
   private async exchangeOAuthCode(
     provider: string,
     code: string,
   ): Promise<{ providerId: string; email: string | null; name: string | null } | null> {
-    // Dev mock: derive provider user ID from code
+    if (provider === 'github') {
+      return this.exchangeGitHubCode(code);
+    }
+
+    // Google OAuth: not yet configured — keep dev mock for now
     if (code === 'fail-exchange') return null;
-
-    // In production, implement real OAuth token exchange here:
-    // 1. POST to provider's token endpoint with code + client_id + client_secret
-    // 2. Extract access_token from response
-    // 3. GET provider's user info endpoint
-    // 4. Return { providerId, email, name }
-
     return {
       providerId: `${provider}-${code}-${Date.now()}`,
       email: null,
       name: null,
     };
+  }
+
+  private async exchangeGitHubCode(
+    code: string,
+  ): Promise<{ providerId: string; email: string | null; name: string | null } | null> {
+    const { clientId, clientSecret } = runtimeConfig.githubOAuth;
+
+    if (!clientId || !clientSecret) {
+      this.logger.warn('GitHub OAuth credentials not configured — skipping real exchange.');
+      return null;
+    }
+
+    try {
+      // Step 1: Exchange code for access token
+      const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          client_id: clientId,
+          client_secret: clientSecret,
+          code,
+        }),
+      });
+
+      if (!tokenResponse.ok) {
+        this.logger.error(`GitHub token exchange failed: ${tokenResponse.status}`);
+        return null;
+      }
+
+      const tokenData = (await tokenResponse.json()) as { access_token?: string; error?: string };
+      if (tokenData.error || !tokenData.access_token) {
+        this.logger.error(`GitHub token exchange error: ${tokenData.error ?? 'no access_token'}`);
+        return null;
+      }
+
+      // Step 2: Fetch user info from GitHub API
+      const userResponse = await fetch('https://api.github.com/user', {
+        headers: {
+          Authorization: `Bearer ${tokenData.access_token}`,
+          Accept: 'application/json',
+        },
+      });
+
+      if (!userResponse.ok) {
+        this.logger.error(`GitHub user info fetch failed: ${userResponse.status}`);
+        return null;
+      }
+
+      const userData = (await userResponse.json()) as {
+        id: number;
+        login: string;
+        email: string | null;
+        name: string | null;
+      };
+
+      // Step 3: Try to fetch primary email (GitHub API may not return email in user data)
+      let email = userData.email;
+      if (!email) {
+        try {
+          const emailResponse = await fetch('https://api.github.com/user/emails', {
+            headers: {
+              Authorization: `Bearer ${tokenData.access_token}`,
+              Accept: 'application/json',
+            },
+          });
+          if (emailResponse.ok) {
+            const emails = (await emailResponse.json()) as Array<{
+              email: string;
+              primary: boolean;
+              verified: boolean;
+            }>;
+            const primary = emails.find((e) => e.primary && e.verified);
+            email = primary?.email ?? emails[0]?.email ?? null;
+          }
+        } catch {
+          // Non-critical — proceed without email
+        }
+      }
+
+      return {
+        providerId: String(userData.id),
+        email,
+        name: userData.name ?? userData.login,
+      };
+    } catch (error) {
+      this.logger.error(`GitHub OAuth exchange error: ${error instanceof Error ? error.message : String(error)}`);
+      return null;
+    }
   }
 
   // ─── OAuth Account Management ──────────────────────────────────

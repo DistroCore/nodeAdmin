@@ -168,11 +168,11 @@ M1/M2/M3 的 MVP 目标已全部通过。以下是自 2026-03-01 以来的增量
 
 #### 🔴 P0 — 生产不可用的假实现
 
-| 编号 | 位置                     | 问题                                                                                            | 影响                     |
-| ---- | ------------------------ | ----------------------------------------------------------------------------------------------- | ------------------------ |
-| TD-6 | `authService.ts:527-545` | `exchangeOAuthCode()` 完全是 mock：用 `Date.now()` 生成假 providerId，无 GitHub/Google API 调用 | OAuth 登录/注册不可用    |
-| TD-7 | `authService.ts:370`     | SMS 验证码用 `Math.random()` 生成，且短信未接入真实供应商 (Twilio/阿里云)                       | 短信验证码登录不可用     |
-| TD-8 | `authService.ts:380`     | `logger.log` 打印明文 SMS 验证码                                                                | 安全隐患：日志泄露验证码 |
+| 编号 | 位置                         | 问题                                                                      | 影响                  |
+| ---- | ---------------------------- | ------------------------------------------------------------------------- | --------------------- |
+| TD-6 | ~~`authService.ts`~~ ✅ 闭环 | GitHub OAuth 已接入真实 token exchange + user info API                    | GitHub OAuth 登录可用 |
+| TD-7 | `authService.ts:370`         | SMS 验证码用 `Math.random()` 生成，且短信未接入真实供应商 (Twilio/阿里云) | 短信验证码登录不可用  |
+| TD-8 | ~~`authService.ts`~~ ✅ 闭环 | 已移除明文 SMS 验证码日志                                                 | —                     |
 
 #### 🟡 P1 — 硬编码回退值
 
@@ -209,7 +209,7 @@ M1/M2/M3 的 MVP 目标已全部通过。以下是自 2026-03-01 以来的增量
 | TD-3  | 定位并修复 Playwright E2E 的 CI 环境 flake 根因；修复后可以把 E2E job 加回 `.github/workflows/ci.yml`。**2026-04-10 闭环：消除所有 waitForTimeout / networkidle，用条件等待替代；login 后加 navigateAfterLogin 防 race；CI 用 vite preview 替代 dev server；E2E job 重新接入 CI（`13a97e7`）**                                            | 已闭环                    | D-012 / `c33a0fc` → `13a97e7` |
 | TD-4  | （已处理）`.dockerignore` 对 `apps/adminPortal/` 改为扩展名 pattern 允许列表，避免新增 top-level 配置/插件文件被静默过滤                                                                                                                                                                                                                  | —                         | 2026-04-08 闭环               |
 | TD-5  | （已处理）`audit-ci.jsonc` allowlist 条目 90 天强制复核 + CI 自动过期检查                                                                                                                                                                                                                                                                 | —                         | 2026-04-08 闭环               |
-| TD-6  | OAuth `exchangeOAuthCode()` 为 mock 实现，无 GitHub/Google token exchange 调用 — OAuth 登录不可用                                                                                                                                                                                                                                         | 🔴 高（需真实供应商接入） | §9.2 审计                     |
+| TD-6  | ~~OAuth `exchangeOAuthCode()` 为 mock 实现~~ **2026-04-12 闭环：GitHub OAuth 接入真实 token exchange + user info API，GET callback 路由重定向至前端，前端 OAuth 按钮改为 GitHub authorize URL 跳转 + state 参数传递 tenantId，新增 `/auth/callback` 前端页面**                                                                            | 已闭环                    | §9.2 审计 → 2026-04-12        |
 | TD-7  | SMS 验证码用 `Math.random()` 生成，短信未接入真实供应商 — 短信登录不可用                                                                                                                                                                                                                                                                  | 🔴 高（需真实供应商接入） | §9.2 审计                     |
 | TD-8  | ~~`authService.ts` 日志打印明文 SMS 验证码 — 安全隐患~~ **2026-04-12 闭环：移除日志中的验证码明文**                                                                                                                                                                                                                                       | 已闭环                    | §9.2 审计 → 2026-04-12        |
 | TD-9  | ~~5 个 Controller 硬编码 `tenantId ?? 'default'` 回退~~ **2026-04-12 闭环：提取 `DEFAULT_TENANT_ID` 常量到 `app/constants.ts`，5 个 Controller 统一引用**                                                                                                                                                                                 | 已闭环                    | §9.2 审计 → 2026-04-12        |
@@ -227,7 +227,8 @@ M1/M2/M3 的 MVP 目标已全部通过。以下是自 2026-03-01 以来的增量
 
 ## 10. 最近更新时间
 
-- 2026-04-12（**Tech Debt 清理**：TD-8 ~ TD-16、TD-17、TD-18 共 12 项闭环。后端：DEFAULT*TENANT_ID 常量提取（5 Controller + runtimeConfig）、crypto.randomUUID 替换 Math.random、SMS 明文日志脱敏、audit 内存 fallback 加警告。前端：移除硬编码 API URL、tenantId 初始值改为空串+提交验证、console.error→结构化 logger、emoji→inline SVG、dev-token 生产环境 guard、polling interval 集中配置（`lib/pollingIntervals.ts`，4 处统一引用，支持 `VITE_POLL*\*` 环境变量覆盖）。E2E 97/97 通过。剩余 TD-6/7（需真实 OAuth/SMS 供应商接入））
+- 2026-04-12（**GitHub OAuth 实装**：TD-6 闭环。后端：`authService.ts` 新增 `exchangeGitHubCode()` 真实 token exchange + user/email API 调用，`authController.ts` 新增 `GET /auth/github/callback` 浏览器重定向回调（state 参数传递 tenantId），`runtimeConfig.ts` 新增 `githubOAuth` 配置段，`jwtAuthGuard.ts` 排除 OAuth 路由。前端：`loginPage.tsx` GitHub 按钮改为 `github.com/login/oauth/authorize` 跳转 + state 编码，新增 `oauthCallbackPage.tsx` 处理回调 + 存储 token。E2E 97/97 通过）
+- 2026-04-12（**Tech Debt 清理**：TD-8 ~ TD-16、TD-17、TD-18 共 12 项闭环。后端：DEFAULT*TENANT_ID 常量提取（5 Controller + runtimeConfig）、crypto.randomUUID 替换 Math.random、SMS 明文日志脱敏、audit 内存 fallback 加警告。前端：移除硬编码 API URL、tenantId 初始值改为空串+提交验证、console.error→结构化 logger、emoji→inline SVG、dev-token 生产环境 guard、polling interval 集中配置（`lib/pollingIntervals.ts`，4 处统一引用，支持 `VITE_POLL*\*` 环境变量覆盖）。E2E 97/97 通过。剩余 TD-7（需真实 SMS 供应商接入））
 - 2026-04-11（**Mock/Stub 全量审计**：§9.2 新增 TD-6 ~ TD-18 共 13 项假数据/硬编码技术债务；根目录清理：9 PNG 截图移入 `docs/assets/screenshots/`，3 个临时任务文件删除，`start-backend.sh` 移入 `scripts/`；Dialog 焦点跳转 bug 修复；IM 会话创建 bug 审计完成：upload 403、标题不更新、图片粘贴位置、侧边栏 i18n、IM 路由缺失）
 - 2026-04-08（**P5 框架加固阶段全部收尾**：单一工作窗口内 BE/FE 各 5 个工作项落地为 7 个 PR 全部合入 master：BE-01 swagger 调研 → D-020 defer、BE-02 后端覆盖率基线 + audit/im 关键链路补强、BE-03 OpenAPI snapshot drift guard、BE-04 plugin lifecycle hooks 含真实 PG 集成测试、FE-01 react-intl 降级解 D-021、FE-02 hooks/stores 6 文件覆盖率、FE-03 plugin marketplace UI polish + a11y、FE-04 design token 一致性扫盲。governance commit 11546bb 含 D-020/D-021；后续 7 笔 squash merge 提交 67fba6f → e10cbb4。TD-1 / TD-2 状态全部更新；新增 D-021 addendum 关于 react-intl 7.x API surface 限制；新增 Phase 5 章节，同步 2026-03-01 以来的增量工作、未启动规划与 tech debt）
 - 2026-03-01（全量完成标记同步，Docker 全栈部署验证，全量测试通过）

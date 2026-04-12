@@ -75,6 +75,11 @@ interface RuntimeConfig {
   swagger: {
     enabled: boolean;
   };
+  githubOAuth: {
+    clientId: string;
+    clientSecret: string;
+    callbackUrl: string;
+  };
 }
 
 function readSecret(name: string, fallback?: string): string {
@@ -237,5 +242,10 @@ export const runtimeConfig: RuntimeConfig = {
   },
   swagger: {
     enabled: readBooleanEnv('SWAGGER_ENABLED', true),
+  },
+  githubOAuth: {
+    clientId: process.env.GITHUB_OAUTH_CLIENT_ID?.trim() || '',
+    clientSecret: process.env.GITHUB_OAUTH_CLIENT_SECRET?.trim() || '',
+    callbackUrl: process.env.GITHUB_OAUTH_CALLBACK_URL?.trim() || 'http://localhost:3000/api/v1/auth/github/callback',
   },
 };
