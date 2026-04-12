@@ -18,7 +18,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'], channel: 'chrome' },
     },
     // Mobile tests moved to mobile.spec.ts with test.use(devices['Pixel 5'])
     // so they run within the single chromium project — avoids doubling CI time

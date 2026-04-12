@@ -100,41 +100,40 @@ export class MenusService {
     if (!this.pool) throw new Error('Database not available');
     const sets: string[] = [];
     const params: unknown[] = [];
-    let idx = 1;
 
     if (data.parentId !== undefined) {
-      sets.push(`parent_id = $${++idx}`);
       params.push(data.parentId);
+      sets.push(`parent_id = $${params.length}`);
     }
     if (data.name !== undefined) {
-      sets.push(`name = $${++idx}`);
       params.push(data.name);
+      sets.push(`name = $${params.length}`);
     }
     if (data.path !== undefined) {
-      sets.push(`path = $${++idx}`);
       params.push(data.path);
+      sets.push(`path = $${params.length}`);
     }
     if (data.icon !== undefined) {
-      sets.push(`icon = $${++idx}`);
       params.push(data.icon);
+      sets.push(`icon = $${params.length}`);
     }
     if (data.sortOrder !== undefined) {
-      sets.push(`sort_order = $${++idx}`);
       params.push(data.sortOrder);
+      sets.push(`sort_order = $${params.length}`);
     }
     if (data.permissionCode !== undefined) {
-      sets.push(`permission_code = $${++idx}`);
       params.push(data.permissionCode);
+      sets.push(`permission_code = $${params.length}`);
     }
     if (data.isVisible !== undefined) {
-      sets.push(`is_visible = $${++idx}`);
       params.push(data.isVisible ? 1 : 0);
+      sets.push(`is_visible = $${params.length}`);
     }
 
     if (sets.length === 0) return this.findById(id);
 
     params.push(id);
-    await this.pool.query(`UPDATE menus SET ${sets.join(', ')} WHERE id = $${idx + 1}`, params);
+    await this.pool.query(`UPDATE menus SET ${sets.join(', ')} WHERE id = $${params.length}`, params);
     return this.findById(id);
   }
 
@@ -203,14 +202,14 @@ export class MenusService {
   private toMenuItem(row: MenuRow): MenuItem {
     return {
       id: row.id,
-      parentId: row.parent_id,
+      parent_id: row.parent_id,
       name: row.name,
       path: row.path,
       icon: row.icon,
-      sortOrder: row.sort_order,
-      permissionCode: row.permission_code,
-      isVisible: row.is_visible,
-      createdAt: row.created_at,
+      sort_order: row.sort_order,
+      permission_code: row.permission_code,
+      is_visible: row.is_visible,
+      created_at: row.created_at,
       children: [],
     };
   }
@@ -234,7 +233,9 @@ export class MenusService {
 
   private sortTree(nodes: MenuItem[]): MenuItem[] {
     nodes.sort(
-      (left, right) => left.sortOrder - right.sortOrder || left.createdAt.getTime() - right.createdAt.getTime(),
+      (left, right) =>
+        left.sort_order - right.sort_order ||
+        new Date(left.created_at).getTime() - new Date(right.created_at).getTime(),
     );
 
     for (const node of nodes) {

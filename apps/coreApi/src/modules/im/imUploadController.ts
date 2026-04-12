@@ -15,8 +15,6 @@ import { join } from 'node:path';
 import { runtimeConfig } from '../../app/runtimeConfig';
 import { CurrentUser } from '../auth/currentUser.decorator';
 import { AuthIdentity } from '../auth/authIdentity';
-import { Plugin } from '../plugin/plugin.decorator';
-
 interface UploadResult {
   fileName: string;
   fileSizeBytes: number;
@@ -24,7 +22,6 @@ interface UploadResult {
 }
 
 @ApiTags('im')
-@Plugin('im')
 @Controller('im')
 export class ImUploadController {
   private readonly logger = new Logger(ImUploadController.name);

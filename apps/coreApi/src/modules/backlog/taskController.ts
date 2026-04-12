@@ -4,11 +4,9 @@ import { BacklogService } from './backlogService';
 import { CreateTaskDto } from './dto/createTaskDto';
 import { UpdateTaskDto } from './dto/updateTaskDto';
 import { ListBacklogQueryDto } from './dto/listBacklogQueryDto';
-import { Plugin } from '../plugin/plugin.decorator';
 
 @ApiTags('backlog')
 @ApiBearerAuth()
-@Plugin('backlog')
 @Controller('backlog/tasks')
 export class TaskController {
   constructor(private readonly backlogService: BacklogService) {}

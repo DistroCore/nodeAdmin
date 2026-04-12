@@ -280,6 +280,22 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
     refetchInterval: 10000,
   });
 
+  const activeConversationLabel = useMemo(() => {
+    const activeConversation = conversationQuery.data?.rows?.find(
+      (conversation) => conversation.id === imConfig?.conversationId,
+    );
+
+    if (!activeConversation) {
+      return t({ id: 'im.conversation' });
+    }
+
+    const isGroup = activeConversation.type === 'group';
+
+    return isGroup
+      ? activeConversation.title?.trim() || t({ id: 'im.createConversation.group' })
+      : activeConversation.name.trim() || t({ id: 'im.createConversation.dm' });
+  }, [imConfig?.conversationId, conversationQuery.data, t]);
+
   useEffect(() => {
     if (!imConfig) {
       setBootError(t({ id: 'im.bootError.missingConfig' }));
@@ -997,7 +1013,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                 </svg>
               </div>
               <div>
-                <h2 className="text-sm font-bold md:text-base leading-none mb-1">{t({ id: 'im.conversation' })}</h2>
+                <h2 className="text-sm font-bold md:text-base leading-none mb-1">{activeConversationLabel}</h2>
                 <div className="flex items-center gap-1.5 text-[0.625rem] md:text-xs">
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -1309,6 +1325,18 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
         {/* Input Area */}
         <div className="p-4 border-t bg-card md:rounded-b-xl shadow-[0_-2px_10px_rgba(0,0,0,0.02)]">
           <div className="flex flex-col gap-3">
+            {pendingImage && (
+              <div className="mb-3 animate-in slide-in-from-bottom-2 duration-300">
+                <ImagePreviewOverlay
+                  fileName={pendingImage.file.name}
+                  objectUrl={pendingImage.objectUrl}
+                  onCancel={cancelPendingImage}
+                  onConfirm={() => void uploadAndSendImage()}
+                  uploading={uploading}
+                />
+              </div>
+            )}
+
             <div className="flex items-center gap-2 px-1">
               <div className="relative">
                 <select
@@ -1405,18 +1433,6 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
             </div>
           </div>
         </div>
-
-        {pendingImage && (
-          <div className="absolute bottom-24 left-4 right-4 z-20 animate-in slide-in-from-bottom-2 duration-300">
-            <ImagePreviewOverlay
-              fileName={pendingImage.file.name}
-              objectUrl={pendingImage.objectUrl}
-              onCancel={cancelPendingImage}
-              onConfirm={() => void uploadAndSendImage()}
-              uploading={uploading}
-            />
-          </div>
-        )}
 
         <input
           accept="image/png,image/jpeg,image/gif,image/webp"

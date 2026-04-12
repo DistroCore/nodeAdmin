@@ -4,11 +4,9 @@ import { BacklogService } from './backlogService';
 import { CreateSprintDto } from './dto/createSprintDto';
 import { UpdateSprintDto } from './dto/updateSprintDto';
 import { ListBacklogQueryDto } from './dto/listBacklogQueryDto';
-import { Plugin } from '../plugin/plugin.decorator';
 
 @ApiTags('backlog')
 @ApiBearerAuth()
-@Plugin('backlog')
 @Controller('backlog/sprints')
 export class SprintController {
   constructor(private readonly backlogService: BacklogService) {}

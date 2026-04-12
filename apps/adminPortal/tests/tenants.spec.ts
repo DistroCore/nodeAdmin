@@ -53,7 +53,11 @@ test.describe('Tenants Management', () => {
       .getByRole('button', { name: /Confirm/i })
       .click();
 
-    await expect(page.getByRole('alert').filter({ hasText: /deleted/i })).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByRole('main').getByText(updatedName)).not.toBeVisible({ timeout: 5_000 });
+    // Wait for dialog to close first, then check for success indication
+    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 });
+    // Verify the tenant is gone from the table (most reliable check)
+    await page.reload();
+    await expect(page.getByRole('main')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('main').getByText(updatedName)).not.toBeVisible({ timeout: 10_000 });
   });
 });

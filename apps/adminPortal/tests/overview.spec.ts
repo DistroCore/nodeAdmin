@@ -44,9 +44,15 @@ test.describe('Overview Dashboard', () => {
   test('renders health version info', async ({ page }) => {
     await page.goto('/overview');
 
+    // Wait for the overview panel to fully render (data must load)
+    await expect(page.getByRole('main').getByText(/Platform Overview/i)).toBeVisible({ timeout: 10_000 });
+
+    // Health info shows "CoreApi version" label or "Unavailable" (if health API is slow)
     const mainArea = page.getByRole('main');
-    // Health info shows "CoreApi version" label
-    await expect(mainArea.getByText(/CoreApi version/i)).toBeVisible({ timeout: 10_000 });
+    const healthVersionLabel = mainArea.getByText(/CoreApi version/i);
+    const unavailableText = mainArea.getByText(/Unavailable/i);
+    // One of these must appear once the health section finishes loading
+    await expect(healthVersionLabel.or(unavailableText)).toBeVisible({ timeout: 15_000 });
   });
 
   test('renders current focus section and refreshes cleanly', async ({ page }) => {

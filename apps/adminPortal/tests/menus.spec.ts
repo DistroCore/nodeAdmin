@@ -57,11 +57,13 @@ test.describe('Menus Management', () => {
 
     // Edit
     await row.getByText(/Edit/i).click();
+    // Wait for edit dialog to open with existing data
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 10_000 });
     await page.getByLabel('Name').fill(updatedName);
     await page.getByRole('button', { name: /Save/i }).click();
 
-    // Wait for dialog to close + reload
-    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 });
+    // Wait for dialog to close after successful save
+    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 15_000 });
     await page.reload();
     await expect(page.getByRole('main')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole('main').getByText(updatedName)).toBeVisible({ timeout: 10_000 });
@@ -75,7 +77,11 @@ test.describe('Menus Management', () => {
       .getByRole('button', { name: /Confirm/i })
       .click();
 
-    await expect(page.getByRole('alert').filter({ hasText: /deleted/i })).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByRole('main').getByText(updatedName)).not.toBeVisible({ timeout: 5_000 });
+    // Wait for dialog to close
+    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 });
+    // Verify the menu is gone via reload
+    await page.reload();
+    await expect(page.getByRole('main')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('main').getByText(updatedName)).not.toBeVisible({ timeout: 10_000 });
   });
 });
