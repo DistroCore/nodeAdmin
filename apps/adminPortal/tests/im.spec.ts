@@ -49,10 +49,10 @@ test.describe('IM Chat', () => {
     const typeSelector = mainArea.locator('select[aria-label="Message type"]');
     await typeSelector.selectOption('image');
 
-    const urlInput = page.getByPlaceholder(/image.*url|asset.*url/i);
+    const urlInput = page.getByPlaceholder('https://example.com/file.png');
     await expect(urlInput).toBeVisible({ timeout: 10_000 });
 
-    const fileNameInput = page.getByPlaceholder(/file.*name/i);
+    const fileNameInput = page.getByPlaceholder('Optional');
     await expect(fileNameInput).toBeVisible({ timeout: 10_000 });
   });
 
@@ -110,8 +110,12 @@ test.describe('IM Chat — conversation list', () => {
     await navigateAfterLogin(page, '/im');
   });
 
-  test('aside element exists for conversation panel', async ({ page }) => {
-    const aside = page.locator('aside');
+  test('conversation panel aside element exists', async ({ page }) => {
+    // Use specific locator to avoid matching sidebar and mobile sidebar asides
+    const aside = page
+      .getByRole('main')
+      .locator('aside')
+      .filter({ hasText: /Conversations/i });
     await expect(aside).toBeAttached({ timeout: 10_000 });
   });
 

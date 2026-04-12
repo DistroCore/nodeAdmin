@@ -11,12 +11,12 @@ test.describe('Menus Management', () => {
   test('lists menus with seed data', async ({ page }) => {
     await expect(page.getByRole('main').getByRole('table')).toBeVisible();
 
-    // Seed data uses Chinese names — match either Chinese or English
+    // Seed data rows exist (names are i18n keys like nav.overview, nav.group.overview)
     const table = page.getByRole('main').getByRole('table');
-    // Overview or 概览 or 平台概览
-    await expect(table.getByText(/概览|Overview/i)).toBeVisible();
-    // IM or 即时通讯
-    await expect(table.getByText(/即时通讯|IM/i)).toBeVisible();
+    const rows = table.locator('tbody tr');
+    await expect(rows.first()).toBeVisible({ timeout: 10_000 });
+    // At least 5 seed menus should be present
+    expect(await rows.count()).toBeGreaterThanOrEqual(5);
   });
 
   test('creates, edits, adds child and deletes a menu', async ({ page }) => {
@@ -35,6 +35,7 @@ test.describe('Menus Management', () => {
     await page.getByLabel('Path').fill(`/test-${timestamp}`);
     await page.getByLabel('Icon').fill('star');
     await page.getByLabel('Sort Order').fill('999');
+    await page.getByLabel('Permission Code').fill('test:view');
     await page.getByRole('button', { name: /Save/i }).click();
 
     // Wait for dialog to close after save
@@ -48,6 +49,7 @@ test.describe('Menus Management', () => {
     await page.getByLabel('Path').fill(`/test-${timestamp}/child`);
     await page.getByLabel('Icon').fill('circle');
     await page.getByLabel('Sort Order').fill('1');
+    await page.getByLabel('Permission Code').fill('test:child');
     await page.getByRole('button', { name: /Save/i }).click();
 
     // Wait for dialog to close

@@ -79,7 +79,7 @@ export class MenusService {
         data.icon ?? null,
         data.sortOrder ?? 0,
         data.permissionCode ?? null,
-        data.isVisible !== false,
+        data.isVisible !== false ? 1 : 0,
       ],
     );
     return this.findById(id);
@@ -128,7 +128,7 @@ export class MenusService {
     }
     if (data.isVisible !== undefined) {
       sets.push(`is_visible = $${++idx}`);
-      params.push(data.isVisible);
+      params.push(data.isVisible ? 1 : 0);
     }
 
     if (sets.length === 0) return this.findById(id);

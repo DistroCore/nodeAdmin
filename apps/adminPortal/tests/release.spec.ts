@@ -14,8 +14,8 @@ test.describe('Release Control', () => {
     await expect(page.getByRole('main').getByText(/\d+\/\d+ completed/i)).toBeVisible();
 
     const mainArea = page.getByRole('main');
-    // Each check is rendered as a div (not li) with text containing "configured"
-    const checkItems = mainArea.locator('div.rounded-lg.border.bg-card');
+    // Each check is rendered inside CardContent as a div with border, p-4, and contains a Badge
+    const checkItems = mainArea.locator('div.flex.items-center.justify-between.rounded-lg.border');
     await expect(checkItems.first()).toBeVisible({ timeout: 10_000 });
     await expect(checkItems).toHaveCount(5);
 

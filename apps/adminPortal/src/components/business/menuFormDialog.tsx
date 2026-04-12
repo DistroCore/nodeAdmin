@@ -23,10 +23,10 @@ interface MenuData {
   name: string;
   path: string;
   icon: string;
-  parent_id: string | null;
-  sort_order: number;
-  permission_code: string;
-  is_visible: number;
+  parentId: string | null;
+  sortOrder: number;
+  permissionCode: string;
+  isVisible: boolean;
 }
 
 function flattenMenus(menus: MenuItem[]): MenuItem[] {
@@ -75,7 +75,7 @@ export function MenuFormDialog({ onClose, onSaved, open, menu, parentId, menus }
   const saveMutation = useMutation({
     mutationFn: async (data: MenuData) => {
       if (isEdit && menu) {
-        await apiClient.put<MenuItem>(`/api/v1/menus/${menu.id}`, data);
+        await apiClient.patch<MenuItem>(`/api/v1/menus/${menu.id}`, data);
       } else {
         await apiClient.post<MenuItem>('/api/v1/menus', data);
       }
@@ -103,10 +103,10 @@ export function MenuFormDialog({ onClose, onSaved, open, menu, parentId, menus }
       name,
       path,
       icon,
-      parent_id: selectedParentId,
-      sort_order: sortOrder,
-      permission_code: permissionCode,
-      is_visible: isVisible ? 1 : 0,
+      parentId: selectedParentId,
+      sortOrder,
+      permissionCode,
+      isVisible,
     };
 
     saveMutation.mutate(data);

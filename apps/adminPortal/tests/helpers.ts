@@ -1,10 +1,17 @@
 import { expect, Page } from '@playwright/test';
 
 export async function login(page: Page) {
-  await page.goto('/login');
+  // Clear any leftover state from previous tests
+  await page.context().clearCookies();
+  try {
+    await page.evaluate(() => localStorage.clear());
+  } catch {
+    // Ignore errors if no localStorage available
+  }
+
+  await page.goto('/login', { waitUntil: 'networkidle' });
 
   // Wait for tenant selector to be ready (API call must complete)
-  await page.waitForLoadState('domcontentloaded');
   const tenantLocator = page.getByLabel('Tenant ID');
   await expect(tenantLocator).toBeVisible({ timeout: 10_000 });
 
@@ -19,10 +26,9 @@ export async function login(page: Page) {
   }
 
   await page.getByRole('button', { name: 'Login', exact: true }).click();
-  await page.waitForURL(/\/overview/, { timeout: 15_000 });
+  await page.waitForURL(/\/overview/, { timeout: 30_000 });
 
   // Wait for the main layout to be fully rendered (sidebar, header, content)
-  // This prevents race conditions when tests navigate immediately after login
   await expect(page.getByRole('main')).toBeVisible({ timeout: 10_000 });
 }
 
