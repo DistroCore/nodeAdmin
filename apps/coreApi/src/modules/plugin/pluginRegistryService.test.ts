@@ -1,7 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { normalize } from 'node:path';
 import type { PluginManifest } from '@nodeadmin/shared-types';
-import { ManifestValidationError } from './manifestValidator';
 import { PluginRegistryService } from './pluginRegistryService';
 
 interface MockDirent {
@@ -49,6 +48,9 @@ describe('PluginRegistryService', () => {
     readdir: ReturnType<typeof vi.fn>;
     readFile: ReturnType<typeof vi.fn>;
   };
+  let logger: {
+    warn: ReturnType<typeof vi.fn>;
+  };
   let moduleLoader: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -57,9 +59,13 @@ describe('PluginRegistryService', () => {
       readdir: vi.fn(),
       readFile: vi.fn(),
     };
+    logger = {
+      warn: vi.fn(),
+    };
     moduleLoader = vi.fn();
 
     (service as unknown as { fs: typeof mockFs }).fs = mockFs;
+    (service as unknown as { logger: typeof logger }).logger = logger;
     (service as unknown as { moduleLoader: typeof moduleLoader }).moduleLoader = moduleLoader;
     (service as unknown as { nodeModulesScopePath: string }).nodeModulesScopePath =
       '/workspace/node_modules/@nodeadmin';
@@ -109,12 +115,42 @@ describe('PluginRegistryService', () => {
     expect(result[0]?.id).toBe('@nodeadmin/plugin-kanban');
   });
 
-  it('throws a ManifestValidationError when a manifest file contains invalid JSON', async () => {
-    mockFs.readdir.mockResolvedValue([createDirectoryEntry('plugin-kanban')]);
-    mockFs.readFile.mockResolvedValueOnce('{invalid json');
+  it('skips plugins whose manifest file contains invalid JSON instead of crashing the scan', async () => {
+    mockFs.readdir.mockResolvedValue([createDirectoryEntry('plugin-broken'), createDirectoryEntry('plugin-kanban')]);
+    mockFs.readFile.mockResolvedValueOnce('{invalid json').mockResolvedValueOnce(JSON.stringify(createManifest()));
 
-    await expect(service.scanInstalledPlugins()).rejects.toThrow(ManifestValidationError);
-    await expect(service.scanInstalledPlugins()).rejects.toThrow('nodeadmin-plugin.json contains invalid JSON');
+    await expect(service.scanInstalledPlugins()).resolves.toEqual([
+      expect.objectContaining({
+        id: '@nodeadmin/plugin-kanban',
+      }),
+    ]);
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Skipping plugin plugin-broken'));
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('invalid JSON'));
+  });
+
+  it('clears stale registrations before each rescan', async () => {
+    mockFs.readdir.mockResolvedValueOnce([createDirectoryEntry('plugin-kanban')]).mockResolvedValueOnce([
+      createDirectoryEntry('plugin-im'),
+    ]);
+    mockFs.readFile
+      .mockResolvedValueOnce(JSON.stringify(createManifest()))
+      .mockResolvedValueOnce(
+        JSON.stringify(
+          createManifest({
+            id: '@nodeadmin/plugin-im',
+            displayName: 'IM',
+          }),
+        ),
+      );
+
+    await service.scanInstalledPlugins();
+    await service.scanInstalledPlugins();
+
+    expect(service.getRegisteredPlugins()).toEqual([
+      expect.objectContaining({
+        id: '@nodeadmin/plugin-im',
+      }),
+    ]);
   });
 
   it('loads the server module for a scanned plugin via require()', async () => {

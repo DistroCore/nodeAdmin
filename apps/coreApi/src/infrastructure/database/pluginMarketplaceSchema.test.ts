@@ -47,4 +47,22 @@ describe('plugin marketplace migration', () => {
     expect(sql).toContain('CREATE POLICY plugin_registry_public_read');
     expect(sql).toContain('CREATE POLICY plugin_versions_public_read');
   });
+
+  it('adds write policies for plugin marketplace publish flows', async () => {
+    const migrationPath = join(
+      process.cwd(),
+      'apps/coreApi/drizzle/migrations/0024_plugin_registry_write_policies.sql',
+    );
+    const sql = await readFile(migrationPath, 'utf8');
+
+    expect(sql).toContain('ALTER POLICY plugin_registry_public_read ON plugin_registry RENAME TO plugin_registry_read;');
+    expect(sql).toContain('CREATE POLICY plugin_registry_write');
+    expect(sql).toContain('ON plugin_registry');
+    expect(sql).toContain('FOR INSERT');
+    expect(sql).toContain('CREATE POLICY plugin_registry_update');
+    expect(sql).toContain('FOR UPDATE');
+    expect(sql).toContain('CREATE POLICY plugin_versions_write');
+    expect(sql).toContain('ON plugin_versions');
+    expect(sql).toContain('FOR INSERT');
+  });
 });

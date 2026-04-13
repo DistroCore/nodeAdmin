@@ -39,11 +39,13 @@ export type AppPermission =
   | 'menus:view'
   | 'modernizer:view'
   | 'overview:view'
+  | 'plugins:manage'
   | 'plugins:view'
   | 'release:view'
   | 'roles:manage'
   | 'roles:view'
   | 'settings:view'
+  | 'tenants:manage'
   | 'tenants:view'
   | 'users:manage'
   | 'users:view';

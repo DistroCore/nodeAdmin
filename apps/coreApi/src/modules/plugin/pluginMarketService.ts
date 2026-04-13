@@ -1,9 +1,10 @@
 import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Pool, type PoolClient } from 'pg';
 import type { PluginManifest } from '@nodeadmin/shared-types';
 import { runtimeConfig } from '../../app/runtimeConfig';
+import { DatabaseService } from '../../infrastructure/database/databaseService';
 import { validatePluginManifest } from './manifestValidator';
 
 const REMOTE_REGISTRY_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -151,13 +152,8 @@ export class PluginMarketService {
   private packageJsonResolver: PackageJsonResolver = (packageName) =>
     this.requireFromRoot.resolve(`${packageName}/package.json`);
 
-  constructor() {
-    const databaseUrl = process.env.DATABASE_URL?.trim();
-    if (!databaseUrl) {
-      this.pool = null;
-    } else {
-      this.pool = new Pool({ connectionString: databaseUrl, max: 10 });
-    }
+  constructor(@Inject(DatabaseService) private readonly databaseService: DatabaseService) {
+    this.pool = (this.databaseService.drizzle?.$client as Pool | undefined) ?? null;
   }
 
   async listMarketplacePlugins(page = 1, pageSize = 20, search?: string) {
@@ -271,14 +267,13 @@ export class PluginMarketService {
     }
 
     return this.withTenantContext(tenantId, async (client) => {
-      const versionResult = await client.query<InstallPluginVersionRow>(
-        `SELECT version, min_platform_version, manifest, server_package
-         FROM plugin_versions
-         WHERE plugin_id = $1 AND version = $2`,
-        [pluginId, version],
-      );
+      let selectedVersion = await this.findLocalPluginVersion(client, pluginId, version);
 
-      const selectedVersion = versionResult.rows[0];
+      // Fallback to remote registry when local DB has no matching version
+      if (!selectedVersion) {
+        selectedVersion = await this.findRemotePluginVersion(pluginId, version);
+      }
+
       if (!selectedVersion) {
         throw new NotFoundException('Plugin version not found');
       }
@@ -287,7 +282,7 @@ export class PluginMarketService {
         selectedVersion.min_platform_version &&
         !this.isVersionCompatible(this.platformVersion, selectedVersion.min_platform_version)
       ) {
-        throw new Error('Plugin version is not compatible with this platform');
+        throw new BadRequestException('Plugin version is not compatible with this platform');
       }
 
       await client.query(
@@ -312,16 +307,20 @@ export class PluginMarketService {
       });
 
       return {
-        enabled: true,
+        success: true,
+        installedVersion: selectedVersion.version,
         pluginId,
-        tenantId,
-        version,
       };
     });
   }
 
   async updatePlugin(tenantId: string, pluginId: string, version: string) {
-    return this.installPlugin(tenantId, pluginId, version);
+    const result = await this.installPlugin(tenantId, pluginId, version);
+    return {
+      success: result.success,
+      updatedVersion: result.installedVersion,
+      pluginId: result.pluginId,
+    };
   }
 
   async uninstallPlugin(tenantId: string, pluginId: string) {
@@ -360,8 +359,7 @@ export class PluginMarketService {
 
       return {
         pluginId,
-        removed: true,
-        tenantId,
+        success: true,
       };
     });
   }
@@ -793,6 +791,58 @@ export class PluginMarketService {
     return versionEntry?.minPlatformVersion ?? versionEntry?.manifest.engines.nodeAdmin ?? null;
   }
 
+  private async findLocalPluginVersion(
+    client: PoolClient,
+    pluginId: string,
+    version: string,
+  ): Promise<InstallPluginVersionRow | null> {
+    const result = await client.query<InstallPluginVersionRow>(
+      `SELECT version, min_platform_version, manifest, server_package
+       FROM plugin_versions
+       WHERE plugin_id = $1 AND version = $2`,
+      [pluginId, version],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  private async findRemotePluginVersion(
+    pluginId: string,
+    version: string,
+  ): Promise<{
+    manifest: PluginManifest;
+    min_platform_version: string | null;
+    server_package: string;
+    version: string;
+  } | null> {
+    if (!this.hasRemoteRegistryUrl()) {
+      return null;
+    }
+
+    try {
+      const registry = await this.fetchRemoteRegistryRaw();
+      if (!registry) return null;
+
+      const plugin = registry.plugins.find((p) => p.id === pluginId);
+      if (!plugin) return null;
+
+      const versionEntry = plugin.versions.find((v) => v.version === version);
+      if (!versionEntry) return null;
+
+      return {
+        manifest: versionEntry.manifest,
+        min_platform_version: versionEntry.minPlatformVersion ?? versionEntry.manifest.engines.nodeAdmin ?? null,
+        server_package: versionEntry.serverPackage,
+        version: versionEntry.version,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private async fetchRemoteRegistryRaw(): Promise<RemoteRegistryResponse | null> {
+    return this.getRemoteRegistry();
+  }
+
   private async runLifecycleHook(
     client: PoolClient,
     input: {
@@ -841,7 +891,7 @@ export class PluginMarketService {
       return loadedModule.default as PluginLifecycleHandler;
     }
 
-    throw new Error(`Lifecycle hook '${hookPath}' must export a function`);
+    throw new BadRequestException(`Lifecycle hook '${hookPath}' must export a function`);
   }
 }
 

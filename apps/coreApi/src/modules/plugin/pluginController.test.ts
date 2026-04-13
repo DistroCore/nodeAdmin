@@ -20,9 +20,12 @@ describe('PluginController', () => {
   it('returns the current tenant plugin list from the authenticated identity', async () => {
     pluginService.listTenantPlugins.mockResolvedValue([
       {
+        autoUpdate: true,
         config: { uploadLimitMb: 5 },
         enabled: true,
         enabledAt: '2026-04-06T09:00:00.000Z',
+        installedAt: '2026-04-06T09:30:00.000Z',
+        installedVersion: '1.2.0',
         name: 'im',
       },
     ]);
@@ -37,9 +40,12 @@ describe('PluginController', () => {
     await expect(controller.findMine(identity)).resolves.toEqual({
       plugins: [
         {
+          autoUpdate: true,
           config: { uploadLimitMb: 5 },
           enabled: true,
           enabledAt: '2026-04-06T09:00:00.000Z',
+          installedAt: '2026-04-06T09:30:00.000Z',
+          installedVersion: '1.2.0',
           name: 'im',
         },
       ],
