@@ -21,3 +21,4 @@ apps/adminPortal/test-results/
 !.secrets/README.md
 *.png
 !docs/**/*.png
+.playwright-cli/
