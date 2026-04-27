@@ -53,7 +53,7 @@ function renderPanel() {
   return render(
     <QueryClientProvider client={qc}>
       <AuditLogPanel />
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 

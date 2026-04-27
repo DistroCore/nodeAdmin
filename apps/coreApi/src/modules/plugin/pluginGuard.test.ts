@@ -1,13 +1,11 @@
 import { ExecutionContext } from '@nestjs/common';
-import type { Reflector } from '@nestjs/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AuthIdentity } from '../auth/authIdentity';
 import type { TenantContextResolver } from '../../infrastructure/tenant/tenantContextResolver';
 import { PluginGuard } from './pluginGuard';
-import { PLUGIN_METADATA_KEY } from './plugin.decorator';
 
-function createHttpExecutionContext(user?: AuthIdentity): ExecutionContext {
-  const request = { user } as { user?: AuthIdentity };
+function createHttpExecutionContext(path: string, user?: AuthIdentity): ExecutionContext {
+  const request = { url: path, user } as { url: string; user?: AuthIdentity };
 
   return {
     getClass: () => PluginGuard,
@@ -24,17 +22,6 @@ function createMockPluginService() {
   };
 }
 
-function createMockReflector(pluginName?: string) {
-  return {
-    getAllAndOverride: vi.fn().mockImplementation((metadataKey: string) => {
-      if (metadataKey === PLUGIN_METADATA_KEY) {
-        return pluginName;
-      }
-      return undefined;
-    }),
-  } as unknown as Reflector;
-}
-
 describe('PluginGuard', () => {
   let pluginService: ReturnType<typeof createMockPluginService>;
   let tenantContextResolver: TenantContextResolver;
@@ -49,10 +36,9 @@ describe('PluginGuard', () => {
     } as unknown as TenantContextResolver;
   });
 
-  it('allows routes without plugin metadata', async () => {
-    const reflector = createMockReflector();
-    const guard = new PluginGuard(reflector, pluginService as never, tenantContextResolver);
-    const context = createHttpExecutionContext({
+  it('allows routes outside the plugin url prefix', async () => {
+    const guard = new PluginGuard(pluginService as never, tenantContextResolver);
+    const context = createHttpExecutionContext('/api/v1/admin/plugins', {
       jti: 'jti-1',
       roles: ['viewer'],
       tenantId: 'tenant-1',
@@ -63,12 +49,11 @@ describe('PluginGuard', () => {
     expect(pluginService.isPluginEnabled).not.toHaveBeenCalled();
   });
 
-  it('allows a request when the plugin is enabled for the tenant', async () => {
-    const reflector = createMockReflector('im');
+  it('allows a request when the plugin route is enabled for the tenant', async () => {
     pluginService.isPluginEnabled.mockResolvedValue(true);
 
-    const guard = new PluginGuard(reflector, pluginService as never, tenantContextResolver);
-    const context = createHttpExecutionContext({
+    const guard = new PluginGuard(pluginService as never, tenantContextResolver);
+    const context = createHttpExecutionContext('/api/v1/plugins/kanban/boards', {
       jti: 'jti-1',
       roles: ['viewer'],
       tenantId: 'tenant-1',
@@ -76,15 +61,14 @@ describe('PluginGuard', () => {
     });
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
-    expect(pluginService.isPluginEnabled).toHaveBeenCalledWith('tenant-1', 'im');
+    expect(pluginService.isPluginEnabled).toHaveBeenCalledWith('tenant-1', '@nodeadmin/plugin-kanban');
   });
 
-  it('rejects a request when the plugin is disabled for the tenant', async () => {
-    const reflector = createMockReflector('modernizer');
+  it('rejects a request when the plugin route is disabled for the tenant', async () => {
     pluginService.isPluginEnabled.mockResolvedValue(false);
 
-    const guard = new PluginGuard(reflector, pluginService as never, tenantContextResolver);
-    const context = createHttpExecutionContext({
+    const guard = new PluginGuard(pluginService as never, tenantContextResolver);
+    const context = createHttpExecutionContext('/api/v1/plugins/modernizer', {
       jti: 'jti-1',
       roles: ['viewer'],
       tenantId: 'tenant-1',
@@ -92,38 +76,34 @@ describe('PluginGuard', () => {
     });
 
     await expect(guard.canActivate(context)).rejects.toThrow(
-      "Plugin 'modernizer' is not enabled for this tenant"
+      "Plugin '@nodeadmin/plugin-modernizer' is not enabled for this tenant",
     );
   });
 
-  it('rejects plugin-protected routes when tenant context is missing', async () => {
-    const reflector = createMockReflector('backlog');
+  it('rejects plugin routes when tenant context is missing', async () => {
     (tenantContextResolver.resolve as ReturnType<typeof vi.fn>).mockImplementation(() => {
       throw new Error('Tenant context is missing for the authenticated principal.');
     });
-    const guard = new PluginGuard(reflector, pluginService as never, tenantContextResolver);
-    const context = createHttpExecutionContext();
+    const guard = new PluginGuard(pluginService as never, tenantContextResolver);
+    const context = createHttpExecutionContext('/api/v1/plugins/backlog');
 
-    await expect(guard.canActivate(context)).rejects.toThrow(
-      'Tenant context is required for plugin-protected routes'
-    );
+    await expect(guard.canActivate(context)).rejects.toThrow('Tenant context is required for plugin-protected routes');
   });
 
   it('uses the resolved default tenant in single-tenant mode', async () => {
-    const reflector = createMockReflector('backlog');
     pluginService.isPluginEnabled.mockResolvedValue(true);
     (tenantContextResolver.resolve as ReturnType<typeof vi.fn>).mockReturnValue({
       source: 'default',
       tenantId: 'default',
     });
-    const guard = new PluginGuard(reflector, pluginService as never, tenantContextResolver);
-    const context = createHttpExecutionContext({
+    const guard = new PluginGuard(pluginService as never, tenantContextResolver);
+    const context = createHttpExecutionContext('/api/v1/plugins/backlog', {
       jti: 'jti-1',
       roles: ['viewer'],
       userId: 'user-1',
     } as AuthIdentity);
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
-    expect(pluginService.isPluginEnabled).toHaveBeenCalledWith('default', 'backlog');
+    expect(pluginService.isPluginEnabled).toHaveBeenCalledWith('default', '@nodeadmin/plugin-backlog');
   });
 });

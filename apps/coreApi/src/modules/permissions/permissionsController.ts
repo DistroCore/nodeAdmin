@@ -1,5 +1,6 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { DEFAULT_TENANT_ID } from '../../app/constants';
 import { PermissionsService } from './permissionsService';
 
 @ApiTags('permissions')
@@ -10,13 +11,13 @@ export class PermissionsController {
 
   @Get()
   @ApiOperation({ summary: 'List all permissions' })
-  async findAll() {
-    return this.permissionsService.findAll();
+  async findAll(@Query('tenantId') tenantId?: string) {
+    return this.permissionsService.findAll(tenantId ?? DEFAULT_TENANT_ID);
   }
 
   @Get(':module')
   @ApiOperation({ summary: 'List permissions by module' })
-  async findByModule(@Param('module') module: string) {
-    return this.permissionsService.findByModule(module);
+  async findByModule(@Param('module') module: string, @Query('tenantId') tenantId?: string) {
+    return this.permissionsService.findByModule(tenantId ?? DEFAULT_TENANT_ID, module);
   }
 }

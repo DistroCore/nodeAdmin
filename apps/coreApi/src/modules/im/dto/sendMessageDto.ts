@@ -1,14 +1,6 @@
 import { Type } from 'class-transformer';
 import type { ImMessageType } from '@nodeadmin/shared-types';
-import {
-  IsIn,
-  IsNotEmpty,
-  IsObject,
-  IsOptional,
-  IsString,
-  MaxLength,
-  ValidateNested,
-} from 'class-validator';
+import { IsIn, IsNotEmpty, IsObject, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
 
 const imMessageTypes: ImMessageType[] = ['text', 'image', 'file', 'system'];
 

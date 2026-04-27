@@ -17,7 +17,7 @@ function createMockConnectionRegistry() {
 
 function createMockConversationRepository() {
   return {
-    listByTenant: vi.fn(),
+    listByMember: vi.fn(),
   };
 }
 
@@ -84,7 +84,7 @@ describe('ConsoleController', () => {
       connectionRegistry as never,
       conversationRepository as never,
       databaseService as never,
-      tenantsService as never
+      tenantsService as never,
     );
   });
 
@@ -100,9 +100,7 @@ describe('ConsoleController', () => {
     connectionRegistry.totalUniqueUsers.mockReturnValue(3);
     vi.spyOn(controller as never, 'countAllConversations').mockResolvedValue(10);
     vi.spyOn(controller as never, 'countTodayMessages').mockResolvedValue(25);
-    vi.spyOn(controller as never, 'buildOverviewTodos').mockResolvedValue([
-      'Follow up high-priority backlog tasks',
-    ]);
+    vi.spyOn(controller as never, 'buildOverviewTodos').mockResolvedValue(['Follow up high-priority backlog tasks']);
     vi.spyOn(process, 'uptime').mockReturnValue(7500);
 
     const result = await controller.getOverview();
@@ -197,13 +195,16 @@ describe('ConsoleController', () => {
   });
 
   it('returns recent conversations for the authenticated tenant when query tenantId is omitted', async () => {
-    conversationRepository.listByTenant.mockResolvedValue([
+    conversationRepository.listByMember.mockResolvedValue([
       {
         conversationId: 'conversation-1',
         createdAt: new Date('2026-03-30T09:00:00.000Z'),
+        creatorId: 'user-1',
         lastMessageAt: new Date('2026-03-30T10:00:00.000Z'),
         tenantId: 'tenant-9',
         title: 'General',
+        type: 'group',
+        updatedAt: new Date('2026-03-30T10:00:00.000Z'),
       },
     ]);
 
@@ -214,13 +215,15 @@ describe('ConsoleController', () => {
       userId: 'user-1',
     });
 
-    expect(conversationRepository.listByTenant).toHaveBeenCalledWith('tenant-9', 50);
+    expect(conversationRepository.listByMember).toHaveBeenCalledWith('tenant-9', 'user-1', 50);
     expect(result).toEqual({
       rows: [
         {
           id: 'conversation-1',
           lastMessagePreview: '2026-03-30T10:00:00.000Z',
           name: 'General',
+          title: 'General',
+          type: 'group',
           unreadCount: 0,
         },
       ],
@@ -228,7 +231,7 @@ describe('ConsoleController', () => {
   });
 
   it('allows an explicit tenantId query for conversations', async () => {
-    conversationRepository.listByTenant.mockResolvedValue([]);
+    conversationRepository.listByMember.mockResolvedValue([]);
 
     await controller.getConversations(
       {
@@ -237,10 +240,10 @@ describe('ConsoleController', () => {
         tenantId: 'tenant-auth',
         userId: 'user-1',
       },
-      'tenant-query'
+      'tenant-query',
     );
 
-    expect(conversationRepository.listByTenant).toHaveBeenCalledWith('tenant-query', 50);
+    expect(conversationRepository.listByMember).toHaveBeenCalledWith('tenant-query', 'user-1', 50);
   });
 
   it('returns the permission map for parsed role input', () => {
@@ -286,7 +289,7 @@ describe('ConsoleController', () => {
       'auth.login',
       'user',
       '2026-03-01',
-      '2026-03-31'
+      '2026-03-31',
     );
 
     expect(auditLogService.listByFilter).toHaveBeenCalledWith(
@@ -299,7 +302,7 @@ describe('ConsoleController', () => {
         userId: 'user-9',
       },
       2,
-      100
+      100,
     );
     expect(result).toEqual({
       items: [{ id: 'log-1', action: 'auth.login' }],
@@ -331,7 +334,7 @@ describe('ConsoleController', () => {
         userId: 'user-1',
       },
       '2',
-      '200'
+      '200',
     );
 
     expect((controller as never).listRecentMessages).toHaveBeenCalledWith('tenant-1', 2, 100);

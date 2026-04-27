@@ -30,20 +30,14 @@ export class BackpressureController {
     'backpressure_rejections_total',
     {
       description: 'Total requests rejected due to backpressure',
-    }
+    },
   );
-  private static readonly currentLoadGauge = BackpressureController.meter.createObservableGauge(
-    'backpressure_load',
-    {
-      description: 'Current load on the backpressure controller',
-    }
-  );
-  private static readonly zoneGauge = BackpressureController.meter.createObservableGauge(
-    'backpressure_zone',
-    {
-      description: 'Current backpressure zone (0=GREEN, 1=YELLOW, 2=RED, 3=BLACK)',
-    }
-  );
+  private static readonly currentLoadGauge = BackpressureController.meter.createObservableGauge('backpressure_load', {
+    description: 'Current load on the backpressure controller',
+  });
+  private static readonly zoneGauge = BackpressureController.meter.createObservableGauge('backpressure_zone', {
+    description: 'Current backpressure zone (0=GREEN, 1=YELLOW, 2=RED, 3=BLACK)',
+  });
 
   private readonly logger: Logger;
   private currentConcurrent = 0;
@@ -154,7 +148,7 @@ export class BackpressureController {
 
     this.lastWarnTime = now;
     this.logger.warn(
-      `Backpressure warning: queueSize=${queueSize}, warnThreshold=${this.config.warnThreshold}, rejectThreshold=${this.config.rejectThreshold}`
+      `Backpressure warning: queueSize=${queueSize}, warnThreshold=${this.config.warnThreshold}, rejectThreshold=${this.config.rejectThreshold}`,
     );
   }
 

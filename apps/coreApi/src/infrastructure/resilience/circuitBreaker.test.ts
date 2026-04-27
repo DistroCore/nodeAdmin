@@ -214,9 +214,7 @@ describe('CircuitBreaker', () => {
       const first = deferredCircuit.execute(() => firstDeferred.promise);
       const second = deferredCircuit.execute(() => secondDeferred.promise);
 
-      await expect(deferredCircuit.execute(async () => 'third')).rejects.toThrow(
-        'max attempts reached'
-      );
+      await expect(deferredCircuit.execute(async () => 'third')).rejects.toThrow('max attempts reached');
 
       firstDeferred.resolve('first');
       secondDeferred.resolve('second');

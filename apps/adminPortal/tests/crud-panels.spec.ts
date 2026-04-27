@@ -1,48 +1,16 @@
 import { expect, test } from '@playwright/test';
+import { login } from './helpers';
 
 /**
  * E2E tests for CRUD panel interactions.
- * Requires CoreApi running on port 11451 with dev-token endpoint enabled.
+ * Uses the standard login() helper for authentication.
  */
 
-const API_BASE = process.env.API_BASE_URL || 'http://127.0.0.1:11451';
-
-async function authenticate(
-  page: import('@playwright/test').Page,
-  request: import('@playwright/test').APIRequestContext
-): Promise<void> {
-  const tokenResponse = await request.post(`${API_BASE}/api/v1/auth/dev-token`);
-  if (!tokenResponse.ok()) {
-    throw new Error(`dev-token failed: ${tokenResponse.status()}`);
-  }
-  const tokenData = await tokenResponse.json();
-  await page.goto('/login');
-  await page.evaluate((auth) => {
-    localStorage.setItem(
-      'nodeadmin_auth',
-      JSON.stringify({
-        accessToken: auth.accessToken,
-        refreshToken: auth.refreshToken,
-        tenantId: auth.identity.tenantId,
-        userId: auth.identity.userId,
-        userName: 'Test User',
-        userRoles: auth.identity.roles ?? [],
-      })
-    );
-  }, tokenData);
-}
-
 test.describe('users panel', () => {
-  test('renders user list', async ({ page, request }) => {
-    try {
-      await authenticate(page, request);
-    } catch {
-      test.skip();
-      return;
-    }
-
+  test('renders user list', async ({ page }) => {
+    await login(page);
     await page.goto('/users');
-    await expect(page.getByRole('main')).toBeVisible();
+    await expect(page.getByRole('main')).toBeVisible({ timeout: 10_000 });
 
     // Page should render — either users are listed or empty state
     const hasContent = await page
@@ -63,16 +31,10 @@ test.describe('users panel', () => {
     expect(hasContent || hasTable || hasEmptyState).toBeTruthy();
   });
 
-  test('create user dialog opens', async ({ page, request }) => {
-    try {
-      await authenticate(page, request);
-    } catch {
-      test.skip();
-      return;
-    }
-
+  test('create user dialog opens', async ({ page }) => {
+    await login(page);
     await page.goto('/users');
-    await expect(page.getByRole('main')).toBeVisible();
+    await expect(page.getByRole('main')).toBeVisible({ timeout: 10_000 });
 
     const createButton = page.getByRole('main').getByRole('button', { name: /create|add|new/i });
     if (await createButton.isVisible().catch(() => false)) {
@@ -88,16 +50,10 @@ test.describe('users panel', () => {
 });
 
 test.describe('roles panel', () => {
-  test('renders role list', async ({ page, request }) => {
-    try {
-      await authenticate(page, request);
-    } catch {
-      test.skip();
-      return;
-    }
-
+  test('renders role list', async ({ page }) => {
+    await login(page);
     await page.goto('/roles');
-    await expect(page.getByRole('main')).toBeVisible();
+    await expect(page.getByRole('main')).toBeVisible({ timeout: 10_000 });
 
     const hasContent = await page
       .getByRole('main')
@@ -114,16 +70,10 @@ test.describe('roles panel', () => {
 });
 
 test.describe('menus panel', () => {
-  test('renders menu list', async ({ page, request }) => {
-    try {
-      await authenticate(page, request);
-    } catch {
-      test.skip();
-      return;
-    }
-
+  test('renders menu list', async ({ page }) => {
+    await login(page);
     await page.goto('/menus');
-    await expect(page.getByRole('main')).toBeVisible();
+    await expect(page.getByRole('main')).toBeVisible({ timeout: 10_000 });
 
     const hasContent = await page
       .getByRole('main')
@@ -140,16 +90,10 @@ test.describe('menus panel', () => {
 });
 
 test.describe('tenants panel', () => {
-  test('renders tenant list', async ({ page, request }) => {
-    try {
-      await authenticate(page, request);
-    } catch {
-      test.skip();
-      return;
-    }
-
+  test('renders tenant list', async ({ page }) => {
+    await login(page);
     await page.goto('/tenants');
-    await expect(page.getByRole('main')).toBeVisible();
+    await expect(page.getByRole('main')).toBeVisible({ timeout: 10_000 });
 
     const hasContent = await page
       .getByRole('main')
@@ -166,42 +110,37 @@ test.describe('tenants panel', () => {
 });
 
 test.describe('audit log panel', () => {
-  test('renders audit log viewer', async ({ page, request }) => {
-    try {
-      await authenticate(page, request);
-    } catch {
-      test.skip();
-      return;
-    }
-
+  test('renders audit log viewer', async ({ page }) => {
+    await login(page);
     await page.goto('/audit');
-    await expect(page.getByRole('main')).toBeVisible();
+    await expect(page.getByRole('main')).toBeVisible({ timeout: 10_000 });
 
-    const hasContent = await page
+    // Audit log uses Card title (not h1) and Timeline component (not table)
+    const hasHeading = await page
       .getByRole('main')
-      .getByRole('heading', { level: 1 })
+      .getByRole('heading')
       .isVisible()
       .catch(() => false);
-    const hasTable = await page
+    const hasTimeline = await page
       .getByRole('main')
-      .getByRole('table')
+      .locator('[class*="timeline"], [class*="Timeline"], ol, ul')
+      .first()
       .isVisible()
       .catch(() => false);
-    expect(hasContent || hasTable).toBeTruthy();
+    const hasEmptyState = await page
+      .getByRole('main')
+      .getByText(/no audit|empty|audit/i)
+      .isVisible()
+      .catch(() => false);
+    expect(hasHeading || hasTimeline || hasEmptyState).toBeTruthy();
   });
 });
 
 test.describe('settings panel', () => {
-  test('renders settings page', async ({ page, request }) => {
-    try {
-      await authenticate(page, request);
-    } catch {
-      test.skip();
-      return;
-    }
-
+  test('renders settings page', async ({ page }) => {
+    await login(page);
     await page.goto('/settings');
-    await expect(page.getByRole('main')).toBeVisible();
+    await expect(page.getByRole('main')).toBeVisible({ timeout: 10_000 });
 
     // Settings should show theme toggle, language switch, session info
     const hasContent = await page

@@ -8,8 +8,7 @@ import type {
 
 const PLUGIN_ID_PATTERN = /^@nodeadmin\/plugin-[a-z0-9-]+$/;
 const SEMVER_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z-.]+)?(?:\+[0-9A-Za-z-.]+)?$/;
-const SEMVER_RANGE_PATTERN =
-  /^(?:\^|~|>=|<=|>|<)?\d+\.\d+\.\d+(?:\s+\|\|\s+(?:\^|~|>=|<=|>|<)?\d+\.\d+\.\d+)*$/;
+const SEMVER_RANGE_PATTERN = /^(?:\^|~|>=|<=|>|<)?\d+\.\d+\.\d+(?:\s+\|\|\s+(?:\^|~|>=|<=|>|<)?\d+\.\d+\.\d+)*$/;
 
 export class ManifestValidationError extends Error {
   readonly issues: string[];
@@ -127,10 +126,7 @@ function validateContributes(value: unknown, issues: string[]): void {
   validateRouteContributions(value.routes, issues);
 }
 
-function validateMenuContributions(
-  value: PluginManifestContributes['menus'] | unknown,
-  issues: string[]
-): void {
+function validateMenuContributions(value: PluginManifestContributes['menus'] | unknown, issues: string[]): void {
   if (value === undefined) {
     return;
   }
@@ -146,7 +142,7 @@ function validateMenuContributions(
 function validateMenuContribution(
   value: PluginManifestMenuContribution | unknown,
   index: number,
-  issues: string[]
+  issues: string[],
 ): void {
   if (!isRecord(value)) {
     issues.push(`contributes.menus[${index}] must be an object`);
@@ -169,10 +165,7 @@ function validateMenuContribution(
   }
 }
 
-function validateRouteContributions(
-  value: PluginManifestContributes['routes'] | unknown,
-  issues: string[]
-): void {
+function validateRouteContributions(value: PluginManifestContributes['routes'] | unknown, issues: string[]): void {
   if (value === undefined) {
     return;
   }
@@ -225,12 +218,7 @@ function validateSemver(value: unknown, fieldName: string, issues: string[]): vo
   }
 }
 
-function validateRequiredString(
-  record: Record<string, unknown>,
-  key: string,
-  issues: string[],
-  label = key
-): void {
+function validateRequiredString(record: Record<string, unknown>, key: string, issues: string[], label = key): void {
   if (!isNonEmptyString(record[key])) {
     issues.push(`${label} is required`);
   }
@@ -243,7 +231,7 @@ function validateRelativePath(
     | unknown,
   label: string,
   issues: string[],
-  required: boolean
+  required: boolean,
 ): void {
   if (value === undefined) {
     if (required) {

@@ -64,10 +64,7 @@ function parseColumns(block: string): ParsedColumn[] {
 
     // A column definition is complete when it ends with a comma or closing paren+comma
     // and contains a Drizzle type call
-    if (
-      /(?:\),?\s*$|\.\w+\([^)]*\)\s*,?\s*$)/.test(currentCol) &&
-      /\w+\s*:\s*\w+\s*\(/.test(currentCol)
-    ) {
+    if (/(?:\),?\s*$|\.\w+\([^)]*\)\s*,?\s*$)/.test(currentCol) && /\w+\s*:\s*\w+\s*\(/.test(currentCol)) {
       const col = parseSingleColumn(currentCol);
       if (col) columns.push(col);
       currentCol = '';
@@ -149,12 +146,7 @@ export function parseSchema(schemaFilePath: string): Map<string, ParsedTable> {
 
     const hasTenantId = columns.some((c) => c.propertyName === 'tenantId');
     const searchableColumns = columns
-      .filter(
-        (c) =>
-          !c.isPrimary &&
-          !c.isAutoManaged &&
-          (c.drizzleType === 'varchar' || c.drizzleType === 'text')
-      )
+      .filter((c) => !c.isPrimary && !c.isAutoManaged && (c.drizzleType === 'varchar' || c.drizzleType === 'text'))
       .map((c) => c.propertyName)
       .filter((name) => SEARCHABLE_NAMES.has(name));
 

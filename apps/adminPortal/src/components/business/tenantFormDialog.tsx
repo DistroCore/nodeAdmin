@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { FormField } from '@/components/ui/formField';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/toast';
 import { useApiClient } from '@/hooks/useApiClient';
 
 interface TenantFormDialogProps {
@@ -16,14 +17,10 @@ interface TenantFormDialogProps {
   onSaved: () => void;
 }
 
-export function TenantFormDialog({
-  onClose,
-  onSaved,
-  open,
-  tenant,
-}: TenantFormDialogProps): JSX.Element {
+export function TenantFormDialog({ onClose, onSaved, open, tenant }: TenantFormDialogProps): JSX.Element {
   const { formatMessage: t } = useIntl();
   const apiClient = useApiClient();
+  const toast = useToast();
 
   const [name, setName] = useState(tenant?.name ?? '');
   const [isActive, setIsActive] = useState(Boolean(tenant?.is_active ?? true));
@@ -46,8 +43,15 @@ export function TenantFormDialog({
       }
     },
     onSuccess: () => {
+      toast.success(t({ id: 'tenant.saveSuccess', defaultMessage: 'Tenant saved successfully' }));
       onSaved();
       handleClose();
+    },
+    onError: (error: Error) => {
+      toast.error(
+        t({ id: 'tenant.saveFailed', defaultMessage: 'Failed to save tenant' }),
+        error.message || t({ id: 'common.error.unknown' }),
+      );
     },
   });
 
@@ -63,20 +67,11 @@ export function TenantFormDialog({
   };
 
   return (
-    <Dialog
-      onClose={handleClose}
-      open={open}
-      title={t({ id: isEdit ? 'tenant.edit' : 'tenant.create' })}
-    >
+    <Dialog onClose={handleClose} open={open} title={t({ id: isEdit ? 'tenant.edit' : 'tenant.create' })}>
       <form onSubmit={handleSubmit}>
         <div className="space-y-4">
           <FormField label={t({ id: 'tenant.fieldName' })} htmlFor="tenant-name">
-            <Input
-              id="tenant-name"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+            <Input id="tenant-name" required value={name} onChange={(e) => setName(e.target.value)} />
           </FormField>
 
           <Checkbox
@@ -88,12 +83,7 @@ export function TenantFormDialog({
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
-          <Button
-            disabled={saveMutation.isPending}
-            type="button"
-            variant="secondary"
-            onClick={handleClose}
-          >
+          <Button disabled={saveMutation.isPending} type="button" variant="secondary" onClick={handleClose}>
             {t({ id: 'common.cancel' })}
           </Button>
           <Button disabled={saveMutation.isPending} type="submit">
@@ -109,11 +99,7 @@ export function TenantFormDialog({
                     strokeWidth="4"
                     fill="none"
                   />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
                 {t({ id: 'common.saving' })}
               </>

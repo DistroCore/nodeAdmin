@@ -15,7 +15,7 @@ function createOutboxRow(
     payload: string;
     retry_count: number;
     tenant_id: string;
-  }>
+  }>,
 ) {
   return {
     aggregate_id: 'conversation-1',
@@ -88,10 +88,7 @@ describe('OutboxPublisherService', () => {
     pool.connect = vi.fn(async () => client);
     const producer = {
       disconnect: vi.fn(),
-      send: vi
-        .fn()
-        .mockRejectedValueOnce(new Error('primary topic failed'))
-        .mockResolvedValueOnce(undefined),
+      send: vi.fn().mockRejectedValueOnce(new Error('primary topic failed')).mockResolvedValueOnce(undefined),
     };
 
     assignInternals(service, { pool, producer });
@@ -150,7 +147,7 @@ describe('OutboxPublisherService', () => {
     await service.onModuleDestroy();
 
     expect(producer.disconnect).toHaveBeenCalledWith();
-    expect(pool.end).toHaveBeenCalledWith();
+    expect(pool.end).not.toHaveBeenCalled();
   });
 
   it('increments retry_count when Kafka is unavailable but max retry is not reached', async () => {
@@ -184,8 +181,8 @@ describe('OutboxPublisherService', () => {
         (call) =>
           call.sql.includes('SET retry_count = $2') &&
           call.params[1] === 2 &&
-          call.params[2] === 'Error: kafka unavailable'
-      )
+          call.params[2] === 'Error: kafka unavailable',
+      ),
     ).toBe(true);
   });
 
@@ -235,10 +232,7 @@ describe('OutboxPublisherService', () => {
     pool.connect = vi.fn(async () => client);
     const producer = {
       disconnect: vi.fn(),
-      send: vi
-        .fn()
-        .mockRejectedValueOnce(new Error('primary down'))
-        .mockRejectedValueOnce(new Error('dlq down')),
+      send: vi.fn().mockRejectedValueOnce(new Error('primary down')).mockRejectedValueOnce(new Error('dlq down')),
     };
 
     assignInternals(service, { pool, producer });
@@ -253,10 +247,8 @@ describe('OutboxPublisherService', () => {
     expect(
       client.calls.some(
         (call) =>
-          call.sql.includes('SET retry_count = $2') &&
-          call.params[1] === 1 &&
-          call.params[2] === 'Error: dlq down'
-      )
+          call.sql.includes('SET retry_count = $2') && call.params[1] === 1 && call.params[2] === 'Error: dlq down',
+      ),
     ).toBe(true);
   });
 
@@ -310,7 +302,7 @@ function assignInternals(
       disconnect: () => Promise<void>;
       send: (...args: unknown[]) => Promise<unknown>;
     } | null;
-  }
+  },
 ): void {
   const target = service as unknown as {
     intervalHandle: NodeJS.Timeout | null;

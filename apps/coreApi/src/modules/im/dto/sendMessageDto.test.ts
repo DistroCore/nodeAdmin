@@ -97,9 +97,6 @@ describe('SendMessageDto', () => {
   });
 });
 
-function findPropertyError(
-  errors: ValidationError[],
-  property: string
-): ValidationError | undefined {
+function findPropertyError(errors: ValidationError[], property: string): ValidationError | undefined {
   return errors.find((error) => error.property === property);
 }

@@ -5,18 +5,14 @@ test.describe('Modernizer (Code Analysis)', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto('/modernizer');
-    await expect(
-      page.getByRole('main').getByRole('heading', { name: /Code Analysis/i })
-    ).toBeVisible();
+    await expect(page.getByRole('main').getByRole('heading', { name: /Code Analysis/i })).toBeVisible();
   });
 
   test('runs analysis and shows results', async ({ page }) => {
     test.slow();
 
     // Initial state
-    await expect(
-      page.getByRole('main').getByText(/Click "Run Analysis" to scan the codebase/i)
-    ).toBeVisible();
+    await expect(page.getByRole('main').getByText(/Click "Run Analysis" to scan the codebase/i)).toBeVisible();
 
     // Run
     await page

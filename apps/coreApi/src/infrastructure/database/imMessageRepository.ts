@@ -1,7 +1,8 @@
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { Pool, PoolClient } from 'pg';
 import { runtimeConfig } from '../../app/runtimeConfig';
+import { DatabaseService } from './databaseService';
 import {
   AppendResult,
   InMemoryMessageStore,
@@ -26,36 +27,20 @@ type MessageRow = {
 };
 
 @Injectable()
-export class ImMessageRepository implements OnModuleDestroy {
+export class ImMessageRepository {
   private readonly logger = new Logger(ImMessageRepository.name);
 
-  private readonly databaseUrl = process.env.DATABASE_URL?.trim();
   private readonly pool: Pool | null;
 
-  constructor(private readonly inMemoryStore: InMemoryMessageStore) {
-    if (!this.databaseUrl) {
+  constructor(
+    @Inject(InMemoryMessageStore) private readonly inMemoryStore: InMemoryMessageStore,
+    @Inject(DatabaseService) databaseService: DatabaseService = new DatabaseService(),
+  ) {
+    this.pool = (databaseService.drizzle?.$client as Pool | undefined) ?? null;
+    if (!this.pool) {
       this.pool = null;
       this.logger.warn('DATABASE_URL is not set. IM repository will use in-memory storage.');
-      return;
     }
-
-    this.pool = new Pool({
-      connectionString: this.databaseUrl,
-      max: 500,
-      min: 50,
-      idleTimeoutMillis: runtimeConfig.database.idleTimeoutMillis,
-      connectionTimeoutMillis: runtimeConfig.database.connectionTimeoutMillis,
-      maxUses: 7500,
-      allowExitOnIdle: false,
-    });
-  }
-
-  async onModuleDestroy(): Promise<void> {
-    if (!this.pool) {
-      return;
-    }
-
-    await this.pool.end();
   }
 
   async append(message: PendingMessage): Promise<AppendResult> {
@@ -70,7 +55,7 @@ export class ImMessageRepository implements OnModuleDestroy {
           VALUES ($1, $2)
           ON CONFLICT (tenant_id, id) DO NOTHING;
         `,
-        [message.tenantId, message.conversationId]
+        [message.tenantId, message.conversationId],
       );
 
       await client.query(
@@ -81,7 +66,7 @@ export class ImMessageRepository implements OnModuleDestroy {
             AND id = $2
           FOR UPDATE;
         `,
-        [message.tenantId, message.conversationId]
+        [message.tenantId, message.conversationId],
       );
 
       const metadataJson = message.metadata ? JSON.stringify(message.metadata) : null;
@@ -147,7 +132,7 @@ export class ImMessageRepository implements OnModuleDestroy {
           messageType,
           metadataJson,
           message.createdAt,
-        ]
+        ],
       );
 
       if (!insertResult.rowCount || insertResult.rowCount === 0) {
@@ -168,7 +153,7 @@ export class ImMessageRepository implements OnModuleDestroy {
               AND message_id = $2
             LIMIT 1;
           `,
-          [message.tenantId, message.messageId]
+          [message.tenantId, message.messageId],
         );
 
         if (!duplicateResult.rowCount || duplicateResult.rowCount === 0) {
@@ -194,7 +179,7 @@ export class ImMessageRepository implements OnModuleDestroy {
           storedMessage.conversationId,
           'im.message.sent',
           JSON.stringify(storedMessage),
-        ]
+        ],
       );
 
       return {
@@ -204,11 +189,7 @@ export class ImMessageRepository implements OnModuleDestroy {
     });
   }
 
-  async getLatest(
-    tenantId: string,
-    conversationId: string,
-    limit: number
-  ): Promise<StoredMessage[]> {
+  async getLatest(tenantId: string, conversationId: string, limit: number): Promise<StoredMessage[]> {
     if (!this.pool) {
       return this.inMemoryStore.getLatest(tenantId, conversationId, limit);
     }
@@ -232,18 +213,14 @@ export class ImMessageRepository implements OnModuleDestroy {
           ORDER BY sequence_id DESC
           LIMIT $3;
         `,
-        [tenantId, conversationId, limit]
+        [tenantId, conversationId, limit],
       );
 
       return result.rows.map((row) => this.toStoredMessage(row)).reverse();
     });
   }
 
-  async updateContent(
-    tenantId: string,
-    messageId: string,
-    content: string
-  ): Promise<StoredMessage | null> {
+  async updateContent(tenantId: string, messageId: string, content: string): Promise<StoredMessage | null> {
     if (!this.pool) {
       return this.inMemoryStore.updateContent(tenantId, '', messageId, content);
     }
@@ -258,7 +235,7 @@ export class ImMessageRepository implements OnModuleDestroy {
                     message_id, message_type, metadata_json, sequence_id,
                     tenant_id, trace_id, user_id;
         `,
-        [content, tenantId, messageId]
+        [content, tenantId, messageId],
       );
 
       if (!result.rowCount || result.rowCount === 0) return null;
@@ -281,7 +258,7 @@ export class ImMessageRepository implements OnModuleDestroy {
                     message_id, message_type, metadata_json, sequence_id,
                     tenant_id, trace_id, user_id;
         `,
-        [tenantId, messageId]
+        [tenantId, messageId],
       );
 
       if (!result.rowCount || result.rowCount === 0) return null;
@@ -289,12 +266,7 @@ export class ImMessageRepository implements OnModuleDestroy {
     });
   }
 
-  async upsertReadReceipt(
-    tenantId: string,
-    conversationId: string,
-    userId: string,
-    sequenceId: number
-  ): Promise<void> {
+  async upsertReadReceipt(tenantId: string, conversationId: string, userId: string, sequenceId: number): Promise<void> {
     if (!this.pool) return;
 
     await this.runWithTenant(tenantId, async (client) => {
@@ -306,15 +278,12 @@ export class ImMessageRepository implements OnModuleDestroy {
           DO UPDATE SET last_read_sequence_id = GREATEST(message_reads.last_read_sequence_id, $4),
                         updated_at = NOW();
         `,
-        [tenantId, conversationId, userId, sequenceId]
+        [tenantId, conversationId, userId, sequenceId],
       );
     });
   }
 
-  private async runWithTenant<T>(
-    tenantId: string,
-    work: (client: PoolClient) => Promise<T>
-  ): Promise<T> {
+  private async runWithTenant<T>(tenantId: string, work: (client: PoolClient) => Promise<T>): Promise<T> {
     if (!this.pool) {
       throw new Error('Database pool is not initialized.');
     }

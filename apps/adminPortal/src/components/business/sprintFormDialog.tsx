@@ -23,12 +23,7 @@ interface SprintFormDialogProps {
   onSaved: () => void;
 }
 
-export function SprintFormDialog({
-  onClose,
-  onSaved,
-  open,
-  sprint,
-}: SprintFormDialogProps): JSX.Element {
+export function SprintFormDialog({ onClose, onSaved, open, sprint }: SprintFormDialogProps): JSX.Element {
   const { formatMessage: t } = useIntl();
   const apiClient = useApiClient();
   const toast = useToast();
@@ -52,10 +47,15 @@ export function SprintFormDialog({
       tenantId: string;
     }) => {
       if (isEdit && sprint) {
-        await apiClient.patch(
-          `/api/v1/backlog/sprints/${sprint.id}?tenantId=${data.tenantId}`,
-          data
-        );
+        // For PATCH: only send fields defined in UpdateSprintDto.
+        // Strip tenantId (not in UpdateSprintDto, passed as query param instead).
+        const payload: Record<string, string> = {};
+        for (const [key, value] of Object.entries(data)) {
+          if (value !== null && value !== undefined && key !== 'tenantId') {
+            payload[key] = value;
+          }
+        }
+        await apiClient.patch(`/api/v1/backlog/sprints/${sprint.id}?tenantId=${data.tenantId}`, payload);
       } else {
         await apiClient.post('/api/v1/backlog/sprints', data);
       }
@@ -90,20 +90,11 @@ export function SprintFormDialog({
   };
 
   return (
-    <Dialog
-      onClose={handleClose}
-      open={open}
-      title={t({ id: isEdit ? 'backlog.editSprint' : 'backlog.createSprint' })}
-    >
+    <Dialog onClose={handleClose} open={open} title={t({ id: isEdit ? 'backlog.editSprint' : 'backlog.createSprint' })}>
       <form onSubmit={handleSubmit}>
         <div className="space-y-4">
           <FormField label={t({ id: 'backlog.fieldSprintName' })} htmlFor="sprint-name">
-            <Input
-              id="sprint-name"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+            <Input id="sprint-name" required value={name} onChange={(e) => setName(e.target.value)} />
           </FormField>
 
           <FormField label={t({ id: 'backlog.fieldSprintGoal' })} htmlFor="sprint-goal">
@@ -132,31 +123,16 @@ export function SprintFormDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <FormField label={t({ id: 'backlog.fieldStartDate' })} htmlFor="sprint-start">
-              <Input
-                id="sprint-start"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
+              <Input id="sprint-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </FormField>
             <FormField label={t({ id: 'backlog.fieldEndDate' })} htmlFor="sprint-end">
-              <Input
-                id="sprint-end"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
+              <Input id="sprint-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </FormField>
           </div>
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
-          <Button
-            disabled={saveMutation.isPending}
-            type="button"
-            variant="secondary"
-            onClick={handleClose}
-          >
+          <Button disabled={saveMutation.isPending} type="button" variant="secondary" onClick={handleClose}>
             {t({ id: 'common.cancel' })}
           </Button>
           <Button disabled={saveMutation.isPending} type="submit">
@@ -172,11 +148,7 @@ export function SprintFormDialog({
                     strokeWidth="4"
                     fill="none"
                   />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
                 {t({ id: 'common.saving' })}
               </>

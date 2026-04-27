@@ -61,7 +61,7 @@ function renderPanel() {
   return render(
     <QueryClientProvider client={qc}>
       <ModernizerPanel />
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 

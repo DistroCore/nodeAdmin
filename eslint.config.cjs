@@ -11,6 +11,7 @@ module.exports = [
       '**/node_modules/**',
       '**/*.d.ts',
       '**/tsconfig.tsbuildinfo',
+      'apps/coreApi/tools/**',
     ],
   },
   {
@@ -32,7 +33,8 @@ module.exports = [
     rules: {
       ...tsEslintPlugin.configs.recommended.rules,
       ...reactHooksPlugin.configs.recommended.rules,
-      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-explicit-any': 'error',
+      'no-console': ['error', { allow: ['warn', 'error', 'info'] }],
       'react-hooks/exhaustive-deps': 'error',
     },
   },

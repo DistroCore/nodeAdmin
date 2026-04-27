@@ -9,6 +9,7 @@ import { DataTable } from '@/components/ui/dataTable';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast';
 import { useApiClient } from '@/hooks/useApiClient';
+import { usePermissionStore } from '@/stores/usePermissionStore';
 import { type UserItem, type PaginatedResponse } from '@nodeadmin/shared-types';
 import { UserFormDialog } from './userFormDialog';
 
@@ -18,6 +19,7 @@ export function UserManagementPanel(): JSX.Element {
   const { formatMessage: t } = useIntl();
   const apiClient = useApiClient();
   const toast = useToast();
+  const canManage = usePermissionStore((s) => s.hasPermission('users:manage'));
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -28,7 +30,7 @@ export function UserManagementPanel(): JSX.Element {
   const usersQuery = useQuery({
     queryFn: () =>
       apiClient.get<PaginatedResponse<UserItem>>(
-        `/api/v1/users?pageSize=${PAGE_SIZE}&page=${page + 1}&search=${encodeURIComponent(search)}`
+        `/api/v1/users?pageSize=${PAGE_SIZE}&page=${page + 1}&search=${encodeURIComponent(search)}`,
       ),
     queryKey: ['users', page, search],
   });
@@ -79,13 +81,15 @@ export function UserManagementPanel(): JSX.Element {
             <CardTitle className="text-base">{t({ id: 'users.title' })}</CardTitle>
             <CardDescription>{t({ id: 'users.desc' })}</CardDescription>
           </div>
-          <Button
-            className="hidden h-11 w-full md:flex md:h-9 md:w-auto"
-            onClick={() => setShowCreateDialog(true)}
-            size="sm"
-          >
-            {t({ id: 'users.create' })}
-          </Button>
+          {canManage && (
+            <Button
+              className="hidden h-11 w-full md:flex md:h-9 md:w-auto"
+              onClick={() => setShowCreateDialog(true)}
+              size="sm"
+            >
+              {t({ id: 'users.create' })}
+            </Button>
+          )}
         </CardHeader>
 
         <div className="mb-4">
@@ -139,21 +143,25 @@ export function UserManagementPanel(): JSX.Element {
               className: 'text-right',
               cell: (user) => (
                 <div className="flex flex-col items-end gap-1 md:flex-row md:justify-end md:gap-3">
-                  <button
-                    className="flex min-h-11 min-w-11 items-center justify-center text-sm text-primary hover:underline"
-                    onClick={() => openEditDialog(user)}
-                    type="button"
-                  >
-                    {t({ id: 'users.edit' })}
-                  </button>
-                  <button
-                    className="flex min-h-11 min-w-11 items-center justify-center text-sm text-destructive hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed"
-                    disabled={deleteMutation.isPending}
-                    onClick={() => openDeleteConfirm(user.id)}
-                    type="button"
-                  >
-                    {t({ id: 'users.delete' })}
-                  </button>
+                  {canManage && (
+                    <>
+                      <button
+                        className="flex min-h-11 min-w-11 items-center justify-center text-sm text-primary hover:underline"
+                        onClick={() => openEditDialog(user)}
+                        type="button"
+                      >
+                        {t({ id: 'users.edit' })}
+                      </button>
+                      <button
+                        className="flex min-h-11 min-w-11 items-center justify-center text-sm text-destructive hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed"
+                        disabled={deleteMutation.isPending}
+                        onClick={() => openDeleteConfirm(user.id)}
+                        type="button"
+                      >
+                        {t({ id: 'users.delete' })}
+                      </button>
+                    </>
+                  )}
                 </div>
               ),
             },
@@ -181,11 +189,13 @@ export function UserManagementPanel(): JSX.Element {
         />
       </Card>
 
-      <div className="fixed bottom-0 left-0 right-0 border-t bg-background p-4 md:hidden">
-        <Button className="h-11 w-full" onClick={() => setShowCreateDialog(true)}>
-          {t({ id: 'users.create' })}
-        </Button>
-      </div>
+      {canManage && (
+        <div className="fixed bottom-0 left-0 right-0 border-t bg-background p-4 md:hidden">
+          <Button className="h-11 w-full" onClick={() => setShowCreateDialog(true)}>
+            {t({ id: 'users.create' })}
+          </Button>
+        </div>
+      )}
 
       <UserFormDialog
         key={editingUser?.id ?? 'create'}

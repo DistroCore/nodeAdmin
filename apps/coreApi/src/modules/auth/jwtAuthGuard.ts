@@ -11,6 +11,10 @@ const EXCLUDED_PATHS = [
   '/api/v1/auth/register',
   '/api/v1/auth/refresh',
   '/api/v1/auth/dev-token',
+  '/api/v1/auth/github/callback',
+  '/api/v1/auth/login/oauth',
+  '/api/v1/auth/sms/send',
+  '/api/v1/auth/login/sms',
   '/api/v1/tenants',
 ];
 
@@ -18,7 +22,7 @@ const EXCLUDED_PATHS = [
 export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly authService: AuthService,
-    private readonly tenantContextResolver: TenantContextResolver
+    private readonly tenantContextResolver: TenantContextResolver,
   ) {}
 
   canActivate(context: ExecutionContext): boolean {
@@ -27,7 +31,14 @@ export class JwtAuthGuard implements CanActivate {
       .getRequest<{ headers: Record<string, string>; url: string; user?: AuthIdentity }>();
 
     const pathname = request.url.split('?')[0];
-    if (EXCLUDED_PATHS.some((path) => pathname === path || pathname.startsWith(path + '/'))) {
+    if (
+      EXCLUDED_PATHS.some((path) => {
+        if (pathname === path) return true;
+        // /api/v1/tenants is exact-match only — sub-routes like /tenants/me/plugins require auth
+        if (path === '/api/v1/tenants') return false;
+        return pathname.startsWith(path + '/');
+      })
+    ) {
       return true;
     }
 
@@ -38,9 +49,7 @@ export class JwtAuthGuard implements CanActivate {
 
     const parts = authHeader.split(' ');
     if (parts.length !== 2 || parts[0].toLowerCase() !== 'bearer') {
-      throw new UnauthorizedException(
-        'Invalid Authorization header format. Expected: Bearer <token>.'
-      );
+      throw new UnauthorizedException('Invalid Authorization header format. Expected: Bearer <token>.');
     }
 
     const token = parts[1].trim();
@@ -58,9 +67,7 @@ export class JwtAuthGuard implements CanActivate {
         throw error;
       }
 
-      throw new UnauthorizedException(
-        error instanceof Error ? error.message : 'Invalid access token payload.'
-      );
+      throw new UnauthorizedException(error instanceof Error ? error.message : 'Invalid access token payload.');
     }
 
     return true;

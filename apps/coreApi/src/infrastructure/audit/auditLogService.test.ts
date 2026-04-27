@@ -67,7 +67,7 @@ describe('AuditLogService', () => {
         userId: 'user-2',
       },
       1,
-      10
+      10,
     );
 
     expect(filtered.total).toBe(1);

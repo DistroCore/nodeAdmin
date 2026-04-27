@@ -70,11 +70,7 @@ export function ModernizerPanel(): JSX.Element {
                     strokeWidth="4"
                     fill="none"
                   />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
                 {t({ id: 'modernizer.running' })}
               </>
@@ -89,33 +85,21 @@ export function ModernizerPanel(): JSX.Element {
           <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-lg border p-3 text-center">
               <div className="text-2xl font-bold">{summary.total}</div>
-              <div className="text-xs text-muted-foreground">
-                {t({ id: 'modernizer.totalIssues' })}
-              </div>
+              <div className="text-xs text-muted-foreground">{t({ id: 'modernizer.totalIssues' })}</div>
             </div>
             <div className="rounded-lg border p-3 text-center">
-              <div className="text-2xl font-bold text-destructive">
-                {summary.byCategory['console-log'] ?? 0}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {t({ id: 'modernizer.summary.consoleLog' })}
-              </div>
+              <div className="text-2xl font-bold text-destructive">{summary.byCategory['console-log'] ?? 0}</div>
+              <div className="text-xs text-muted-foreground">{t({ id: 'modernizer.summary.consoleLog' })}</div>
             </div>
             <div className="rounded-lg border p-3 text-center">
-              <div className="text-2xl font-bold text-yellow-600">
-                {summary.byCategory['missing-validation'] ?? 0}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {t({ id: 'modernizer.missingValidation' })}
-              </div>
+              <div className="text-2xl font-bold text-yellow-600">{summary.byCategory['missing-validation'] ?? 0}</div>
+              <div className="text-xs text-muted-foreground">{t({ id: 'modernizer.missingValidation' })}</div>
             </div>
             <div className="rounded-lg border p-3 text-center">
               <div className="text-2xl font-bold text-blue-600">
                 {(summary.byCategory['todo'] ?? 0) + (summary.byCategory['unused-import'] ?? 0)}
               </div>
-              <div className="text-xs text-muted-foreground">
-                {t({ id: 'modernizer.summary.todoUnused' })}
-              </div>
+              <div className="text-xs text-muted-foreground">{t({ id: 'modernizer.summary.todoUnused' })}</div>
             </div>
           </div>
         )}
@@ -125,11 +109,7 @@ export function ModernizerPanel(): JSX.Element {
           columns={[
             {
               header: t({ id: 'modernizer.colSeverity' }),
-              cell: (issue) => (
-                <Badge variant={SEVERITY_VARIANT[issue.severity] ?? 'default'}>
-                  {issue.severity}
-                </Badge>
-              ),
+              cell: (issue) => <Badge variant={SEVERITY_VARIANT[issue.severity] ?? 'default'}>{issue.severity}</Badge>,
             },
             {
               header: t({ id: 'modernizer.colCategory' }),
@@ -153,11 +133,7 @@ export function ModernizerPanel(): JSX.Element {
             },
           ]}
           data={issues}
-          emptyMessage={
-            analysisTrigger === 0
-              ? t({ id: 'modernizer.clickToRun' })
-              : t({ id: 'modernizer.noIssues' })
-          }
+          emptyMessage={analysisTrigger === 0 ? t({ id: 'modernizer.clickToRun' }) : t({ id: 'modernizer.noIssues' })}
           errorMessage={t({ id: 'modernizer.loadFailed' })}
           isError={analysisQuery.isError}
           isLoading={analysisQuery.isFetching}

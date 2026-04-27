@@ -50,9 +50,7 @@ const APP_PROVIDERS = [
   providers: APP_PROVIDERS,
 })
 export class AppModule {
-  static async forRootAsync(
-    registry: PluginRegistryService = new PluginRegistryService()
-  ): Promise<DynamicModule> {
+  static async forRootAsync(registry: PluginRegistryService = new PluginRegistryService()): Promise<DynamicModule> {
     const pluginLoaderModule = await PluginLoaderModule.forRootAsync(registry);
 
     return {

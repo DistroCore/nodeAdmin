@@ -11,16 +11,29 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgres://nodeadmin:nodeadmin@postgres:5432/nodeadmin
+      # DATABASE_URL_FILE: /run/secrets/database_url
       REDIS_URL: redis://redis:6379
       PORT: '11451'
-      JWT_ACCESS_SECRET: replace-with-a-long-random-access-secret
-      JWT_REFRESH_SECRET: replace-with-a-long-random-refresh-secret
+      JWT_ACCESS_SECRET_FILE: /run/secrets/jwt_access_secret
+      # JWT_ACCESS_SECRET: replace-with-a-long-random-access-secret
+      JWT_REFRESH_SECRET_FILE: /run/secrets/jwt_refresh_secret
+      # JWT_REFRESH_SECRET: replace-with-a-long-random-refresh-secret
       FRONTEND_ORIGINS: http://localhost,http://localhost:80,http://adminportal
       # KAFKA_BROKERS: kafka:29092  # Uncomment when starting with --profile kafka
+    secrets:
+      - postgres_password
+      - jwt_access_secret
+      - jwt_refresh_secret
     ports:
       - '11451:11451'
     healthcheck:
-      test: ['CMD', 'node', '-e', "const http = require('http'); const req = http.get('http://127.0.0.1:11451/api/v1/health', r => { process.exit(r.statusCode === 200 ? 0 : 1); }); req.on('error', () => process.exit(1)); setTimeout(() => { req.destroy(); process.exit(1); }, 3000)"]
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "const http = require('http'); const req = http.get('http://127.0.0.1:11451/api/v1/health', r => { process.exit(r.statusCode === 200 ? 0 : 1); }); req.on('error', () => process.exit(1)); setTimeout(() => { req.destroy(); process.exit(1); }, 3000)",
+        ]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -51,7 +64,10 @@ services:
     environment:
       POSTGRES_DB: nodeadmin
       POSTGRES_USER: nodeadmin
-      POSTGRES_PASSWORD: nodeadmin
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      # POSTGRES_PASSWORD: nodeadmin
+    secrets:
+      - postgres_password
     ports:
       - '55432:5432'
     volumes:
@@ -223,3 +239,11 @@ volumes:
   postgres_data:
   redis_data:
   grafana_data:
+
+secrets:
+  postgres_password:
+    file: ./.secrets/postgres_password
+  jwt_access_secret:
+    file: ./.secrets/jwt_access_secret
+  jwt_refresh_secret:
+    file: ./.secrets/jwt_refresh_secret

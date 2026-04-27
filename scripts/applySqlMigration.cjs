@@ -33,10 +33,7 @@ function readMigrationFiles() {
 }
 
 async function wasApplied(client, filename) {
-  const result = await client.query(
-    'SELECT 1 FROM schema_migrations WHERE filename = $1 LIMIT 1;',
-    [filename]
-  );
+  const result = await client.query('SELECT 1 FROM schema_migrations WHERE filename = $1 LIMIT 1;', [filename]);
   return result.rowCount > 0;
 }
 
@@ -124,9 +121,7 @@ async function applyMigration(client, migration) {
     for (const stmt of statements) {
       await client.query(stmt);
     }
-    await client.query('INSERT INTO schema_migrations (filename) VALUES ($1);', [
-      migration.filename,
-    ]);
+    await client.query('INSERT INTO schema_migrations (filename) VALUES ($1);', [migration.filename]);
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
@@ -153,9 +148,7 @@ async function connectWithRetry(maxAttempts = 30, delayMs = 1000) {
         break;
       }
 
-      console.log(
-        `[db:migrate] database not ready yet (${attempt}/${maxAttempts}); retrying in ${delayMs}ms`
-      );
+      console.log(`[db:migrate] database not ready yet (${attempt}/${maxAttempts}); retrying in ${delayMs}ms`);
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }

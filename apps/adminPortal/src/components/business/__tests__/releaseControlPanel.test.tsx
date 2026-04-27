@@ -42,7 +42,7 @@ function renderPanel() {
   return render(
     <QueryClientProvider client={qc}>
       <ReleaseControlPanel />
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 

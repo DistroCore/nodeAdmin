@@ -3,14 +3,7 @@ import { useIntl } from 'react-intl';
 import { Link } from 'react-router-dom';
 import { useMarketplace, usePluginManagement } from '@/hooks/useMarketplace';
 import { usePluginStore } from '@/stores/usePluginStore';
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +43,7 @@ export function PluginMarketplacePage() {
   const { data, isLoading, error, refetch } = useMarketplace(page, pageSize, search);
   const { install } = usePluginManagement();
   const plugins = usePluginStore((s) => s.plugins);
+  const canManage = usePermissionStore((s) => s.hasPermission('plugins:manage'));
 
   const isInstalled = (pluginId: string) => {
     return plugins.some((p) => p.name === pluginId || p.manifest?.id === pluginId);
@@ -93,9 +87,7 @@ export function PluginMarketplacePage() {
           <div className="rounded-full bg-destructive/10 p-3 text-destructive">
             <NavIcon name="alert" />
           </div>
-          <h3 className="mt-4 text-lg font-semibold">
-            {t({ id: 'common.error', defaultMessage: 'Error' })}
-          </h3>
+          <h3 className="mt-4 text-lg font-semibold">{t({ id: 'common.error', defaultMessage: 'Error' })}</h3>
           <p className="mb-6 text-sm text-muted-foreground">
             {t({
               id: 'plugins.marketplace.load_failed',
@@ -112,7 +104,7 @@ export function PluginMarketplacePage() {
             <PluginCardSkeleton key={i} />
           ))}
         </div>
-      ) : data?.plugins.length === 0 ? (
+      ) : !data?.plugins?.length ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
           <div className="rounded-full bg-muted p-3 text-muted-foreground">
             <NavIcon name="search" />
@@ -135,7 +127,7 @@ export function PluginMarketplacePage() {
       ) : (
         <>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {data?.plugins.map((plugin) => (
+            {data?.plugins?.map((plugin) => (
               <Card key={plugin.id} className="flex flex-col transition-all hover:shadow-md">
                 <CardHeader>
                   <div className="flex items-start justify-between">
@@ -173,10 +165,10 @@ export function PluginMarketplacePage() {
                   >
                     {t({ id: 'plugins.view_details', defaultMessage: 'View Details' })}
                   </Link>
-                  {!isInstalled(plugin.id) && (
+                  {!isInstalled(plugin.id) && canManage && (
                     <Button
                       className="flex-1"
-                      onClick={() => install.mutate({ pluginId: plugin.id })}
+                      onClick={() => install.mutate({ pluginId: plugin.id, version: plugin.latestVersion })}
                       disabled={install.isPending}
                     >
                       {install.isPending && (
@@ -192,12 +184,7 @@ export function PluginMarketplacePage() {
 
           {data && data.total > pageSize && (
             <div className="flex items-center justify-center space-x-2 py-8">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page === 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
+              <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
                 {t({ id: 'common.previous', defaultMessage: 'Previous' })}
               </Button>
               <span className="text-sm text-muted-foreground">
@@ -206,7 +193,7 @@ export function PluginMarketplacePage() {
                   {
                     page,
                     total: Math.ceil(data.total / pageSize),
-                  }
+                  },
                 )}
               </span>
               <Button

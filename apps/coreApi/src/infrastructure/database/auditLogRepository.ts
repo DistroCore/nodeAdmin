@@ -50,11 +50,7 @@ export class AuditLogRepository {
     });
   }
 
-  async findByFilter(
-    filter: AuditLogFilter,
-    page: number,
-    pageSize: number
-  ): Promise<StoredAuditLog[]> {
+  async findByFilter(filter: AuditLogFilter, page: number, pageSize: number): Promise<StoredAuditLog[]> {
     const conditions = this.buildConditions(filter);
 
     const rows = await this.db

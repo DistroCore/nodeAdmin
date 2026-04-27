@@ -2,14 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePluginStore } from '@/stores/usePluginStore';
 import { usePluginManagement } from '@/hooks/useMarketplace';
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -45,7 +38,7 @@ export function PluginSettingsPage() {
     updateConfig.mutate({ id: plugin.name, config });
   };
 
-  const handleFieldChange = (key: string, value: any) => {
+  const handleFieldChange = (key: string, value: string | number | boolean) => {
     setConfig((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -57,18 +50,11 @@ export function PluginSettingsPage() {
         <div className="flex items-center space-x-4">
           <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
             <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                d="M15 19l-7-7 7-7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-              />
+              <path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
             </svg>
             Back
           </Button>
-          <h1 className="text-2xl font-bold tracking-tight">
-            {plugin.manifest?.displayName || plugin.name} Settings
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight">{plugin.manifest?.displayName || plugin.name} Settings</h1>
         </div>
       </div>
 
@@ -76,9 +62,7 @@ export function PluginSettingsPage() {
         <form onSubmit={handleSubmit}>
           <CardHeader className="border-b bg-muted/30">
             <CardTitle className="text-lg">Configuration</CardTitle>
-            <CardDescription>
-              Configure the behavior and parameters for this plugin.
-            </CardDescription>
+            <CardDescription>Configure the behavior and parameters for this plugin.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6 pt-6">
             {Object.entries(config).length === 0 ? (
@@ -117,11 +101,7 @@ export function PluginSettingsPage() {
                       className="max-w-52"
                     />
                   ) : (
-                    <Input
-                      id={key}
-                      value={value as string}
-                      onChange={(e) => handleFieldChange(key, e.target.value)}
-                    />
+                    <Input id={key} value={value as string} onChange={(e) => handleFieldChange(key, e.target.value)} />
                   )}
                 </div>
               ))

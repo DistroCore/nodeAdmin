@@ -2,17 +2,11 @@ import { useParams, Link } from 'react-router-dom';
 import { useIntl } from 'react-intl';
 import { usePluginDetail, usePluginManagement } from '@/hooks/useMarketplace';
 import { usePluginStore } from '@/stores/usePluginStore';
+import { usePermissionStore } from '@/stores/usePermissionStore';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from '@/components/ui/table';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NavIcon } from '@/app/layout/navIcon';
 import { className } from '@/lib/className';
@@ -76,11 +70,13 @@ export function PluginDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { formatMessage: t } = useIntl();
   const { data, isLoading, error, refetch } = usePluginDetail(id || '');
-  const { install, uninstall } = usePluginManagement();
+  const { install, uninstall, update } = usePluginManagement();
   const plugins = usePluginStore((s) => s.plugins);
+  const canManage = usePermissionStore((s) => s.hasPermission('plugins:manage'));
 
   const installedPlugin = plugins.find((p) => p.name === id || p.manifest?.id === id);
   const isInstalled = !!installedPlugin;
+  const hasUpdate = isInstalled && installedPlugin.installedVersion && data && data.latestVersion !== installedPlugin.installedVersion;
 
   if (isLoading) return <DetailSkeleton />;
 
@@ -103,9 +99,7 @@ export function PluginDetailPage() {
           <Link className={buttonVariants({ variant: 'outline' })} to="/plugins/marketplace">
             {t({ id: 'common.back', defaultMessage: 'Back' })}
           </Link>
-          <Button onClick={() => refetch()}>
-            {t({ id: 'common.retry', defaultMessage: 'Retry' })}
-          </Button>
+          <Button onClick={() => refetch()}>{t({ id: 'common.retry', defaultMessage: 'Retry' })}</Button>
         </div>
       </div>
     );
@@ -115,19 +109,11 @@ export function PluginDetailPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex items-center space-x-4">
         <Link
-          className={className(
-            buttonVariants({ variant: 'ghost', size: 'sm' }),
-            'flex items-center'
-          )}
+          className={className(buttonVariants({ variant: 'ghost', size: 'sm' }), 'flex items-center')}
           to="/plugins/marketplace"
         >
           <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              d="M15 19l-7-7 7-7"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-            />
+            <path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
           </svg>
           {t({ id: 'common.back', defaultMessage: 'Back' })}
         </Link>
@@ -152,46 +138,56 @@ export function PluginDetailPage() {
                     {t({ id: 'plugins.status.installed_v', defaultMessage: 'Installed' })} v
                     {installedPlugin.installedVersion || 'unknown'}
                   </Badge>
-                  <Button
-                    variant="outline"
-                    className="border-destructive text-destructive hover:bg-destructive/10"
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          t({ id: 'plugins.uninstall.confirm', defaultMessage: 'Are you sure?' })
-                        )
-                      ) {
-                        uninstall.mutate(data.id);
-                      }
-                    }}
-                    disabled={uninstall.isPending}
-                  >
-                    {uninstall.isPending && (
-                      <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    )}
-                    {t({ id: 'plugins.uninstall', defaultMessage: 'Uninstall' })}
-                  </Button>
+                  {hasUpdate && canManage && (
+                    <Button
+                      variant="default"
+                      className="bg-amber-600 hover:bg-amber-700 text-white"
+                      onClick={() => update.mutate({ id: data.id, version: data.latestVersion })}
+                      disabled={update.isPending}
+                    >
+                      {update.isPending && (
+                        <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      )}
+                      {t(
+                        { id: 'plugins.update_to', defaultMessage: 'Update to v{version}' },
+                        { version: data.latestVersion },
+                      )}
+                    </Button>
+                  )}
+                  {canManage && (
+                    <Button
+                      variant="outline"
+                      className="border-destructive text-destructive hover:bg-destructive/10"
+                      onClick={() => {
+                        if (window.confirm(t({ id: 'plugins.uninstall.confirm', defaultMessage: 'Are you sure?' }))) {
+                          uninstall.mutate(data.id);
+                        }
+                      }}
+                      disabled={uninstall.isPending}
+                    >
+                      {uninstall.isPending && (
+                        <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      )}
+                      {t({ id: 'plugins.uninstall', defaultMessage: 'Uninstall' })}
+                    </Button>
+                  )}
                 </>
               ) : (
-                <Button
-                  size="lg"
-                  onClick={() => install.mutate({ pluginId: data.id })}
-                  disabled={install.isPending}
-                >
-                  {install.isPending && (
-                    <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                  )}
-                  {t({ id: 'plugins.install', defaultMessage: 'Install Now' })}
-                </Button>
+                canManage && (
+                  <Button size="lg" onClick={() => install.mutate({ pluginId: data.id, version: data.latestVersion })} disabled={install.isPending}>
+                    {install.isPending && (
+                      <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    )}
+                    {t({ id: 'plugins.install', defaultMessage: 'Install Now' })}
+                  </Button>
+                )
               )}
             </div>
           </div>
 
           <Card>
             <CardHeader>
-              <CardTitle>
-                {t({ id: 'plugins.detail.description', defaultMessage: 'Description' })}
-              </CardTitle>
+              <CardTitle>{t({ id: 'plugins.detail.description', defaultMessage: 'Description' })}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="whitespace-pre-wrap text-sm text-muted-foreground leading-relaxed">
@@ -206,9 +202,7 @@ export function PluginDetailPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>
-                {t({ id: 'plugins.detail.versions', defaultMessage: 'Version History' })}
-              </CardTitle>
+              <CardTitle>{t({ id: 'plugins.detail.versions', defaultMessage: 'Version History' })}</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
@@ -224,26 +218,39 @@ export function PluginDetailPage() {
                   {data.versions.map((v) => (
                     <TableRow key={v.version}>
                       <TableCell className="font-mono pl-6">v{v.version}</TableCell>
-                      <TableCell className="max-w-md truncate text-sm">
-                        {v.changelog || '-'}
-                      </TableCell>
+                      <TableCell className="max-w-md truncate text-sm">{v.changelog || '-'}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {new Date(v.publishedAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell className="text-right pr-6">
-                        {!isInstalled && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              install.mutate({ pluginId: data.id, version: v.version })
-                            }
-                          >
-                            {t(
-                              { id: 'plugins.install_v', defaultMessage: 'Install v{version}' },
-                              { version: v.version }
-                            )}
-                          </Button>
+                        {canManage && (
+                          !isInstalled ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => install.mutate({ pluginId: data.id, version: v.version })}
+                            >
+                              {t(
+                                { id: 'plugins.install_v', defaultMessage: 'Install v{version}' },
+                                { version: v.version },
+                              )}
+                            </Button>
+                          ) : (
+                            installedPlugin.installedVersion !== v.version && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                onClick={() => update.mutate({ id: data.id, version: v.version })}
+                                disabled={update.isPending}
+                              >
+                                {t(
+                                  { id: 'plugins.update_v', defaultMessage: 'Update to v{version}' },
+                                  { version: v.version },
+                                )}
+                              </Button>
+                            )
+                          )
                         )}
                       </TableCell>
                     </TableRow>
@@ -274,7 +281,7 @@ export function PluginDetailPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Released At</span>
-                <span>{new Date(data.createdAt).toLocaleDateString()}</span>
+                <span>{data.createdAt ? new Date(data.createdAt).toLocaleDateString() : '-'}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Visibility</span>

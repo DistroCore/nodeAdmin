@@ -8,6 +8,7 @@ const UPDATE_SNAPSHOT = process.env.UPDATE_OPENAPI_SNAPSHOT === '1';
 
 describe('OpenAPI snapshot contract', () => {
   let app: NestFastifyApplication;
+  const bootstrapTimeoutMs = 120_000;
 
   beforeAll(async () => {
     process.env.OTEL_ENABLED = 'false';
@@ -20,13 +21,13 @@ describe('OpenAPI snapshot contract', () => {
     app = await createApp();
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
-  });
+  }, bootstrapTimeoutMs);
 
   afterAll(async () => {
     if (app) {
       await app.close();
     }
-  });
+  }, bootstrapTimeoutMs);
 
   it('matches the checked-in /api/docs-json snapshot', async () => {
     const response = await app.inject({

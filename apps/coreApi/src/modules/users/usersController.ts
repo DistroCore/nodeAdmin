@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { DEFAULT_TENANT_ID } from '../../app/constants';
 import { UsersService } from './usersService';
 import { CreateUserDto } from './dto/createUserDto';
 import { UpdateUserDto } from './dto/updateUserDto';
@@ -14,14 +15,14 @@ export class UsersController {
   @Get()
   @ApiOperation({ summary: 'List users with pagination and search' })
   async list(@Query() query: ListUsersQueryDto) {
-    const tenantId = query.tenantId ?? 'default';
+    const tenantId = query.tenantId ?? DEFAULT_TENANT_ID;
     return this.usersService.list(tenantId, query.page, query.pageSize, query.search);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get user by ID' })
   async findOne(@Param('id') id: string, @Query('tenantId') tenantId?: string) {
-    return this.usersService.findById(tenantId ?? 'default', id);
+    return this.usersService.findById(tenantId ?? DEFAULT_TENANT_ID, id);
   }
 
   @Post()
@@ -32,12 +33,8 @@ export class UsersController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a user' })
-  async update(
-    @Param('id') id: string,
-    @Body() dto: UpdateUserDto,
-    @Query('tenantId') tenantId?: string
-  ) {
-    return this.usersService.update(tenantId ?? 'default', id, {
+  async update(@Param('id') id: string, @Body() dto: UpdateUserDto, @Query('tenantId') tenantId?: string) {
+    return this.usersService.update(tenantId ?? DEFAULT_TENANT_ID, id, {
       name: dto.name,
       avatar: dto.avatar,
       isActive: dto.isActive,
@@ -48,7 +45,7 @@ export class UsersController {
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a user' })
   async remove(@Param('id') id: string, @Query('tenantId') tenantId?: string) {
-    await this.usersService.remove(tenantId ?? 'default', id);
+    await this.usersService.remove(tenantId ?? DEFAULT_TENANT_ID, id);
     return { success: true };
   }
 }

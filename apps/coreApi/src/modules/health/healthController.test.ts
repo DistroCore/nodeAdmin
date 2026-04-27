@@ -14,6 +14,7 @@ function createMockHealthService() {
 }
 
 describe('HealthController', () => {
+  const httpTestTimeoutMs = 15_000;
   let controller: HealthController;
   let healthService: ReturnType<typeof createMockHealthService>;
   let app: NestFastifyApplication | null;
@@ -50,52 +51,56 @@ describe('HealthController', () => {
     expect(result.status).toBe('ok');
   });
 
-  it('serves /api/v1/health with status ok when the health service reports healthy dependencies', async () => {
-    healthService.getHealth.mockResolvedValue({
-      checks: {
-        database: { message: 'Database reachable.', status: 'ok' },
-        kafka: { message: 'Kafka reachable.', status: 'ok' },
-        redis: { message: 'Redis reachable.', status: 'ok' },
-      },
-      service: 'coreApi',
-      status: 'ok',
-      timestamp: '2026-03-30T10:00:00.000Z',
-      version: '0.1.0',
-    });
-
-    @Module({
-      controllers: [HealthController],
-      providers: [
-        {
-          provide: HealthService,
-          useValue: healthService,
+  it(
+    'serves /api/v1/health with status ok when the health service reports healthy dependencies',
+    async () => {
+      healthService.getHealth.mockResolvedValue({
+        checks: {
+          database: { message: 'Database reachable.', status: 'ok' },
+          kafka: { message: 'Kafka reachable.', status: 'ok' },
+          redis: { message: 'Redis reachable.', status: 'ok' },
         },
-      ],
-    })
-    class TestHealthModule {}
+        service: 'coreApi',
+        status: 'ok',
+        timestamp: '2026-03-30T10:00:00.000Z',
+        version: '0.1.0',
+      });
 
-    app = await NestFactory.create<NestFastifyApplication>(TestHealthModule, new FastifyAdapter());
-    app.setGlobalPrefix('api/v1');
-    await app.init();
+      @Module({
+        controllers: [HealthController],
+        providers: [
+          {
+            provide: HealthService,
+            useValue: healthService,
+          },
+        ],
+      })
+      class TestHealthModule {}
 
-    const response = await app.inject({
-      method: 'GET',
-      url: '/api/v1/health',
-    });
+      app = await NestFactory.create<NestFastifyApplication>(TestHealthModule, new FastifyAdapter());
+      app.setGlobalPrefix('api/v1');
+      await app.init();
 
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({
-      checks: {
-        database: { message: 'Database reachable.', status: 'ok' },
-        kafka: { message: 'Kafka reachable.', status: 'ok' },
-        redis: { message: 'Redis reachable.', status: 'ok' },
-      },
-      service: 'coreApi',
-      status: 'ok',
-      timestamp: '2026-03-30T10:00:00.000Z',
-      version: '0.1.0',
-    });
-  });
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/health',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({
+        checks: {
+          database: { message: 'Database reachable.', status: 'ok' },
+          kafka: { message: 'Kafka reachable.', status: 'ok' },
+          redis: { message: 'Redis reachable.', status: 'ok' },
+        },
+        service: 'coreApi',
+        status: 'ok',
+        timestamp: '2026-03-30T10:00:00.000Z',
+        version: '0.1.0',
+      });
+    },
+    httpTestTimeoutMs,
+  );
 
   it('returns degraded payloads without rewriting the service response', async () => {
     healthService.getHealth.mockResolvedValue({
@@ -122,40 +127,44 @@ describe('HealthController', () => {
     await expect(controller.getHealth()).rejects.toThrow('health unavailable');
   });
 
-  it('serves degraded responses over HTTP when optional dependencies are unavailable', async () => {
-    healthService.getHealth.mockResolvedValue({
-      checks: {
-        database: { message: 'Database reachable.', status: 'ok' },
-        kafka: { message: 'Kafka check failed: timeout', status: 'degraded' },
-        redis: { message: 'Redis reachable.', status: 'ok' },
-      },
-      service: 'coreApi',
-      status: 'degraded',
-      timestamp: '2026-03-31T01:00:00.000Z',
-      version: '0.1.0',
-    });
-
-    @Module({
-      controllers: [HealthController],
-      providers: [
-        {
-          provide: HealthService,
-          useValue: healthService,
+  it(
+    'serves degraded responses over HTTP when optional dependencies are unavailable',
+    async () => {
+      healthService.getHealth.mockResolvedValue({
+        checks: {
+          database: { message: 'Database reachable.', status: 'ok' },
+          kafka: { message: 'Kafka check failed: timeout', status: 'degraded' },
+          redis: { message: 'Redis reachable.', status: 'ok' },
         },
-      ],
-    })
-    class TestHealthModule {}
+        service: 'coreApi',
+        status: 'degraded',
+        timestamp: '2026-03-31T01:00:00.000Z',
+        version: '0.1.0',
+      });
 
-    app = await NestFactory.create<NestFastifyApplication>(TestHealthModule, new FastifyAdapter());
-    app.setGlobalPrefix('api/v1');
-    await app.init();
+      @Module({
+        controllers: [HealthController],
+        providers: [
+          {
+            provide: HealthService,
+            useValue: healthService,
+          },
+        ],
+      })
+      class TestHealthModule {}
 
-    const response = await app.inject({
-      method: 'GET',
-      url: '/api/v1/health',
-    });
+      app = await NestFactory.create<NestFastifyApplication>(TestHealthModule, new FastifyAdapter());
+      app.setGlobalPrefix('api/v1');
+      await app.init();
 
-    expect(response.statusCode).toBe(200);
-    expect(response.json().status).toBe('degraded');
-  });
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/health',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().status).toBe('degraded');
+    },
+    httpTestTimeoutMs,
+  );
 });

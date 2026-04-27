@@ -40,10 +40,10 @@ describe('AuthService changePassword flow', () => {
 
     await service.changePassword('user-1', 'tenant-a', 'OldP@ssword1', 'NewP@ssword2');
 
-    expect(mockPool.query).toHaveBeenCalledWith(
-      expect.stringContaining('WHERE id = $1 AND tenant_id = $2'),
-      ['user-1', 'tenant-a']
-    );
+    expect(mockPool.query).toHaveBeenCalledWith(expect.stringContaining('WHERE id = $1 AND tenant_id = $2'), [
+      'user-1',
+      'tenant-a',
+    ]);
     expect(persistedPasswordHash).toBeTypeOf('string');
     expect(persistedPasswordHash).not.toBe(currentPasswordHash);
     expect(await compare('NewP@ssword2', persistedPasswordHash as string)).toBe(true);
@@ -55,14 +55,14 @@ describe('AuthService changePassword flow', () => {
 
     (service as unknown as { pool: typeof mockPool }).pool = mockPool;
 
-    await expect(
-      service.changePassword('user-1', 'tenant-b', 'OldP@ssword1', 'NewP@ssword2')
-    ).rejects.toThrow('User not found.');
-
-    expect(mockPool.query).toHaveBeenCalledWith(
-      expect.stringContaining('WHERE id = $1 AND tenant_id = $2'),
-      ['user-1', 'tenant-b']
+    await expect(service.changePassword('user-1', 'tenant-b', 'OldP@ssword1', 'NewP@ssword2')).rejects.toThrow(
+      'User not found.',
     );
+
+    expect(mockPool.query).toHaveBeenCalledWith(expect.stringContaining('WHERE id = $1 AND tenant_id = $2'), [
+      'user-1',
+      'tenant-b',
+    ]);
   });
 
   it('rejects password changes for disabled accounts before updating the hash', async () => {
@@ -76,8 +76,8 @@ describe('AuthService changePassword flow', () => {
 
     (service as unknown as { pool: typeof mockPool }).pool = mockPool;
 
-    await expect(
-      service.changePassword('user-1', 'tenant-a', 'OldP@ssword1', 'NewP@ssword2')
-    ).rejects.toThrow('Account is disabled.');
+    await expect(service.changePassword('user-1', 'tenant-a', 'OldP@ssword1', 'NewP@ssword2')).rejects.toThrow(
+      'Account is disabled.',
+    );
   });
 });

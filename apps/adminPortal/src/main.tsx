@@ -6,13 +6,14 @@ import { BrowserRouter } from 'react-router-dom';
 import { getMessages } from './i18n';
 import { ToastContainer } from './components/ui/toast';
 import { useUiStore } from './stores/useUiStore';
+import { logger } from './lib/logger';
 import { AppRoot } from './app/appRoot';
 import './styles/globals.css';
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch((err) => {
-      console.error('SW registration failed:', err);
+      logger.error('main', 'Service worker registration failed', err);
     });
   });
 }
@@ -38,5 +39,5 @@ function LocalizedApp(): JSX.Element {
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <LocalizedApp />
-  </React.StrictMode>
+  </React.StrictMode>,
 );

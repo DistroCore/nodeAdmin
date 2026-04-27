@@ -28,9 +28,7 @@ export function SettingsPanel(): JSX.Element {
       <div className="grid gap-4 sm:grid-cols-2">
         {/* Theme */}
         <Card className="p-4">
-          <h2 className="mb-3 text-sm font-medium text-foreground">
-            {t({ id: 'settings.theme' })}
-          </h2>
+          <h2 className="mb-3 text-sm font-medium text-foreground">{t({ id: 'settings.theme' })}</h2>
           <div className="flex gap-2">
             <button
               className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
@@ -57,9 +55,7 @@ export function SettingsPanel(): JSX.Element {
 
         {/* Language */}
         <Card className="p-4">
-          <h2 className="mb-3 text-sm font-medium text-foreground">
-            {t({ id: 'settings.language' })}
-          </h2>
+          <h2 className="mb-3 text-sm font-medium text-foreground">{t({ id: 'settings.language' })}</h2>
           <div className="flex gap-2">
             <button
               className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
@@ -86,9 +82,7 @@ export function SettingsPanel(): JSX.Element {
 
         {/* Display */}
         <Card className="p-4">
-          <h2 className="mb-3 text-sm font-medium text-foreground">
-            {t({ id: 'settings.display' })}
-          </h2>
+          <h2 className="mb-3 text-sm font-medium text-foreground">{t({ id: 'settings.display' })}</h2>
           <div className="space-y-2">
             <Checkbox
               checked={sidebarCollapsed}
@@ -107,9 +101,7 @@ export function SettingsPanel(): JSX.Element {
 
         {/* Session Info */}
         <Card className="p-4">
-          <h2 className="mb-3 text-sm font-medium text-foreground">
-            {t({ id: 'settings.session' })}
-          </h2>
+          <h2 className="mb-3 text-sm font-medium text-foreground">{t({ id: 'settings.session' })}</h2>
           <dl className="space-y-1 text-sm">
             <div className="flex justify-between">
               <dt className="text-muted-foreground">{t({ id: 'settings.userId' })}</dt>
@@ -127,9 +119,7 @@ export function SettingsPanel(): JSX.Element {
             </div>
             <div className="flex justify-between">
               <dt className="text-muted-foreground">{t({ id: 'settings.userRoles' })}</dt>
-              <dd className="text-foreground">
-                {userRoles.length > 0 ? userRoles.join(', ') : '—'}
-              </dd>
+              <dd className="text-foreground">{userRoles.length > 0 ? userRoles.join(', ') : '—'}</dd>
             </div>
           </dl>
         </Card>

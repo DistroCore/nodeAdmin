@@ -10,12 +10,7 @@ import {
   toUpdateDtoField,
 } from '../generator/columnMapper';
 import { parseSchema, resolveTable } from '../generator/schemaParser';
-import type {
-  CrudTemplateContext,
-  GenerateCrudOptions,
-  GeneratedFile,
-  ParsedTable,
-} from '../generator/types';
+import type { CrudTemplateContext, GenerateCrudOptions, GeneratedFile, ParsedTable } from '../generator/types';
 
 interface CrudCommandArgs {
   dryRun: boolean;
@@ -217,11 +212,11 @@ async function handleGenerate(args: ArgumentsCamelCase<CrudCommandArgs>): Promis
   process.stdout.write(`${readSchemaPreview(paths.schemaPath)}\n`);
   if (!parsedTables.has(table.exportName)) {
     process.stdout.write(
-      `No matching pgTable export found for "${options.entity}". Using fallback scaffold for ${context.moduleName}.\n`
+      `No matching pgTable export found for "${options.entity}". Using fallback scaffold for ${context.moduleName}.\n`,
     );
   } else {
     process.stdout.write(
-      `Matched entity "${options.entity}" to schema export "${table.exportName}" (${table.sqlTableName}).\n`
+      `Matched entity "${options.entity}" to schema export "${table.exportName}" (${table.sqlTableName}).\n`,
     );
   }
 

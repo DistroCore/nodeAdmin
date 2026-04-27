@@ -4,8 +4,10 @@ on:
   push:
     branches:
       - master
-      - develop
   pull_request:
+    branches:
+      - master
+      - develop
   workflow_dispatch:
 
 concurrency:
@@ -29,6 +31,12 @@ jobs:
       - run: npm ci
       - run: npm run format:check
       - run: npm run lint
+      - name: Naming conventions
+        run: node scripts/checkNamingConventions.cjs
+      - name: Layer dependencies
+        run: node scripts/checkLayerDependencies.cjs
+      - name: Doc drift
+        run: node scripts/checkDocDrift.cjs
 
   # ── Parallel: Unit Tests (backend + frontend) ────────────────────────────
   unit-test:
@@ -131,9 +139,80 @@ jobs:
         if: always()
         run: docker compose down
 
-  # NOTE: E2E (Playwright) job was intentionally removed in c33a0fc due to
-  # CI-environment-specific flakiness. Re-add only after the underlying root
-  # cause is addressed. Run locally with: npm run test:e2e:web
+  # ── Sequential: E2E (Playwright) ─────────────────────────────────────────
+  e2e:
+    needs: [build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: build-dist
+          path: .
+
+      - run: npx playwright install --with-deps chromium
+
+      - name: Setup Infrastructure
+        uses: ./.github/actions/setup-stack
+
+      - name: Seed Test Data
+        run: node scripts/seed-test-data.cjs
+
+      - name: Start CoreApi
+        run: |
+          AUTH_ENABLE_DEV_TOKEN_ISSUE=true \
+          DATABASE_URL=postgres://nodeadmin:nodeadmin@localhost:55432/nodeadmin \
+          FRONTEND_ORIGINS=http://localhost:3000 \
+          JWT_ACCESS_SECRET=ci-access-secret \
+          JWT_REFRESH_SECRET=ci-refresh-secret \
+          KAFKA_BROKERS=localhost:9092 \
+          OUTBOX_PUBLISHER_ENABLED=true \
+          OUTBOX_TOPIC=im.events \
+          PORT=11451 \
+          node apps/coreApi/dist/main.js &
+
+      - name: Wait for CoreApi
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:11451/api/v1/health > /dev/null 2>&1; then
+              echo "CoreApi ready"
+              break
+            fi
+            echo "Waiting for CoreApi... attempt $i/60"
+            sleep 2
+          done
+          # Final check — fail the job if CoreApi never came up
+          curl -sf http://127.0.0.1:11451/api/v1/health > /dev/null
+
+      - name: Run E2E Tests
+        run: npm run test:e2e -w adminPortal
+        env:
+          ADMIN_PORTAL_BASE_URL: http://127.0.0.1:3000
+          CI: 'true'
+
+      - name: Upload Playwright Artifacts
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-results
+          path: |
+            apps/adminPortal/test-results/
+            apps/adminPortal/playwright-report/
+          retention-days: 7
+
+      - name: Shutdown
+        if: always()
+        run: |
+          pkill -f "apps/coreApi/dist/main.js" 2>/dev/null || true
+          docker compose down
 
   # ── Parallel: Docker image build validation (no push) ────────────────────
   docker-build:

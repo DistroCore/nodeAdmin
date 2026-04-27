@@ -1,8 +1,6 @@
 const { Client } = require('pg');
 
-const databaseUrl = (
-  process.env.DATABASE_URL || 'postgres://nodeadmin:nodeadmin@localhost:55432/nodeadmin'
-).trim();
+const databaseUrl = (process.env.DATABASE_URL || 'postgres://nodeadmin:nodeadmin@localhost:55432/nodeadmin').trim();
 
 async function run() {
   const client = new Client({
@@ -17,7 +15,7 @@ async function run() {
         FROM pg_inherits
         WHERE inhparent = 'messages_partitioned_rehearsal'::regclass
         ORDER BY inhrelid::regclass::text;
-      `
+      `,
     );
 
     console.log(
@@ -28,8 +26,8 @@ async function run() {
           result: partitionsResult.rowCount >= 4 ? 'ok' : 'fail',
         },
         null,
-        2
-      )
+        2,
+      ),
     );
 
     if ((partitionsResult.rowCount || 0) < 4) {

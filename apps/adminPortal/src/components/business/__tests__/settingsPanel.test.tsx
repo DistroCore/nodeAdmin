@@ -1,12 +1,47 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AppLocale } from '@/i18n';
 import { SettingsPanel } from '../settingsPanel';
 
-const mockSetTheme = vi.fn();
-const mockSetLocale = vi.fn();
-const mockToggleSidebar = vi.fn();
-const mockToggleImPanel = vi.fn();
+interface MockUiState {
+  imConversationPanelOpen: boolean;
+  locale: AppLocale;
+  setLocale: (locale: AppLocale) => void;
+  setTheme: (theme: 'dark' | 'light') => void;
+  sidebarCollapsed: boolean;
+  theme: 'dark' | 'light';
+  toggleImConversationPanel: () => void;
+  toggleSidebar: () => void;
+}
+
+interface MockAuthState {
+  tenantId: string;
+  userId: string;
+  userName: string;
+  userRoles: string[];
+}
+
+const mockSetTheme = vi.fn<(theme: 'dark' | 'light') => void>();
+const mockSetLocale = vi.fn<(locale: AppLocale) => void>();
+const mockToggleSidebar = vi.fn<() => void>();
+const mockToggleImPanel = vi.fn<() => void>();
+const mockUiState: MockUiState = {
+  imConversationPanelOpen: true,
+  locale: 'en',
+  setLocale: mockSetLocale,
+  setTheme: mockSetTheme,
+  sidebarCollapsed: false,
+  theme: 'light',
+  toggleImConversationPanel: mockToggleImPanel,
+  toggleSidebar: mockToggleSidebar,
+};
+const mockAuthState: MockAuthState = {
+  tenantId: 'tenant-456',
+  userId: 'user-123',
+  userName: 'Test User',
+  userRoles: ['admin', 'editor'],
+};
 
 vi.mock('react-intl', () => ({
   useIntl: () => ({
@@ -15,27 +50,11 @@ vi.mock('react-intl', () => ({
 }));
 
 vi.mock('@/stores/useUiStore', () => ({
-  useUiStore: (selector: any) =>
-    selector({
-      theme: 'light',
-      setTheme: mockSetTheme,
-      locale: 'en',
-      setLocale: mockSetLocale,
-      sidebarCollapsed: false,
-      toggleSidebar: mockToggleSidebar,
-      imConversationPanelOpen: true,
-      toggleImConversationPanel: mockToggleImPanel,
-    }),
+  useUiStore: <T,>(selector: (state: MockUiState) => T) => selector(mockUiState),
 }));
 
 vi.mock('@/stores/useAuthStore', () => ({
-  useAuthStore: (selector: any) =>
-    selector({
-      userId: 'user-123',
-      tenantId: 'tenant-456',
-      userName: 'Test User',
-      userRoles: ['admin', 'editor'],
-    }),
+  useAuthStore: <T,>(selector: (state: MockAuthState) => T) => selector(mockAuthState),
 }));
 
 describe('SettingsPanel', () => {

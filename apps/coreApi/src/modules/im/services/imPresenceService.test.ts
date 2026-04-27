@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { SocketContext } from '../../../infrastructure/connectionRegistry';
+import type { ConnectionRegistry, SocketContext } from '../../../infrastructure/connectionRegistry';
 import { ImPresenceService } from './imPresenceService';
 
 function createMockPresenceService(): ImPresenceService {
-  const service = new ImPresenceService({
-    countByTenant: vi.fn().mockReturnValue(0),
-  } as any);
+  const connectionRegistry: Pick<ConnectionRegistry, 'countByTenant'> = {
+    countByTenant: vi.fn<(tenantId: string) => number>().mockReturnValue(0),
+  };
+
+  const service = new ImPresenceService(connectionRegistry as unknown as ConnectionRegistry);
 
   return service;
 }

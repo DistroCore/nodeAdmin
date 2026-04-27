@@ -27,7 +27,7 @@ export class RolesService {
       WHERE r.tenant_id = $1
       GROUP BY r.id
       ORDER BY r.created_at`,
-      [tenantId]
+      [tenantId],
     );
     return result.rows;
   }
@@ -42,7 +42,7 @@ export class RolesService {
       LEFT JOIN permissions p ON p.id = rp.permission_id
       WHERE r.tenant_id = $1 AND r.id = $2
       GROUP BY r.id`,
-      [tenantId, roleId]
+      [tenantId, roleId],
     );
     if (result.rows.length === 0) throw new NotFoundException('Role not found');
     return result.rows[0];
@@ -56,16 +56,15 @@ export class RolesService {
     try {
       await client.query('BEGIN');
       await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [tenantId]);
-      await client.query(
-        'INSERT INTO roles (id, tenant_id, name, description) VALUES ($1, $2, $3, $4)',
-        [roleId, tenantId, name, description ?? null]
-      );
+      await client.query('INSERT INTO roles (id, tenant_id, name, description) VALUES ($1, $2, $3, $4)', [
+        roleId,
+        tenantId,
+        name,
+        description ?? null,
+      ]);
       if (permissionIds && permissionIds.length > 0) {
         for (const permId of permissionIds) {
-          await client.query(
-            'INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2)',
-            [roleId, permId]
-          );
+          await client.query('INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2)', [roleId, permId]);
         }
       }
       await client.query('COMMIT');
@@ -81,15 +80,15 @@ export class RolesService {
   async update(
     tenantId: string,
     roleId: string,
-    data: { name?: string; description?: string; permissionIds?: string[] }
+    data: { name?: string; description?: string; permissionIds?: string[] },
   ) {
     if (!this.pool) throw new Error('Database not available');
 
     // Check not system role
-    const check = await this.pool.query(
-      'SELECT is_system FROM roles WHERE tenant_id = $1 AND id = $2',
-      [tenantId, roleId]
-    );
+    const check = await this.pool.query('SELECT is_system FROM roles WHERE tenant_id = $1 AND id = $2', [
+      tenantId,
+      roleId,
+    ]);
     if (check.rows.length === 0) throw new NotFoundException('Role not found');
     if (check.rows[0].is_system) throw new BadRequestException('Cannot modify system roles');
 
@@ -116,17 +115,14 @@ export class RolesService {
         params.push(tenantId, roleId);
         await client.query(
           `UPDATE roles SET ${sets.join(', ')} WHERE tenant_id = $${paramIdx + 1} AND id = $${paramIdx + 2}`,
-          params
+          params,
         );
       }
 
       if (data.permissionIds !== undefined) {
         await client.query('DELETE FROM role_permissions WHERE role_id = $1', [roleId]);
         for (const permId of data.permissionIds) {
-          await client.query(
-            'INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2)',
-            [roleId, permId]
-          );
+          await client.query('INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2)', [roleId, permId]);
         }
       }
 
@@ -142,10 +138,10 @@ export class RolesService {
 
   async remove(tenantId: string, roleId: string) {
     if (!this.pool) throw new Error('Database not available');
-    const check = await this.pool.query(
-      'SELECT is_system FROM roles WHERE tenant_id = $1 AND id = $2',
-      [tenantId, roleId]
-    );
+    const check = await this.pool.query('SELECT is_system FROM roles WHERE tenant_id = $1 AND id = $2', [
+      tenantId,
+      roleId,
+    ]);
     if (check.rows.length === 0) throw new NotFoundException('Role not found');
     if (check.rows[0].is_system) throw new BadRequestException('Cannot delete system roles');
 
@@ -174,10 +170,10 @@ export class RolesService {
       return { deletedCount: 0 };
     }
 
-    const check = await this.pool.query(
-      'SELECT id, is_system FROM roles WHERE tenant_id = $1 AND id = ANY($2)',
-      [tenantId, normalizedRoleIds]
-    );
+    const check = await this.pool.query('SELECT id, is_system FROM roles WHERE tenant_id = $1 AND id = ANY($2)', [
+      tenantId,
+      normalizedRoleIds,
+    ]);
 
     if (check.rows.length !== normalizedRoleIds.length) {
       throw new NotFoundException('One or more roles not found');
@@ -191,15 +187,13 @@ export class RolesService {
     try {
       await client.query('BEGIN');
       await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [tenantId]);
-      await client.query('DELETE FROM role_permissions WHERE role_id = ANY($1)', [
-        normalizedRoleIds,
-      ]);
+      await client.query('DELETE FROM role_permissions WHERE role_id = ANY($1)', [normalizedRoleIds]);
       await client.query('DELETE FROM role_menus WHERE role_id = ANY($1)', [normalizedRoleIds]);
       await client.query('DELETE FROM user_roles WHERE role_id = ANY($1)', [normalizedRoleIds]);
-      const result = await client.query(
-        'DELETE FROM roles WHERE tenant_id = $1 AND id = ANY($2) RETURNING id',
-        [tenantId, normalizedRoleIds]
-      );
+      const result = await client.query('DELETE FROM roles WHERE tenant_id = $1 AND id = ANY($2) RETURNING id', [
+        tenantId,
+        normalizedRoleIds,
+      ]);
       await client.query('COMMIT');
 
       return { deletedCount: result.rows.length };

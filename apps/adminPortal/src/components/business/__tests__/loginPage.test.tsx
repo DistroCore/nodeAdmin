@@ -1,8 +1,29 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
+import type { AppLocale } from '@/i18n';
 import { LoginPage } from '../loginPage';
+
+interface MockLinkProps {
+  children?: ReactNode;
+  to: string;
+}
+
+interface MockUiState {
+  setLocale: (locale: AppLocale) => void;
+  setTheme: (theme: 'dark' | 'light') => void;
+  theme: 'dark' | 'light';
+}
+
+const mockSetTheme = vi.fn<(theme: 'dark' | 'light') => void>();
+const mockSetLocale = vi.fn<(locale: AppLocale) => void>();
+const mockUiState: MockUiState = {
+  setLocale: mockSetLocale,
+  setTheme: mockSetTheme,
+  theme: 'light',
+};
 
 // Mock react-intl
 vi.mock('react-intl', () => ({
@@ -19,19 +40,13 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return {
     ...actual,
     useNavigate: () => mockNavigate,
-    Link: ({ children, to }: any) => <a href={to}>{children}</a>,
+    Link: ({ children, to }: MockLinkProps) => <a href={to}>{children}</a>,
   };
 });
 
 // Mock Zustand stores
 vi.mock('@/stores/useUiStore', () => ({
-  useUiStore: vi.fn((selector) =>
-    selector({
-      theme: 'light',
-      setTheme: vi.fn(),
-      setLocale: vi.fn(),
-    })
-  ),
+  useUiStore: vi.fn(<T,>(selector: (state: MockUiState) => T) => selector(mockUiState)),
 }));
 
 vi.mock('@/stores/useAuthStore', () => ({
@@ -73,7 +88,7 @@ describe('LoginPage', () => {
     render(
       <MemoryRouter>
         <LoginPage />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
     // Wait for initial mount effects to settle (e.g. tenant fetch)
     await waitFor(() => {
@@ -88,7 +103,7 @@ describe('LoginPage', () => {
     render(
       <MemoryRouter>
         <LoginPage />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     await user.click(screen.getByText('auth.sms'));
@@ -105,7 +120,7 @@ describe('LoginPage', () => {
     render(
       <MemoryRouter>
         <LoginPage />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     await user.click(screen.getByText('auth.sms'));
@@ -125,7 +140,7 @@ describe('LoginPage', () => {
     render(
       <MemoryRouter>
         <LoginPage />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
     await waitFor(() => {
       expect(screen.getByText('auth.oauth.github')).toBeInTheDocument();
@@ -138,7 +153,7 @@ describe('LoginPage', () => {
     render(
       <MemoryRouter>
         <LoginPage />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     const emailInput = screen.getByLabelText('auth.email') as HTMLInputElement;
@@ -165,11 +180,13 @@ describe('LoginPage', () => {
     render(
       <MemoryRouter>
         <LoginPage />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     await user.type(screen.getByLabelText('auth.email'), 'user@test.com');
     await user.type(screen.getByLabelText('auth.password'), 'password123');
+    // Tenant field starts empty (TD-13 fix) — must type a value
+    await user.type(screen.getByLabelText('auth.tenantId'), 'default');
 
     const loginButton = screen.getByRole('button', { name: 'auth.login' });
     await user.click(loginButton);

@@ -89,11 +89,13 @@ export interface MarketplaceResponse {
 export interface PluginInstallResponse {
   success: boolean;
   installedVersion: string;
+  pluginId: string;
 }
 
 export interface PluginUpdateResponse {
   success: boolean;
   updatedVersion: string;
+  pluginId: string;
 }
 
 export interface TenantPluginInfo {
@@ -101,9 +103,11 @@ export interface TenantPluginInfo {
   enabled: boolean;
   config: Record<string, unknown>;
   enabledAt: string | null;
+  installedAt?: string | null;
+  autoUpdate?: boolean;
   uiUrl?: string;
   manifest?: PluginManifest;
-  installedVersion?: string;
+  installedVersion?: string | null;
 }
 
 export interface TenantPluginResponse {

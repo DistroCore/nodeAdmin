@@ -1,20 +1,16 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { hash } from 'bcryptjs';
 import { Pool } from 'pg';
+import { DatabaseService } from '../../infrastructure/database/databaseService';
 
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
   private readonly pool: Pool | null;
 
-  constructor() {
-    const databaseUrl = process.env.DATABASE_URL?.trim();
-    if (!databaseUrl) {
-      this.pool = null;
-    } else {
-      this.pool = new Pool({ connectionString: databaseUrl, max: 10 });
-    }
+  constructor(@Inject(DatabaseService) databaseService: DatabaseService = new DatabaseService()) {
+    this.pool = (databaseService.drizzle?.$client as Pool | undefined) ?? null;
   }
 
   async list(tenantId: string, page = 1, pageSize = 20, search?: string) {
@@ -28,10 +24,7 @@ export class UsersService {
       whereClause += ` AND (u.email ILIKE $${params.length} OR u.name ILIKE $${params.length})`;
     }
 
-    const countResult = await this.pool.query(
-      `SELECT COUNT(*)::int as count FROM users u ${whereClause}`,
-      params
-    );
+    const countResult = await this.pool.query(`SELECT COUNT(*)::int as count FROM users u ${whereClause}`, params);
     const total = countResult.rows[0].count;
 
     const result = await this.pool.query(
@@ -44,7 +37,7 @@ export class UsersService {
       GROUP BY u.id
       ORDER BY u.created_at DESC
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
-      [...params, pageSize, offset]
+      [...params, pageSize, offset],
     );
 
     return { items: result.rows, total, page, pageSize };
@@ -60,20 +53,14 @@ export class UsersService {
       LEFT JOIN roles r ON r.id = ur.role_id
       WHERE u.tenant_id = $1 AND u.id = $2
       GROUP BY u.id`,
-      [tenantId, userId]
+      [tenantId, userId],
     );
     if (result.rows.length === 0) throw new NotFoundException('User not found');
     return result.rows[0];
   }
 
-  async create(
-    tenantId: string,
-    email: string,
-    password: string,
-    name?: string,
-    roleIds?: string[]
-  ) {
-    if (!this.pool) throw new Error('Database not available');
+  async create(tenantId: string, email: string, password: string, name?: string, roleIds?: string[]) {
+    if (!this.pool) throw new ServiceUnavailableException('Database not available');
     const userId = randomUUID();
     const passwordHash = await hash(password, 12);
 
@@ -81,16 +68,16 @@ export class UsersService {
     try {
       await client.query('BEGIN');
       await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [tenantId]);
-      await client.query(
-        'INSERT INTO users (id, tenant_id, email, password_hash, name) VALUES ($1, $2, $3, $4, $5)',
-        [userId, tenantId, email, passwordHash, name ?? null]
-      );
+      await client.query('INSERT INTO users (id, tenant_id, email, password_hash, name) VALUES ($1, $2, $3, $4, $5)', [
+        userId,
+        tenantId,
+        email,
+        passwordHash,
+        name ?? null,
+      ]);
       if (roleIds && roleIds.length > 0) {
         for (const roleId of roleIds) {
-          await client.query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)', [
-            userId,
-            roleId,
-          ]);
+          await client.query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)', [userId, roleId]);
         }
       }
       await client.query('COMMIT');
@@ -106,9 +93,9 @@ export class UsersService {
   async update(
     tenantId: string,
     userId: string,
-    data: { name?: string; avatar?: string; isActive?: boolean; roleIds?: string[] }
+    data: { name?: string; avatar?: string; isActive?: boolean; roleIds?: string[] },
   ) {
-    if (!this.pool) throw new Error('Database not available');
+    if (!this.pool) throw new ServiceUnavailableException('Database not available');
 
     const client = await this.pool.connect();
     try {
@@ -137,17 +124,14 @@ export class UsersService {
         params.push(tenantId, userId);
         await client.query(
           `UPDATE users SET ${sets.join(', ')} WHERE tenant_id = $${paramIdx + 1} AND id = $${paramIdx + 2}`,
-          params
+          params,
         );
       }
 
       if (data.roleIds !== undefined) {
         await client.query('DELETE FROM user_roles WHERE user_id = $1', [userId]);
         for (const roleId of data.roleIds) {
-          await client.query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)', [
-            userId,
-            roleId,
-          ]);
+          await client.query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)', [userId, roleId]);
         }
       }
 
@@ -162,16 +146,16 @@ export class UsersService {
   }
 
   async remove(tenantId: string, userId: string) {
-    if (!this.pool) throw new Error('Database not available');
+    if (!this.pool) throw new ServiceUnavailableException('Database not available');
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
       await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [tenantId]);
       await client.query('DELETE FROM user_roles WHERE user_id = $1', [userId]);
-      const result = await client.query(
-        'DELETE FROM users WHERE tenant_id = $1 AND id = $2 RETURNING id',
-        [tenantId, userId]
-      );
+      const result = await client.query('DELETE FROM users WHERE tenant_id = $1 AND id = $2 RETURNING id', [
+        tenantId,
+        userId,
+      ]);
       await client.query('COMMIT');
       if (result.rows.length === 0) throw new NotFoundException('User not found');
     } catch (error) {

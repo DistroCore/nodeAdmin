@@ -14,17 +14,12 @@ describe('PluginLoaderModule', () => {
   let routerRegisterSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    routerRegisterSpy = vi
-      .spyOn(RouterModule, 'register')
-      .mockReturnValue({ module: RouterModule } as DynamicModule);
+    routerRegisterSpy = vi.spyOn(RouterModule, 'register').mockReturnValue({ module: RouterModule } as DynamicModule);
   });
 
   it('scans installed plugins before building dynamic imports', async () => {
     const registry = {
-      getPluginModule: vi
-        .fn()
-        .mockReturnValueOnce(KanbanPluginModule)
-        .mockReturnValueOnce(ImPluginModule),
+      getPluginModule: vi.fn().mockReturnValueOnce(KanbanPluginModule).mockReturnValueOnce(ImPluginModule),
       scanInstalledPlugins: vi.fn().mockResolvedValue([
         {
           id: '@nodeadmin/plugin-kanban',
@@ -45,18 +40,32 @@ describe('PluginLoaderModule', () => {
       ]),
     };
 
-    const permissionSpy = vi.spyOn(PluginSandboxModule, 'validatePermissions');
+    const sandboxSpy = vi.spyOn(PluginSandboxModule, 'forPlugin');
 
     const dynamicModule = await PluginLoaderModule.forRootAsync(registry as never);
 
     expect(registry.scanInstalledPlugins).toHaveBeenCalledWith();
     expect(registry.getPluginModule).toHaveBeenNthCalledWith(1, '@nodeadmin/plugin-kanban');
     expect(registry.getPluginModule).toHaveBeenNthCalledWith(2, '@nodeadmin/plugin-im');
-    expect(permissionSpy).toHaveBeenNthCalledWith(1, ['backlog:view']);
-    expect(permissionSpy).toHaveBeenNthCalledWith(2, ['im:view']);
-    expect(dynamicModule.imports).toEqual(
-      expect.arrayContaining([{ module: RouterModule }, KanbanPluginModule, ImPluginModule])
-    );
+    expect(sandboxSpy).toHaveBeenNthCalledWith(1, {
+      permissions: ['backlog:view'],
+      pluginId: '@nodeadmin/plugin-kanban',
+      tenantContext: {
+        pluginId: '@nodeadmin/plugin-kanban',
+        tenantId: 'bootstrap',
+        userId: 'bootstrap',
+      },
+    });
+    expect(sandboxSpy).toHaveBeenNthCalledWith(2, {
+      permissions: ['im:view'],
+      pluginId: '@nodeadmin/plugin-im',
+      tenantContext: {
+        pluginId: '@nodeadmin/plugin-im',
+        tenantId: 'bootstrap',
+        userId: 'bootstrap',
+      },
+    });
+    expect(dynamicModule.imports).toEqual(expect.arrayContaining([{ module: RouterModule }, KanbanPluginModule, ImPluginModule]));
   });
 
   it('registers plugin route prefixes under /plugins/<name>', async () => {

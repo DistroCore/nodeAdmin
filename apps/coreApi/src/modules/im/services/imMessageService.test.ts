@@ -46,7 +46,7 @@ function createPayload(messageId: string) {
 
 function createPersistedMessage(
   sequenceId: number,
-  messageId: string
+  messageId: string,
 ): {
   content: string;
   conversationId: string;
@@ -78,7 +78,7 @@ function createPersistedMessage(
 }
 
 function createStoredMessage(
-  overrides?: Partial<ReturnType<typeof createPersistedMessage>>
+  overrides?: Partial<ReturnType<typeof createPersistedMessage>>,
 ): ReturnType<typeof createPersistedMessage> {
   return {
     ...createPersistedMessage(1, 'message-1'),
@@ -95,10 +95,7 @@ describe('ImMessageService', () => {
     messageRepository.getLatest.mockResolvedValue([]);
     messageRepository.append.mockImplementation(async (message) => ({
       duplicate: false,
-      message: createPersistedMessage(
-        Number(message.messageId.split('-').at(-1) ?? '1'),
-        message.messageId
-      ),
+      message: createPersistedMessage(Number(message.messageId.split('-').at(-1) ?? '1'), message.messageId),
     }));
     service = new ImMessageService(messageRepository as never);
   });
@@ -140,9 +137,7 @@ describe('ImMessageService', () => {
 
       await service.appendMessage(context, createPayload('message-1'), identity);
 
-      await expect(
-        service.appendMessage(context, createPayload('message-2'), identity)
-      ).rejects.toThrow(WsException);
+      await expect(service.appendMessage(context, createPayload('message-2'), identity)).rejects.toThrow(WsException);
 
       expect(messageRepository.append).not.toHaveBeenCalled();
     } finally {
@@ -181,8 +176,8 @@ describe('ImMessageService', () => {
       service.appendMessage(
         { ...createContext(), conversationId: 'conversation-2' },
         createPayload('message-1'),
-        identity
-      )
+        identity,
+      ),
     ).rejects.toThrow('Socket context mismatch');
   });
 
@@ -197,8 +192,8 @@ describe('ImMessageService', () => {
           ...createPayload('message-1'),
           content: '<script>alert(1)</script>   ',
         },
-        identity
-      )
+        identity,
+      ),
     ).rejects.toThrow('Message content is empty after sanitization.');
   });
 
@@ -217,9 +212,8 @@ describe('ImMessageService', () => {
   it('drops the optimistic duplicate cache entry when persistence fails after all retries', async () => {
     const identity = createIdentity();
     const context = createContext();
-    const originalMaxQueueLength = (
-      ImMessageService as unknown as { maxPersistQueueLength: number }
-    ).maxPersistQueueLength;
+    const originalMaxQueueLength = (ImMessageService as unknown as { maxPersistQueueLength: number })
+      .maxPersistQueueLength;
 
     messageRepository.append.mockRejectedValue(new Error('db unavailable'));
     (
@@ -230,18 +224,17 @@ describe('ImMessageService', () => {
     (ImMessageService as unknown as { maxPersistQueueLength: number }).maxPersistQueueLength = 0;
 
     try {
-      await expect(
-        service.appendMessage(context, createPayload('message-9'), identity)
-      ).rejects.toThrow('Message persistence is temporarily unavailable.');
+      await expect(service.appendMessage(context, createPayload('message-9'), identity)).rejects.toThrow(
+        'Message persistence is temporarily unavailable.',
+      );
 
-      await expect(
-        service.appendMessage(context, createPayload('message-9'), identity)
-      ).rejects.toThrow('Message persistence is temporarily unavailable.');
+      await expect(service.appendMessage(context, createPayload('message-9'), identity)).rejects.toThrow(
+        'Message persistence is temporarily unavailable.',
+      );
 
       expect(messageRepository.append).toHaveBeenCalledTimes(6);
     } finally {
-      (ImMessageService as unknown as { maxPersistQueueLength: number }).maxPersistQueueLength =
-        originalMaxQueueLength;
+      (ImMessageService as unknown as { maxPersistQueueLength: number }).maxPersistQueueLength = originalMaxQueueLength;
     }
   });
 
@@ -256,34 +249,28 @@ describe('ImMessageService', () => {
 
     messageRepository.updateContent.mockResolvedValue(updated);
 
-    await expect(
-      service.editMessage(context, 'message-1', '<b>updated</b>', identity)
-    ).resolves.toEqual(updated);
+    await expect(service.editMessage(context, 'message-1', '<b>updated</b>', identity)).resolves.toEqual(updated);
 
-    expect(messageRepository.updateContent).toHaveBeenCalledWith(
-      'tenant-1',
-      'message-1',
-      'updated'
-    );
+    expect(messageRepository.updateContent).toHaveBeenCalledWith('tenant-1', 'message-1', 'updated');
   });
 
   it('rejects editing when the sanitized content is empty or the updated row belongs to another user', async () => {
     const identity = createIdentity();
     const context = createContext();
 
-    await expect(
-      service.editMessage(context, 'message-1', '   <script>bad</script>  ', identity)
-    ).rejects.toThrow('Edited message content is empty after sanitization.');
+    await expect(service.editMessage(context, 'message-1', '   <script>bad</script>  ', identity)).rejects.toThrow(
+      'Edited message content is empty after sanitization.',
+    );
 
     messageRepository.updateContent.mockResolvedValue(
       createStoredMessage({
         messageId: 'message-1',
         userId: 'user-2',
-      })
+      }),
     );
 
     await expect(service.editMessage(context, 'message-1', 'updated', identity)).rejects.toThrow(
-      'You can only edit your own messages.'
+      'You can only edit your own messages.',
     );
   });
 
@@ -292,9 +279,7 @@ describe('ImMessageService', () => {
     const context = createContext();
 
     messageRepository.getLatest.mockResolvedValue([]);
-    await expect(service.deleteMessage(context, 'message-1', identity)).rejects.toThrow(
-      'Message not found.'
-    );
+    await expect(service.deleteMessage(context, 'message-1', identity)).rejects.toThrow('Message not found.');
 
     messageRepository.getLatest.mockResolvedValue([
       createStoredMessage({
@@ -304,7 +289,7 @@ describe('ImMessageService', () => {
     ]);
 
     await expect(service.deleteMessage(context, 'message-1', identity)).rejects.toThrow(
-      'You can only delete your own messages.'
+      'You can only delete your own messages.',
     );
   });
 
@@ -316,9 +301,7 @@ describe('ImMessageService', () => {
       messageId: 'message-1',
     });
 
-    messageRepository.getLatest.mockResolvedValue([
-      createStoredMessage({ messageId: 'message-1' }),
-    ]);
+    messageRepository.getLatest.mockResolvedValue([createStoredMessage({ messageId: 'message-1' })]);
     messageRepository.softDelete.mockResolvedValue(deleted);
 
     await expect(service.deleteMessage(context, 'message-1', identity)).resolves.toEqual(deleted);
@@ -330,9 +313,7 @@ describe('ImMessageService', () => {
     const context = createContext();
 
     messageRepository.getLatest.mockResolvedValue([]);
-    await expect(service.markAsRead(context, 'message-1', identity)).rejects.toThrow(
-      'Referenced message not found.'
-    );
+    await expect(service.markAsRead(context, 'message-1', identity)).rejects.toThrow('Referenced message not found.');
 
     messageRepository.getLatest.mockResolvedValue([
       createStoredMessage({
@@ -346,12 +327,7 @@ describe('ImMessageService', () => {
       lastReadMessageId: 'message-7',
       userId: 'user-1',
     });
-    expect(messageRepository.upsertReadReceipt).toHaveBeenCalledWith(
-      'tenant-1',
-      'conversation-1',
-      'user-1',
-      7
-    );
+    expect(messageRepository.upsertReadReceipt).toHaveBeenCalledWith('tenant-1', 'conversation-1', 'user-1', 7);
   });
 });
 

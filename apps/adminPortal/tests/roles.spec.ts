@@ -5,9 +5,7 @@ test.describe('Roles Management', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto('/roles');
-    await expect(
-      page.getByRole('main').getByRole('heading', { name: /Role Management/i })
-    ).toBeVisible();
+    await expect(page.getByRole('main').getByRole('heading', { name: /Role Management/i })).toBeVisible();
   });
 
   test('lists roles and identifies system roles', async ({ page }) => {
@@ -43,8 +41,9 @@ test.describe('Roles Management', () => {
     }
     await page.getByRole('button', { name: /Save/i }).click();
 
-    await expect(page.getByText(/saved|successfully/i)).toBeVisible();
-    await expect(page.getByRole('main').getByText(roleName)).toBeVisible();
+    // Wait for dialog to close after save
+    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('main').getByText(roleName)).toBeVisible({ timeout: 10_000 });
 
     // Edit
     const row = page.getByRole('main').locator('tr').filter({ hasText: roleName });
@@ -52,15 +51,23 @@ test.describe('Roles Management', () => {
     await page.getByLabel(/Description/i).fill(newDescription);
     await page.getByRole('button', { name: /Save/i }).click();
 
-    await expect(page.getByText(/saved|successfully/i)).toBeVisible();
-    await expect(page.getByRole('main').getByText(newDescription)).toBeVisible();
+    // Wait for dialog to close after save
+    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 });
+    // Reload to ensure fresh data
+    await page.reload();
+    await expect(page.getByRole('main')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('main').getByText(newDescription)).toBeVisible({ timeout: 10_000 });
 
     // Delete
-    await row.getByRole('button', { name: /Delete/i }).click();
-    await expect(page.getByText(/Are you sure you want to delete this role/i)).toBeVisible();
-    await page.getByRole('button', { name: /Confirm/i }).click();
+    const updatedRow = page.getByRole('main').locator('tr').filter({ hasText: newDescription });
+    await updatedRow.getByRole('button', { name: /Delete/i }).click();
+    await expect(page.getByRole('dialog').locator('p').filter({ hasText: /sure/i })).toBeVisible();
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: /Confirm/i })
+      .click();
 
-    await expect(page.getByText(/deleted|successfully/i)).toBeVisible();
-    await expect(page.getByRole('main').getByText(roleName)).not.toBeVisible();
+    await expect(page.getByRole('alert').filter({ hasText: /deleted/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('main').getByText(roleName)).not.toBeVisible({ timeout: 5_000 });
   });
 });

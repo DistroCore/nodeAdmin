@@ -1,10 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ServiceUnavailableException } from '@nestjs/common';
 import { setupTestEnv, createMockPool, createMockClient } from '../../__tests__/helpers';
-import type { QueryResult } from '../../__tests__/helpers';
+import type { MockPool, QueryResult } from '../../__tests__/helpers';
 
 setupTestEnv();
 
 import { UsersService } from './usersService';
+
+function setUsersServicePool(service: UsersService, pool: MockPool): void {
+  (service as unknown as { pool: MockPool }).pool = pool;
+}
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -42,7 +47,7 @@ describe('UsersService', () => {
           rowCount: 1,
         } as QueryResult,
       ]);
-      (service as any).pool = mockPool;
+      setUsersServicePool(service, mockPool);
 
       const result = await service.list('t-1', 1, 20);
       expect(result.items).toHaveLength(1);
@@ -54,7 +59,7 @@ describe('UsersService', () => {
         { rows: [{ count: 0 }], rowCount: 1 } as QueryResult,
         { rows: [], rowCount: 0 } as QueryResult,
       ]);
-      (service as any).pool = mockPool;
+      setUsersServicePool(service, mockPool);
 
       const result = await service.list('t-1', 1, 20, 'search');
       expect(result.items).toHaveLength(0);
@@ -69,7 +74,7 @@ describe('UsersService', () => {
         { rows: [{ count: 25 }], rowCount: 1 } as QueryResult,
         { rows: [], rowCount: 0 } as QueryResult,
       ]);
-      (service as any).pool = mockPool;
+      setUsersServicePool(service, mockPool);
 
       await service.list('t-1', 2, 10);
       // The second query should include pageSize=10 and offset=10
@@ -88,7 +93,7 @@ describe('UsersService', () => {
 
     it('should throw NotFoundException when user does not exist', async () => {
       const mockPool = createMockPool([{ rows: [], rowCount: 0 }]);
-      (service as any).pool = mockPool;
+      setUsersServicePool(service, mockPool);
 
       await expect(service.findById('t-1', 'u-1')).rejects.toThrow('User not found');
     });
@@ -113,7 +118,7 @@ describe('UsersService', () => {
           rowCount: 1,
         },
       ]);
-      (service as any).pool = mockPool;
+      setUsersServicePool(service, mockPool);
 
       const user = await service.findById('t-1', 'u-1');
       expect(user.id).toBe('u-1');
@@ -124,8 +129,8 @@ describe('UsersService', () => {
 
   describe('create', () => {
     it('should throw when pool is null', async () => {
-      await expect(service.create('t-1', 'a@b.com', 'pass', 'Name')).rejects.toThrow(
-        'Database not available'
+      await expect(service.create('t-1', 'a@b.com', 'pass', 'Name')).rejects.toBeInstanceOf(
+        ServiceUnavailableException,
       );
     });
 
@@ -150,7 +155,7 @@ describe('UsersService', () => {
         },
       ]);
       mockPool.connect = vi.fn(async () => mockClient);
-      (service as any).pool = mockPool;
+      setUsersServicePool(service, mockPool);
 
       const result = await service.create('t-1', 'a@b.com', 'password123', 'Name');
       expect(result.id).toBe('new-user');
@@ -169,11 +174,9 @@ describe('UsersService', () => {
 
       const mockPool = createMockPool([]);
       mockPool.connect = vi.fn(async () => mockClient);
-      (service as any).pool = mockPool;
+      setUsersServicePool(service, mockPool);
 
-      await expect(service.create('t-1', 'a@b.com', 'pass', 'Name')).rejects.toThrow(
-        'DB insert error'
-      );
+      await expect(service.create('t-1', 'a@b.com', 'pass', 'Name')).rejects.toThrow('DB insert error');
 
       const rollbackCall = mockClient.calls.find((c) => c.sql === 'ROLLBACK');
       expect(rollbackCall).toBeDefined();
@@ -184,9 +187,7 @@ describe('UsersService', () => {
 
   describe('update', () => {
     it('should throw when pool is null', async () => {
-      await expect(service.update('t-1', 'u-1', { name: 'New' })).rejects.toThrow(
-        'Database not available'
-      );
+      await expect(service.update('t-1', 'u-1', { name: 'New' })).rejects.toBeInstanceOf(ServiceUnavailableException);
     });
 
     it('should update fields and commit transaction', async () => {
@@ -203,7 +204,7 @@ describe('UsersService', () => {
         },
       ]);
       mockPool.connect = vi.fn(async () => mockClient);
-      (service as any).pool = mockPool;
+      setUsersServicePool(service, mockPool);
 
       const result = await service.update('t-1', 'u-1', { name: 'New Name' });
       expect(result.id).toBe('u-1');
@@ -214,7 +215,7 @@ describe('UsersService', () => {
 
   describe('remove', () => {
     it('should throw when pool is null', async () => {
-      await expect(service.remove('t-1', 'u-1')).rejects.toThrow('Database not available');
+      await expect(service.remove('t-1', 'u-1')).rejects.toBeInstanceOf(ServiceUnavailableException);
     });
 
     it('should delete user within transaction', async () => {
@@ -227,7 +228,7 @@ describe('UsersService', () => {
       ]);
       const mockPool = createMockPool([]);
       mockPool.connect = vi.fn(async () => mockClient);
-      (service as any).pool = mockPool;
+      setUsersServicePool(service, mockPool);
 
       await service.remove('t-1', 'u-1');
       const commitCall = mockClient.calls.find((c) => c.sql === 'COMMIT');
@@ -244,7 +245,7 @@ describe('UsersService', () => {
       ]);
       const mockPool = createMockPool([]);
       mockPool.connect = vi.fn(async () => mockClient);
-      (service as any).pool = mockPool;
+      setUsersServicePool(service, mockPool);
 
       await expect(service.remove('t-1', 'u-1')).rejects.toThrow('User not found');
     });

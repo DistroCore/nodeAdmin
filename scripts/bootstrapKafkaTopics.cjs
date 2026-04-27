@@ -39,8 +39,8 @@ async function run() {
           })),
         },
         null,
-        2
-      )
+        2,
+      ),
     );
   } finally {
     await admin.disconnect();

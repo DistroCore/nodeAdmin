@@ -5,16 +5,14 @@ test.describe('Profile', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto('/profile');
-    await expect(
-      page.getByRole('main').getByRole('heading', { name: /My Profile/i })
-    ).toBeVisible();
+    await expect(page.getByRole('main').getByRole('heading', { name: /My Profile/i })).toBeVisible();
   });
 
   test('displays user profile information', async ({ page }) => {
     const mainArea = page.getByRole('main');
     await expect(mainArea.getByRole('heading', { name: /Account Information/i })).toBeVisible();
     await expect(mainArea.getByText(/User Name/i)).toBeVisible();
-    await expect(mainArea.getByText(/Admin/i, { exact: true })).toBeVisible();
+    await expect(mainArea.getByText('Admin', { exact: true })).toBeVisible();
   });
 
   test('shows error when passwords do not match', async ({ page }) => {

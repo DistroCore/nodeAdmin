@@ -2,24 +2,20 @@ import { useIntl } from 'react-intl';
 import { Link } from 'react-router-dom';
 import { usePluginManagement } from '@/hooks/useMarketplace';
 import { usePluginStore } from '@/stores/usePluginStore';
+import { usePermissionStore } from '@/stores/usePermissionStore';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from '@/components/ui/table';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { NavIcon } from '@/app/layout/navIcon';
 import { className } from '@/lib/className';
 
 export function InstalledPluginsPage() {
   const { formatMessage: t } = useIntl();
   const plugins = usePluginStore((s) => s.plugins);
-  const { uninstall } = usePluginManagement();
+  const { uninstall, toggleEnabled } = usePluginManagement();
+  const canManage = usePermissionStore((s) => s.hasPermission('plugins:manage'));
 
   return (
     <div className="space-y-6">
@@ -35,10 +31,7 @@ export function InstalledPluginsPage() {
             })}
           </p>
         </div>
-        <Link
-          className={className(buttonVariants({ variant: 'default' }))}
-          to="/plugins/marketplace"
-        >
+        <Link className={className(buttonVariants({ variant: 'default' }))} to="/plugins/marketplace">
           {t({ id: 'plugins.marketplace.browse', defaultMessage: 'Browse Marketplace' })}
         </Link>
       </div>
@@ -59,9 +52,7 @@ export function InstalledPluginsPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead className="w-72 pl-6">
-                  {t({ id: 'plugins.col.plugin', defaultMessage: 'Plugin' })}
-                </TableHead>
+                <TableHead className="w-72 pl-6">{t({ id: 'plugins.col.plugin', defaultMessage: 'Plugin' })}</TableHead>
                 <TableHead>{t({ id: 'plugins.col.version', defaultMessage: 'Version' })}</TableHead>
                 <TableHead>{t({ id: 'plugins.col.status', defaultMessage: 'Status' })}</TableHead>
                 <TableHead className="text-right pr-6">
@@ -92,10 +83,7 @@ export function InstalledPluginsPage() {
                         </p>
                       </div>
                       <Link
-                        className={className(
-                          buttonVariants({ variant: 'outline', size: 'sm' }),
-                          'mt-2'
-                        )}
+                        className={className(buttonVariants({ variant: 'outline', size: 'sm' }), 'mt-2')}
                         to="/plugins/marketplace"
                       >
                         {t({
@@ -115,9 +103,7 @@ export function InstalledPluginsPage() {
                           <NavIcon name="rocket" />
                         </div>
                         <div className="flex flex-col">
-                          <span className="font-medium">
-                            {plugin.manifest?.displayName || plugin.name}
-                          </span>
+                          <span className="font-medium">{plugin.manifest?.displayName || plugin.name}</span>
                           <span className="text-xs text-muted-foreground truncate max-w-48">
                             {plugin.manifest?.description ||
                               t({
@@ -130,9 +116,7 @@ export function InstalledPluginsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col">
-                        <span className="text-sm font-mono">
-                          v{plugin.installedVersion || '0.1.0'}
-                        </span>
+                        <span className="text-sm font-mono">v{plugin.installedVersion || '0.1.0'}</span>
                         {/* Mock update check */}
                         {false && (
                           <Badge
@@ -145,49 +129,54 @@ export function InstalledPluginsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant={plugin.enabled ? 'default' : 'secondary'}
-                        className="capitalize"
-                      >
-                        {plugin.enabled
-                          ? t({ id: 'common.enabled', defaultMessage: 'Enabled' })
-                          : t({ id: 'common.disabled', defaultMessage: 'Disabled' })}
-                      </Badge>
+                      <div className="flex items-center gap-3">
+                        <Switch
+                          checked={plugin.enabled}
+                          onChange={() => toggleEnabled.mutate(plugin.name)}
+                          disabled={!canManage || toggleEnabled.isPending}
+                        />
+                        <Badge variant={plugin.enabled ? 'default' : 'secondary'} className="capitalize">
+                          {plugin.enabled
+                            ? t({ id: 'common.enabled', defaultMessage: 'Enabled' })
+                            : t({ id: 'common.disabled', defaultMessage: 'Disabled' })}
+                        </Badge>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right pr-6">
                       <div className="flex items-center justify-end gap-2">
-                        <Link
-                          className={className(
-                            buttonVariants({ variant: 'ghost', size: 'icon' }),
-                            'h-8 w-8'
-                          )}
-                          to={`/plugins/settings/${encodeURIComponent(plugin.name)}`}
-                          title={t({ id: 'common.settings', defaultMessage: 'Settings' })}
-                        >
-                          <NavIcon name="gear" />
-                        </Link>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => {
-                            if (
-                              window.confirm(
-                                t({
-                                  id: 'plugins.uninstall.confirm',
-                                  defaultMessage: 'Are you sure you want to uninstall this plugin?',
-                                })
-                              )
-                            ) {
-                              uninstall.mutate(plugin.name);
-                            }
-                          }}
-                          disabled={uninstall.isPending}
-                        >
-                          {uninstall.isPending
-                            ? t({ id: 'common.processing', defaultMessage: '...' })
-                            : t({ id: 'plugins.uninstall', defaultMessage: 'Uninstall' })}
-                        </Button>
+                        {canManage && (
+                          <>
+                            <Link
+                              className={className(buttonVariants({ variant: 'ghost', size: 'icon' }), 'h-8 w-8')}
+                              to={`/plugins/settings/${encodeURIComponent(plugin.name)}`}
+                              title={t({ id: 'common.settings', defaultMessage: 'Settings' })}
+                            >
+                              <NavIcon name="gear" />
+                            </Link>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    t({
+                                      id: 'plugins.uninstall.confirm',
+                                      defaultMessage: 'Are you sure you want to uninstall this plugin?',
+                                    }),
+                                  )
+                                ) {
+                                  uninstall.mutate(plugin.name);
+                                }
+                              }}
+                              disabled={uninstall.isPending}
+                            >
+                              {uninstall.isPending
+                                ? t({ id: 'common.processing', defaultMessage: '...' })
+                                : t({ id: 'plugins.uninstall', defaultMessage: 'Uninstall' })}
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

@@ -149,6 +149,22 @@
         ]
       }
     },
+    "/api/v1/auth/github/callback": {
+      "get": {
+        "operationId": "AuthController_githubCallback",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [],
+        "summary": "GitHub OAuth callback (browser redirect)",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/auth/oauth-accounts": {
       "get": {
         "operationId": "AuthController_listOAuthAccounts",
@@ -202,6 +218,84 @@
         "summary": "Health check",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/im/conversations": {
+      "post": {
+        "operationId": "ImConversationController_createConversation",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a conversation or return an existing DM",
+        "tags": [
+          "im"
+        ]
+      },
+      "get": {
+        "operationId": "ImConversationController_listConversations",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List conversations for the current user",
+        "tags": [
+          "im"
+        ]
+      }
+    },
+    "/api/v1/im/conversations/search-users": {
+      "get": {
+        "operationId": "ImConversationController_searchUsers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Search users within the current tenant for conversation creation",
+        "tags": [
+          "im"
+        ]
+      }
+    },
+    "/api/v1/im/conversations/{id}/members": {
+      "get": {
+        "operationId": "ImConversationController_listMembers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List members of a conversation for an authorized member",
+        "tags": [
+          "im"
         ]
       }
     },
@@ -1215,6 +1309,46 @@
           }
         ],
         "summary": "Update an installed marketplace plugin",
+        "tags": [
+          "admin-plugins"
+        ]
+      }
+    },
+    "/api/v1/admin/plugins/{id}/config": {
+      "patch": {
+        "operationId": "AdminPluginController_updateConfig",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update tenant plugin configuration",
+        "tags": [
+          "admin-plugins"
+        ]
+      }
+    },
+    "/api/v1/admin/plugins/{id}/toggle": {
+      "patch": {
+        "operationId": "AdminPluginController_toggle",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Toggle tenant plugin enabled state",
         "tags": [
           "admin-plugins"
         ]

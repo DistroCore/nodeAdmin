@@ -1,11 +1,4 @@
-import {
-  ArgumentsHost,
-  Catch,
-  ExceptionFilter,
-  HttpException,
-  HttpStatus,
-  Logger,
-} from '@nestjs/common';
+import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import { FastifyReply } from 'fastify';
 import { Socket } from 'socket.io';
@@ -28,15 +21,12 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
       JSON.stringify({
         ...payload,
         hostType: host.getType(),
-      })
+      }),
     );
 
     if (host.getType() === 'http') {
       const response = host.switchToHttp().getResponse<FastifyReply>();
-      const statusCode =
-        exception instanceof HttpException
-          ? exception.getStatus()
-          : HttpStatus.INTERNAL_SERVER_ERROR;
+      const statusCode = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
       response.status(statusCode).send(payload);
       return;
@@ -64,8 +54,7 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
       if (typeof error === 'object' && error) {
         const code = this.toSafeString((error as Partial<{ code: string }>).code) ?? 'IM_001';
         const message =
-          this.toSafeString((error as Partial<{ message: string }>).message) ??
-          'WebSocket request failed.';
+          this.toSafeString((error as Partial<{ message: string }>).message) ?? 'WebSocket request failed.';
 
         return {
           code,
@@ -89,9 +78,7 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
       }
 
       if (typeof response === 'object' && response) {
-        const message =
-          this.toSafeString((response as Partial<{ message: string }>).message) ??
-          exception.message;
+        const message = this.toSafeString((response as Partial<{ message: string }>).message) ?? exception.message;
 
         return {
           code,

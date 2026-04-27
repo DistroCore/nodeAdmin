@@ -1,5 +1,7 @@
 # 决策日志
 
+> **status**: approved | **last-reviewed**: 2026-04-10
+
 ## 记录规则
 
 - 每条决策包含：编号、日期、决策内容、原因、影响范围、责任人。
@@ -17,9 +19,9 @@
 
 ### D-002
 
-- 日期：2026-02-28
-- 决策：目录命名使用 `UpperCamelCase`，业务文件命名使用 `lowerCamelCase`。
-- 原因：提高跨团队一致性，降低维护成本。
+- 日期：2026-02-28（修订：2026-04-10）
+- 决策：目录命名使用 `lowercase`，业务文件命名使用 `lowerCamelCase`。
+- 原因：提高跨团队一致性，降低维护成本。修订：仓库实际目录结构（`apps/`、`components/`、`modules/`、`infrastructure/`）均为 `lowercase`，`UpperCamelCase` 目录命名从未在实践中落地。
 - 影响范围：整个仓库新增目录与业务代码文件。
 - 责任人：技术负责人。
 
@@ -208,6 +210,7 @@
 
 ## 最近更新时间
 
+- 2026-04-10（D-002 修订：目录命名由 `UpperCamelCase` 改为 `lowercase`，与仓库实际结构对齐）
 - 2026-04-08（P5 七个 PR 全部合入 master：#46 OpenAPI snapshot guard、#47 plugin lifecycle hooks、#49 backend coverage baseline、#48 react-intl 降级、#45 hooks/stores coverage、#43 design token sweep、#44 plugin UI polish；D-021 追加 react-intl 7.x API surface 限制说明；新增 D-020 / D-021，关闭 TD-1 / TD-2 两条挂账技术债的决策状态；新增 D-019 明确框架定位；同日补录 D-012 ~ D-018，对齐插件市场 / CI 加固 / TenantContext 实际落地）
 - 2026-03-01（补录 D-007 ~ D-011，对齐 brainstormingResults.md 决策建议）
 - 2026-02-28

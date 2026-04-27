@@ -63,9 +63,7 @@ export function Sidebar(): JSX.Element {
     return className(
       'group relative flex h-10 items-center rounded-md text-sm font-medium transition-colors',
       sidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-3',
-      isActive
-        ? 'bg-primary text-primary-foreground shadow-sm'
-        : 'hover:bg-[hsl(var(--sidebar-accent))]'
+      isActive ? 'bg-primary text-primary-foreground shadow-sm' : 'hover:bg-[hsl(var(--sidebar-accent))]',
     );
   }
 
@@ -99,10 +97,7 @@ export function Sidebar(): JSX.Element {
               <>
                 <span className="flex-1 truncate">{displayName}</span>
                 <svg
-                  className={className(
-                    'h-4 w-4 transition-transform',
-                    isExpanded ? 'rotate-90' : ''
-                  )}
+                  className={className('h-4 w-4 transition-transform', isExpanded ? 'rotate-90' : '')}
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
@@ -161,9 +156,7 @@ export function Sidebar(): JSX.Element {
               .filter((item) => !item.pluginCode || enabledPlugins.includes(item.pluginCode))
               .map((item) => (
                 <NavLink
-                  className={({ isActive }) =>
-                    linkClass(isNavItemActive(location.pathname, item.path) || isActive)
-                  }
+                  className={({ isActive }) => linkClass(isNavItemActive(location.pathname, item.path) || isActive)}
                   key={item.key}
                   onClick={() => setMobileMenuOpen(false)}
                   to={item.path}
@@ -180,49 +173,47 @@ export function Sidebar(): JSX.Element {
               ))}
 
         {/* Plugin Section */}
-        <div className="mt-4 border-t pt-2">
-          {!sidebarCollapsed && (
-            <div className="mb-2 px-3 text-[0.625rem] font-semibold uppercase tracking-wider text-muted-foreground">
-              {t({ id: 'nav.plugins', defaultMessage: 'Plugins' })}
-            </div>
-          )}
-          <NavLink
-            className={({ isActive }) =>
-              linkClass(isNavItemActive(location.pathname, '/plugins/marketplace') || isActive)
-            }
-            onClick={() => setMobileMenuOpen(false)}
-            to="/plugins/marketplace"
-          >
-            <NavIcon name="building" />
-            {!sidebarCollapsed ? (
-              <span className="truncate">
-                {t({ id: 'nav.marketplace', defaultMessage: 'Marketplace' })}
-              </span>
-            ) : (
-              <span className="absolute left-full ml-2 hidden whitespace-nowrap rounded bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md group-hover:block z-50">
-                {t({ id: 'nav.marketplace', defaultMessage: 'Marketplace' })}
-              </span>
+        {permissions['plugins:view'] && (
+          <div className="mt-4 border-t pt-2">
+            {!sidebarCollapsed && (
+              <div className="mb-2 px-3 text-[0.625rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                {t({ id: 'nav.plugins', defaultMessage: 'Plugins' })}
+              </div>
             )}
-          </NavLink>
-          <NavLink
-            className={({ isActive }) =>
-              linkClass(isNavItemActive(location.pathname, '/plugins/installed') || isActive)
-            }
-            onClick={() => setMobileMenuOpen(false)}
-            to="/plugins/installed"
-          >
-            <NavIcon name="plus" />
-            {!sidebarCollapsed ? (
-              <span className="truncate">
-                {t({ id: 'nav.installed', defaultMessage: 'Installed' })}
-              </span>
-            ) : (
-              <span className="absolute left-full ml-2 hidden whitespace-nowrap rounded bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md group-hover:block z-50">
-                {t({ id: 'nav.installed', defaultMessage: 'Installed' })}
-              </span>
-            )}
-          </NavLink>
-        </div>
+            <NavLink
+              className={({ isActive }) =>
+                linkClass(isNavItemActive(location.pathname, '/plugins/marketplace') || isActive)
+              }
+              onClick={() => setMobileMenuOpen(false)}
+              to="/plugins/marketplace"
+            >
+              <NavIcon name="building" />
+              {!sidebarCollapsed ? (
+                <span className="truncate">{t({ id: 'nav.marketplace', defaultMessage: 'Marketplace' })}</span>
+              ) : (
+                <span className="absolute left-full ml-2 hidden whitespace-nowrap rounded bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md group-hover:block z-50">
+                  {t({ id: 'nav.marketplace', defaultMessage: 'Marketplace' })}
+                </span>
+              )}
+            </NavLink>
+            <NavLink
+              className={({ isActive }) =>
+                linkClass(isNavItemActive(location.pathname, '/plugins/installed') || isActive)
+              }
+              onClick={() => setMobileMenuOpen(false)}
+              to="/plugins/installed"
+            >
+              <NavIcon name="plus" />
+              {!sidebarCollapsed ? (
+                <span className="truncate">{t({ id: 'nav.installed', defaultMessage: 'Installed' })}</span>
+              ) : (
+                <span className="absolute left-full ml-2 hidden whitespace-nowrap rounded bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md group-hover:block z-50">
+                  {t({ id: 'nav.installed', defaultMessage: 'Installed' })}
+                </span>
+              )}
+            </NavLink>
+          </div>
+        )}
 
         {/* Dynamic Plugin Menus */}
         {plugins
@@ -236,9 +227,7 @@ export function Sidebar(): JSX.Element {
               )}
               {plugin.manifest!.contributes!.menus!.map((menu, idx) => (
                 <NavLink
-                  className={({ isActive }) =>
-                    linkClass(isNavItemActive(location.pathname, menu.route) || isActive)
-                  }
+                  className={({ isActive }) => linkClass(isNavItemActive(location.pathname, menu.route) || isActive)}
                   key={`${plugin.name}-menu-${idx}`}
                   onClick={() => setMobileMenuOpen(false)}
                   to={menu.route}
@@ -264,24 +253,14 @@ export function Sidebar(): JSX.Element {
             className(
               'group relative flex h-9 items-center rounded-md text-sm transition-colors hover:bg-accent',
               sidebarCollapsed ? 'justify-center px-2' : 'gap-2 px-3',
-              isActive ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'
+              isActive ? 'bg-accent text-accent-foreground' : 'text-muted-foreground',
             )
           }
           to="/profile"
           onClick={() => setMobileMenuOpen(false)}
         >
-          <svg
-            className="h-4 w-4 shrink-0"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
-          >
-            <path
-              d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+          <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeLinecap="round" strokeLinejoin="round" />
             <circle cx="12" cy="7" r="4" />
           </svg>
           {!sidebarCollapsed ? (
@@ -294,9 +273,7 @@ export function Sidebar(): JSX.Element {
         </NavLink>
         <p className="mb-2 text-center text-xs text-muted-foreground">{t({ id: 'version' })}</p>
         <button
-          aria-label={
-            sidebarCollapsed ? t({ id: 'menu.open' }) : t({ id: 'settings.sidebarCollapsed' })
-          }
+          aria-label={sidebarCollapsed ? t({ id: 'menu.open' }) : t({ id: 'settings.sidebarCollapsed' })}
           className="hidden md:flex h-9 w-full items-center justify-center rounded-md border border-border bg-card text-sm transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
           onClick={toggleSidebar}
           type="button"
@@ -332,24 +309,19 @@ export function Sidebar(): JSX.Element {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside
-        className={className(sidebarBase, 'hidden md:flex', sidebarCollapsed ? 'w-16' : 'w-60')}
-      >
+      <aside className={className(sidebarBase, 'hidden md:flex', sidebarCollapsed ? 'w-16' : 'w-60')}>
         {navContent}
       </aside>
 
       {/* Mobile drawer overlay */}
       {mobileMenuOpen ? (
-        <div
-          className="fixed inset-0 z-30 bg-black/50 md:hidden"
-          onClick={() => setMobileMenuOpen(false)}
-        />
+        <div className="fixed inset-0 z-30 bg-black/50 md:hidden" onClick={() => setMobileMenuOpen(false)} />
       ) : null}
       <aside
         className={className(
           sidebarBase,
           'fixed inset-y-0 left-0 z-40 w-72 md:hidden transition-transform duration-200',
-          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
         {navContent}

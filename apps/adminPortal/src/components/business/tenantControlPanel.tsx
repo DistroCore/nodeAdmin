@@ -9,12 +9,14 @@ import { DataTable } from '@/components/ui/dataTable';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast';
 import { useApiClient } from '@/hooks/useApiClient';
+import { usePermissionStore } from '@/stores/usePermissionStore';
 import { TenantFormDialog } from './tenantFormDialog';
 
 export function TenantControlPanel(): JSX.Element {
   const { formatMessage: t } = useIntl();
   const apiClient = useApiClient();
   const toast = useToast();
+  const canManage = usePermissionStore((s) => s.hasPermission('tenants:manage'));
 
   const [createFormOpen, setCreateFormOpen] = useState(false);
   const [editTenant, setEditTenant] = useState<TenantItem | undefined>();
@@ -57,13 +59,15 @@ export function TenantControlPanel(): JSX.Element {
             <CardTitle className="text-base">{t({ id: 'tenant.title' })}</CardTitle>
             <CardDescription>{t({ id: 'tenant.desc' })}</CardDescription>
           </div>
-          <Button
-            className="hidden h-11 w-full md:flex md:h-9 md:w-auto"
-            onClick={() => setCreateFormOpen(true)}
-            size="sm"
-          >
-            {t({ id: 'tenant.create' })}
-          </Button>
+          {canManage && (
+            <Button
+              className="hidden h-11 w-full md:flex md:h-9 md:w-auto"
+              onClick={() => setCreateFormOpen(true)}
+              size="sm"
+            >
+              {t({ id: 'tenant.create' })}
+            </Button>
+          )}
         </CardHeader>
 
         <DataTable<TenantItem>
@@ -87,20 +91,24 @@ export function TenantControlPanel(): JSX.Element {
               className: 'text-right',
               cell: (tenant) => (
                 <div className="flex flex-col items-end gap-1 md:flex-row md:justify-end md:gap-3">
-                  <button
-                    className="flex min-h-11 min-w-11 items-center justify-center text-sm text-primary hover:underline"
-                    onClick={() => setEditTenant(tenant)}
-                    type="button"
-                  >
-                    {t({ id: 'tenant.edit' })}
-                  </button>
-                  <button
-                    className="flex min-h-11 min-w-11 items-center justify-center text-sm text-destructive hover:underline"
-                    onClick={() => setDeleteTenant(tenant)}
-                    type="button"
-                  >
-                    {t({ id: 'tenant.delete' })}
-                  </button>
+                  {canManage && (
+                    <>
+                      <button
+                        className="flex min-h-11 min-w-11 items-center justify-center text-sm text-primary hover:underline"
+                        onClick={() => setEditTenant(tenant)}
+                        type="button"
+                      >
+                        {t({ id: 'tenant.edit' })}
+                      </button>
+                      <button
+                        className="flex min-h-11 min-w-11 items-center justify-center text-sm text-destructive hover:underline"
+                        onClick={() => setDeleteTenant(tenant)}
+                        type="button"
+                      >
+                        {t({ id: 'tenant.delete' })}
+                      </button>
+                    </>
+                  )}
                 </div>
               ),
             },
@@ -116,11 +124,13 @@ export function TenantControlPanel(): JSX.Element {
         />
       </Card>
 
-      <div className="fixed bottom-0 left-0 right-0 border-t bg-background p-4 md:hidden">
-        <Button className="h-11 w-full" onClick={() => setCreateFormOpen(true)}>
-          {t({ id: 'tenant.create' })}
-        </Button>
-      </div>
+      {canManage && (
+        <div className="fixed bottom-0 left-0 right-0 border-t bg-background p-4 md:hidden">
+          <Button className="h-11 w-full" onClick={() => setCreateFormOpen(true)}>
+            {t({ id: 'tenant.create' })}
+          </Button>
+        </div>
+      )}
 
       <TenantFormDialog
         key={editTenant?.id ?? 'create'}

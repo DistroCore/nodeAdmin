@@ -17,6 +17,10 @@ interface TenantItem {
   slug: string;
 }
 
+function resolveApiBaseUrl(): string {
+  return (import.meta.env.VITE_CORE_API_BASE_URL as string | undefined)?.trim() || '';
+}
+
 export function LoginPage(): JSX.Element {
   const { formatMessage: t, locale } = useIntl();
   const navigate = useNavigate();
@@ -25,7 +29,7 @@ export function LoginPage(): JSX.Element {
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
-  const [tenantId, setTenantId] = useState('default');
+  const [tenantId, setTenantId] = useState('');
   const [tenants, setTenants] = useState<TenantItem[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -40,28 +44,26 @@ export function LoginPage(): JSX.Element {
   const isSingleTenant = import.meta.env.VITE_SINGLE_TENANT_MODE === 'true';
 
   useEffect(() => {
-    if (isSingleTenant) return;
+    if (import.meta.env.VITE_SINGLE_TENANT_MODE === 'true') return;
 
-    const apiBaseUrl =
-      (import.meta.env.VITE_CORE_API_BASE_URL as string | undefined)?.trim() ??
-      `http://${window.location.hostname}:11451`;
-    new ApiClient({ baseUrl: apiBaseUrl })
+    new ApiClient({ baseUrl: resolveApiBaseUrl() })
       .get<TenantItem[]>('/api/v1/tenants')
       .then(setTenants)
       .catch(() => {
         /* ignore — tenant list is optional */
       });
-  }, [isSingleTenant]);
+  }, []);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!isSingleTenant && !tenantId.trim()) {
+      setError('Tenant ID is required.');
+      return;
+    }
     setLoading(true);
     try {
-      const apiBaseUrl =
-        (import.meta.env.VITE_CORE_API_BASE_URL as string | undefined)?.trim() ??
-        `http://${window.location.hostname}:11451`;
-      const client = new ApiClient({ baseUrl: apiBaseUrl });
+      const client = new ApiClient({ baseUrl: resolveApiBaseUrl() });
       const data = await client.post<{
         accessToken: string;
         identity: { tenantId: string; userId: string };
@@ -80,12 +82,13 @@ export function LoginPage(): JSX.Element {
   const handleSmsLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!isSingleTenant && !tenantId.trim()) {
+      setError('Tenant ID is required.');
+      return;
+    }
     setLoading(true);
     try {
-      const apiBaseUrl =
-        (import.meta.env.VITE_CORE_API_BASE_URL as string | undefined)?.trim() ??
-        `http://${window.location.hostname}:11451`;
-      const client = new ApiClient({ baseUrl: apiBaseUrl });
+      const client = new ApiClient({ baseUrl: resolveApiBaseUrl() });
       const data = await client.post<{
         accessToken: string;
         identity: { tenantId: string; userId: string };
@@ -106,10 +109,7 @@ export function LoginPage(): JSX.Element {
     setSmsSending(true);
     setError('');
     try {
-      const apiBaseUrl =
-        (import.meta.env.VITE_CORE_API_BASE_URL as string | undefined)?.trim() ??
-        `http://${window.location.hostname}:11451`;
-      const client = new ApiClient({ baseUrl: apiBaseUrl });
+      const client = new ApiClient({ baseUrl: resolveApiBaseUrl() });
       await client.post('/api/v1/auth/sms/send', { phone });
       setSmsSent(true);
       setTimeout(() => setSmsSent(false), 3000);
@@ -121,10 +121,21 @@ export function LoginPage(): JSX.Element {
   };
 
   const handleOAuthLogin = (provider: 'github' | 'google') => {
-    const apiBaseUrl =
-      (import.meta.env.VITE_CORE_API_BASE_URL as string | undefined)?.trim() ??
-      `http://${window.location.hostname}:11451`;
-    window.open(`${apiBaseUrl}/api/v1/auth/login/oauth/${provider}`, '_self');
+    if (provider === 'github') {
+      // Build state parameter with tenantId
+      const statePayload = JSON.stringify({ tenantId: tenantId || 'default' });
+      const state = btoa(statePayload);
+      const params = new URLSearchParams({
+        client_id: (import.meta.env.VITE_GITHUB_OAUTH_CLIENT_ID as string) || 'Ov23liqNOTXCkucuCcIi',
+        redirect_uri: `${window.location.origin}/api/v1/auth/github/callback`,
+        scope: 'read:user user:email',
+        state,
+      });
+      window.location.href = `https://github.com/login/oauth/authorize?${params.toString()}`;
+      return;
+    }
+    // Google OAuth: not yet implemented
+    window.open(`${resolveApiBaseUrl()}/api/v1/auth/login/oauth/${provider}`, '_self');
   };
 
   const toggleLocale = () => setLocale((locale === 'zh' ? 'en' : 'zh') as AppLocale);
@@ -167,21 +178,19 @@ export function LoginPage(): JSX.Element {
         <div className="mb-6 flex rounded-md bg-muted p-1">
           <button
             className={`flex-1 rounded-sm py-1.5 text-sm font-medium transition-all ${
-              loginType === 'email'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground'
+              loginType === 'email' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'
             }`}
             onClick={() => setLoginType('email')}
+            type="button"
           >
             {t({ id: 'auth.email' })}
           </button>
           <button
             className={`flex-1 rounded-sm py-1.5 text-sm font-medium transition-all ${
-              loginType === 'sms'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground'
+              loginType === 'sms' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'
             }`}
             onClick={() => setLoginType('sms')}
+            type="button"
           >
             {t({ id: 'auth.sms' })}
           </button>
@@ -223,13 +232,7 @@ export function LoginPage(): JSX.Element {
                   type="button"
                 >
                   {showPassword ? (
-                    <svg
-                      className="h-4 w-4"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      viewBox="0 0 24 24"
-                    >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                       <path
                         d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l18 18"
                         strokeLinecap="round"
@@ -237,18 +240,8 @@ export function LoginPage(): JSX.Element {
                       />
                     </svg>
                   ) : (
-                    <svg
-                      className="h-4 w-4"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round" />
                       <path
                         d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
                         strokeLinecap="round"
@@ -349,9 +342,7 @@ export function LoginPage(): JSX.Element {
             <span className="w-full border-t border-border" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">
-              {t({ id: 'auth.orDivider' })}
-            </span>
+            <span className="bg-card px-2 text-muted-foreground">{t({ id: 'auth.orDivider' })}</span>
           </div>
         </div>
 

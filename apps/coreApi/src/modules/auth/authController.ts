@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Param, Post, Query, Redirect } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { runtimeConfig } from '../../app/runtimeConfig';
 import { AuditLogService } from '../../infrastructure/audit/auditLogService';
@@ -20,7 +20,7 @@ import { OAuthLoginDto } from './dto/oauthLoginDto';
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    private readonly auditLogService: AuditLogService
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   @Post('register')
@@ -30,7 +30,7 @@ export class AuthController {
       dto.email,
       dto.password,
       dto.tenantId,
-      dto.name
+      dto.name,
     );
 
     return {
@@ -43,11 +43,7 @@ export class AuthController {
   @Post('login')
   @ApiOperation({ summary: 'Login with email and password', security: [] })
   async login(@Body() dto: LoginDto) {
-    const { name, roles, tokens, userId } = await this.authService.login(
-      dto.email,
-      dto.password,
-      dto.tenantId
-    );
+    const { name, roles, tokens, userId } = await this.authService.login(dto.email, dto.password, dto.tenantId);
 
     try {
       await this.auditLogService.record({
@@ -80,12 +76,7 @@ export class AuthController {
   @ApiSecurity('bearer')
   @ApiOperation({ summary: 'Change password for authenticated user' })
   async changePassword(@Body() dto: ChangePasswordDto, @CurrentUser() user: AuthIdentity) {
-    await this.authService.changePassword(
-      user.userId,
-      user.tenantId,
-      dto.currentPassword,
-      dto.newPassword
-    );
+    await this.authService.changePassword(user.userId, user.tenantId, dto.currentPassword, dto.newPassword);
     return { success: true };
   }
 
@@ -127,11 +118,7 @@ export class AuthController {
   @Post('login/sms')
   @ApiOperation({ summary: 'Login with SMS verification code', security: [] })
   async loginWithSms(@Body() dto: SmsLoginDto) {
-    const { name, roles, tokens, userId } = await this.authService.loginWithSms(
-      dto.phone,
-      dto.code,
-      dto.tenantId
-    );
+    const { name, roles, tokens, userId } = await this.authService.loginWithSms(dto.phone, dto.code, dto.tenantId);
 
     try {
       await this.auditLogService.record({
@@ -156,11 +143,7 @@ export class AuthController {
   @Post('login/oauth/:provider')
   @ApiOperation({ summary: 'Login with OAuth provider (github, google)', security: [] })
   async loginWithOAuth(@Body() dto: OAuthLoginDto) {
-    const { name, roles, tokens, userId } = await this.authService.loginWithOAuth(
-      dto.provider,
-      dto.code,
-      dto.tenantId
-    );
+    const { name, roles, tokens, userId } = await this.authService.loginWithOAuth(dto.provider, dto.code, dto.tenantId);
 
     try {
       await this.auditLogService.record({
@@ -180,6 +163,65 @@ export class AuthController {
       name,
       ...tokens,
     };
+  }
+
+  /**
+   * GitHub OAuth callback — GitHub redirects here after user authorizes.
+   * Exchanges the code for user info, creates/finds user, then redirects
+   * to the frontend with tokens in the URL query params.
+   */
+  @Get('github/callback')
+  @ApiOperation({ summary: 'GitHub OAuth callback (browser redirect)', security: [] })
+  @Redirect()
+  async githubCallback(@Query('code') code: string, @Query('state') state: string) {
+    const frontendUrl = runtimeConfig.corsOrigins[0] ?? 'http://localhost:3000';
+
+    if (!code) {
+      return { statusCode: 302, url: `${frontendUrl}/login?error=oauth_no_code` };
+    }
+
+    // Decode state to get tenantId (base64-encoded JSON)
+    let tenantId = 'default';
+    try {
+      if (state) {
+        const decoded = JSON.parse(Buffer.from(state, 'base64url').toString('utf8')) as { tenantId?: string };
+        if (decoded.tenantId) tenantId = decoded.tenantId;
+      }
+    } catch {
+      // Use default tenantId if state is malformed
+    }
+
+    try {
+      const { name, roles, tokens, userId } = await this.authService.loginWithOAuth('github', code, tenantId);
+
+      try {
+        await this.auditLogService.record({
+          action: 'auth.oauth_login.github',
+          targetId: userId,
+          targetType: 'user',
+          tenantId,
+          traceId: tokens.accessToken.slice(0, 12),
+          userId,
+        });
+      } catch {
+        // Don't block login if audit fails
+      }
+
+      const params = new URLSearchParams({
+        accessToken: tokens.accessToken,
+        name: name ?? '',
+        refreshToken: tokens.refreshToken,
+        roles: roles.join(','),
+        tenantId,
+        tokenType: tokens.tokenType,
+        userId,
+      });
+
+      return { statusCode: 302, url: `${frontendUrl}/auth/callback?${params.toString()}` };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'OAuth login failed';
+      return { statusCode: 302, url: `${frontendUrl}/login?error=${encodeURIComponent(message)}` };
+    }
   }
 
   @Get('oauth-accounts')

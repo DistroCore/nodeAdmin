@@ -10,12 +10,14 @@ import { DataTable } from '@/components/ui/dataTable';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast';
 import { useApiClient } from '@/hooks/useApiClient';
+import { usePermissionStore } from '@/stores/usePermissionStore';
 import { RoleFormDialog } from './roleFormDialog';
 
 export function RoleManagementPanel(): JSX.Element {
   const { formatMessage: t } = useIntl();
   const apiClient = useApiClient();
   const toast = useToast();
+  const canManage = usePermissionStore((s) => s.hasPermission('roles:manage'));
 
   const [createFormOpen, setCreateFormOpen] = useState(false);
   const [editRole, setEditRole] = useState<RoleItem | undefined>();
@@ -49,7 +51,7 @@ export function RoleManagementPanel(): JSX.Element {
   const roles = rawRoles.filter(
     (role) =>
       role.name.toLowerCase().includes(search.toLowerCase()) ||
-      role.description?.toLowerCase().includes(search.toLowerCase())
+      role.description?.toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
@@ -60,13 +62,15 @@ export function RoleManagementPanel(): JSX.Element {
             <CardTitle className="text-base">{t({ id: 'roles.title' })}</CardTitle>
             <CardDescription>{t({ id: 'roles.desc' })}</CardDescription>
           </div>
-          <Button
-            className="hidden h-11 w-full md:flex md:h-9 md:w-auto"
-            onClick={() => setCreateFormOpen(true)}
-            size="sm"
-          >
-            {t({ id: 'roles.create' })}
-          </Button>
+          {canManage && (
+            <Button
+              className="hidden h-11 w-full md:flex md:h-9 md:w-auto"
+              onClick={() => setCreateFormOpen(true)}
+              size="sm"
+            >
+              {t({ id: 'roles.create' })}
+            </Button>
+          )}
         </CardHeader>
 
         <div className="mb-4">
@@ -109,24 +113,28 @@ export function RoleManagementPanel(): JSX.Element {
               className: 'text-right',
               cell: (role) => (
                 <div className="flex flex-col items-end gap-1 md:flex-row md:justify-end md:gap-3">
-                  <button
-                    className="flex min-h-11 min-w-11 items-center justify-center text-sm text-primary hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed"
-                    disabled={Boolean(role.is_system)}
-                    onClick={() => setEditRole(role)}
-                    title={role.is_system ? t({ id: 'roles.systemRole' }) : undefined}
-                    type="button"
-                  >
-                    {t({ id: 'roles.edit' })}
-                  </button>
-                  <button
-                    className="flex min-h-11 min-w-11 items-center justify-center text-sm text-destructive hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed"
-                    disabled={Boolean(role.is_system)}
-                    onClick={() => setDeleteRole(role)}
-                    title={role.is_system ? t({ id: 'roles.systemRole' }) : undefined}
-                    type="button"
-                  >
-                    {t({ id: 'roles.delete' })}
-                  </button>
+                  {canManage && (
+                    <>
+                      <button
+                        className="flex min-h-11 min-w-11 items-center justify-center text-sm text-primary hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed"
+                        disabled={Boolean(role.is_system)}
+                        onClick={() => setEditRole(role)}
+                        title={role.is_system ? t({ id: 'roles.systemRole' }) : undefined}
+                        type="button"
+                      >
+                        {t({ id: 'roles.edit' })}
+                      </button>
+                      <button
+                        className="flex min-h-11 min-w-11 items-center justify-center text-sm text-destructive hover:underline disabled:text-muted-foreground disabled:cursor-not-allowed"
+                        disabled={Boolean(role.is_system)}
+                        onClick={() => setDeleteRole(role)}
+                        title={role.is_system ? t({ id: 'roles.systemRole' }) : undefined}
+                        type="button"
+                      >
+                        {t({ id: 'roles.delete' })}
+                      </button>
+                    </>
+                  )}
                 </div>
               ),
             },
@@ -142,11 +150,13 @@ export function RoleManagementPanel(): JSX.Element {
         />
       </Card>
 
-      <div className="fixed bottom-0 left-0 right-0 border-t bg-background p-4 md:hidden">
-        <Button className="h-11 w-full" onClick={() => setCreateFormOpen(true)}>
-          {t({ id: 'roles.create' })}
-        </Button>
-      </div>
+      {canManage && (
+        <div className="fixed bottom-0 left-0 right-0 border-t bg-background p-4 md:hidden">
+          <Button className="h-11 w-full" onClick={() => setCreateFormOpen(true)}>
+            {t({ id: 'roles.create' })}
+          </Button>
+        </div>
+      )}
 
       <RoleFormDialog
         key={editRole?.id ?? 'create'}

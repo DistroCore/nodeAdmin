@@ -10,7 +10,7 @@ import { AuthService } from '../../auth/authService';
 export class WsTenantGuard implements CanActivate {
   constructor(
     private readonly authService: AuthService,
-    private readonly tenantContextResolver: TenantContextResolver
+    private readonly tenantContextResolver: TenantContextResolver,
   ) {}
 
   canActivate(context: ExecutionContext): boolean {
@@ -71,9 +71,7 @@ export class WsTenantGuard implements CanActivate {
     try {
       tenantId = this.tenantContextResolver.resolve(principal).tenantId;
     } catch (error) {
-      throw new WsException(
-        error instanceof Error ? error.message : 'Tenant context could not be resolved.'
-      );
+      throw new WsException(error instanceof Error ? error.message : 'Tenant context could not be resolved.');
     }
 
     const userId = principal.userId?.trim() || principal.principalId.trim();

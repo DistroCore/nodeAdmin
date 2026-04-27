@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useMenuStore } from '@/stores/useMenuStore';
 import { usePermissionStore } from '@/stores/usePermissionStore';
 import { useUiStore } from '@/stores/useUiStore';
+import { logger } from '@/lib/logger';
 import type { MenuItem } from '@nodeadmin/shared-types';
 import { Header } from './header';
 import { Sidebar } from './sidebar';
@@ -49,7 +50,7 @@ export function AppLayout({ children }: { children: ReactNode }): JSX.Element {
           setMenus(menus);
         })
         .catch((err) => {
-          console.error('Failed to fetch menus:', err);
+          logger.error('AppLayout', 'Failed to fetch menus', err);
         });
     }
   }, [userId, tenantId, apiClient, setMenus]);

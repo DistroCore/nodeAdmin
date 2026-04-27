@@ -1,14 +1,25 @@
+import { BadRequestException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMockClient, createMockPool, setupTestEnv } from '../../__tests__/helpers';
 import { PluginMarketService } from './pluginMarketService';
 
 setupTestEnv();
 
+function createMockDatabaseService(pool?: ReturnType<typeof createMockPool> | null) {
+  return {
+    drizzle: pool
+      ? {
+          $client: pool,
+        }
+      : null,
+  };
+}
+
 describe('PluginMarketService', () => {
   let service: PluginMarketService;
 
   beforeEach(() => {
-    service = new PluginMarketService();
+    service = new PluginMarketService(createMockDatabaseService() as never);
   });
 
   describe('listMarketplacePlugins', () => {
@@ -53,7 +64,7 @@ describe('PluginMarketService', () => {
       (service as unknown as { pool: typeof mockPool }).pool = mockPool;
 
       await expect(service.listMarketplacePlugins(1, 20, 'kan')).resolves.toEqual({
-        items: [
+        plugins: [
           {
             authorName: 'NodeAdmin Team',
             description: 'Board view',
@@ -87,12 +98,13 @@ describe('PluginMarketService', () => {
 
   describe('getPluginDetails', () => {
     it('throws when the plugin cannot be found', async () => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('remote registry unavailable'));
       const mockPool = createMockPool([{ rows: [], rowCount: 0 }]);
       (service as unknown as { pool: typeof mockPool }).pool = mockPool;
 
-      await expect(service.getPluginDetails('@nodeadmin/plugin-missing')).rejects.toThrow(
-        'Plugin not found'
-      );
+      await expect(service.getPluginDetails('@nodeadmin/plugin-missing')).rejects.toThrow('Plugin not found');
+
+      fetchSpy.mockRestore();
     });
 
     it('returns plugin details with version history and compatibility', async () => {
@@ -199,6 +211,7 @@ describe('PluginMarketService', () => {
 
   describe('installPlugin', () => {
     it('writes the selected plugin version into tenant_plugins with lifecycle-safe transaction setup', async () => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
       const mockClient = createMockClient([
         { rows: [], rowCount: 0 },
         { rows: [], rowCount: 0 },
@@ -229,21 +242,149 @@ describe('PluginMarketService', () => {
       mockPool.connect = vi.fn(async () => mockClient);
       (service as unknown as { pool: typeof mockPool }).pool = mockPool;
 
-      await expect(
-        service.installPlugin('tenant-1', '@nodeadmin/plugin-kanban', '1.2.0')
-      ).resolves.toEqual({
-        enabled: true,
+      await expect(service.installPlugin('tenant-1', '@nodeadmin/plugin-kanban', '1.2.0')).resolves.toEqual({
+        success: true,
+        installedVersion: '1.2.0',
         pluginId: '@nodeadmin/plugin-kanban',
-        tenantId: 'tenant-1',
-        version: '1.2.0',
       });
 
+      expect(fetchSpy).not.toHaveBeenCalled();
       expect(mockClient.calls[1]).toEqual({
         params: ['tenant-1'],
         sql: "SELECT set_config('app.current_tenant', $1, true)",
       });
       expect(mockClient.calls[3]?.sql).toContain('INSERT INTO tenant_plugins');
       expect(mockClient.calls[3]?.sql).toContain('installed_version');
+
+      fetchSpy.mockRestore();
+    });
+
+    it('falls back to the remote registry when the requested version is not stored locally', async () => {
+      vi.resetModules();
+      const { PluginMarketService: FreshPluginMarketService } = await import('./pluginMarketService');
+      const freshService = new FreshPluginMarketService(createMockDatabaseService() as never);
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+        json: async () => ({
+          plugins: [
+            {
+              displayName: 'Kanban',
+              id: '@nodeadmin/plugin-kanban',
+              latestVersion: '1.2.0',
+              versions: [
+                {
+                  bundleUrl: 'https://cdn.example.com/kanban-1.2.0.js',
+                  manifest: {
+                    author: { name: 'NodeAdmin Team' },
+                    description: 'Board view',
+                    displayName: 'Kanban',
+                    engines: { nodeAdmin: '>=0.1.0' },
+                    entrypoints: { server: './dist/server/index.js' },
+                    id: '@nodeadmin/plugin-kanban',
+                    permissions: ['backlog:view'],
+                    version: '1.2.0',
+                  },
+                  publishedAt: '2026-04-06T12:00:00.000Z',
+                  serverPackage: '@nodeadmin/plugin-kanban@1.2.0',
+                  version: '1.2.0',
+                },
+              ],
+            },
+          ],
+          updated: '2026-04-06T12:00:00.000Z',
+          version: 1,
+        }),
+        ok: true,
+      } as Response);
+      const mockClient = createMockClient([
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 1 },
+        { rows: [], rowCount: 0 },
+      ]);
+      const mockPool = createMockPool([]);
+      mockPool.connect = vi.fn(async () => mockClient);
+      (freshService as unknown as { pool: typeof mockPool }).pool = mockPool;
+
+      await expect(freshService.installPlugin('tenant-1', '@nodeadmin/plugin-kanban', '1.2.0')).resolves.toEqual({
+        success: true,
+        installedVersion: '1.2.0',
+        pluginId: '@nodeadmin/plugin-kanban',
+      });
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(mockClient.calls[2]?.sql).toContain('FROM plugin_versions');
+      expect(mockClient.calls[3]?.sql).toContain('INSERT INTO tenant_plugins');
+
+      fetchSpy.mockRestore();
+    });
+
+    it('throws when neither the local database nor the remote registry provides the requested version', async () => {
+      vi.resetModules();
+      const { PluginMarketService: FreshPluginMarketService } = await import('./pluginMarketService');
+      const freshService = new FreshPluginMarketService(createMockDatabaseService() as never);
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+        json: async () => ({
+          plugins: [],
+          updated: '2026-04-06T12:00:00.000Z',
+          version: 1,
+        }),
+        ok: true,
+      } as Response);
+      const mockClient = createMockClient([
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+      ]);
+      const mockPool = createMockPool([]);
+      mockPool.connect = vi.fn(async () => mockClient);
+      (freshService as unknown as { pool: typeof mockPool }).pool = mockPool;
+
+      await expect(freshService.installPlugin('tenant-1', '@nodeadmin/plugin-kanban', '9.9.9')).rejects.toThrow(
+        'Plugin version not found',
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(mockClient.calls[2]?.sql).toContain('FROM plugin_versions');
+      expect(mockClient.calls.at(-1)?.sql).toBe('ROLLBACK');
+      expect(mockClient.calls.some((call) => call.sql.includes('INSERT INTO tenant_plugins'))).toBe(false);
+
+      fetchSpy.mockRestore();
+    });
+
+    it('throws BadRequestException when the selected version is incompatible with the platform', async () => {
+      const mockClient = createMockClient([
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        {
+          rows: [
+            {
+              manifest: {
+                author: { name: 'NodeAdmin Team' },
+                description: 'Future plugin',
+                displayName: 'Future Plugin',
+                engines: { nodeAdmin: '>=2.0.0' },
+                entrypoints: { server: './dist/server/index.js' },
+                id: '@nodeadmin/plugin-future',
+                permissions: ['backlog:view'],
+                version: '2.0.0',
+              },
+              min_platform_version: '>=2.0.0',
+              server_package: '@nodeadmin/plugin-future@2.0.0',
+              version: '2.0.0',
+            },
+          ],
+          rowCount: 1,
+        },
+        { rows: [], rowCount: 0 },
+      ]);
+      const mockPool = createMockPool([]);
+      mockPool.connect = vi.fn(async () => mockClient);
+      (service as unknown as { pool: typeof mockPool }).pool = mockPool;
+
+      await expect(service.installPlugin('tenant-1', '@nodeadmin/plugin-future', '2.0.0')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -279,13 +420,10 @@ describe('PluginMarketService', () => {
       mockPool.connect = vi.fn(async () => mockClient);
       (service as unknown as { pool: typeof mockPool }).pool = mockPool;
 
-      await expect(
-        service.updatePlugin('tenant-1', '@nodeadmin/plugin-kanban', '1.3.0')
-      ).resolves.toEqual({
-        enabled: true,
+      await expect(service.updatePlugin('tenant-1', '@nodeadmin/plugin-kanban', '1.3.0')).resolves.toEqual({
+        success: true,
+        updatedVersion: '1.3.0',
         pluginId: '@nodeadmin/plugin-kanban',
-        tenantId: 'tenant-1',
-        version: '1.3.0',
       });
     });
   });
@@ -312,12 +450,9 @@ describe('PluginMarketService', () => {
       mockPool.connect = vi.fn(async () => mockClient);
       (service as unknown as { pool: typeof mockPool }).pool = mockPool;
 
-      await expect(
-        service.uninstallPlugin('tenant-1', '@nodeadmin/plugin-kanban')
-      ).resolves.toEqual({
+      await expect(service.uninstallPlugin('tenant-1', '@nodeadmin/plugin-kanban')).resolves.toEqual({
+        success: true,
         pluginId: '@nodeadmin/plugin-kanban',
-        removed: true,
-        tenantId: 'tenant-1',
       });
 
       expect(mockClient.calls[2]?.sql).toContain('FROM tenant_plugins tp');
@@ -328,9 +463,7 @@ describe('PluginMarketService', () => {
     it('runs lifecycle hooks before removing an installed plugin', async () => {
       const lifecycleHook = vi.fn(async () => undefined);
       const hookModuleLoader = vi.fn(() => lifecycleHook);
-      const packageJsonResolver = vi.fn(
-        () => '/repo/node_modules/@nodeadmin/plugin-kanban/package.json'
-      );
+      const packageJsonResolver = vi.fn(() => '/repo/node_modules/@nodeadmin/plugin-kanban/package.json');
       const mockClient = createMockClient([
         { rows: [], rowCount: 0 },
         { rows: [], rowCount: 0 },
@@ -360,24 +493,22 @@ describe('PluginMarketService', () => {
       const mockPool = createMockPool([]);
       mockPool.connect = vi.fn(async () => mockClient);
       (service as unknown as { pool: typeof mockPool }).pool = mockPool;
-      (service as unknown as { hookModuleLoader: typeof hookModuleLoader }).hookModuleLoader =
-        hookModuleLoader;
-      (
-        service as unknown as { packageJsonResolver: typeof packageJsonResolver }
-      ).packageJsonResolver = packageJsonResolver;
+      (service as unknown as { hookModuleLoader: typeof hookModuleLoader }).hookModuleLoader = hookModuleLoader;
+      (service as unknown as { packageJsonResolver: typeof packageJsonResolver }).packageJsonResolver =
+        packageJsonResolver;
 
       await service.uninstallPlugin('tenant-1', '@nodeadmin/plugin-kanban');
 
       expect(packageJsonResolver).toHaveBeenCalledWith('@nodeadmin/plugin-kanban');
       expect(hookModuleLoader).toHaveBeenCalledWith(
-        '/repo/node_modules/@nodeadmin/plugin-kanban/scripts/uninstall.cjs'
+        expect.stringMatching(/plugin-kanban[/\\]scripts[/\\]uninstall\.cjs/),
       );
       expect(lifecycleHook).toHaveBeenCalledWith(
         expect.objectContaining({
           pluginId: '@nodeadmin/plugin-kanban',
           tenantId: 'tenant-1',
           version: '1.2.0',
-        })
+        }),
       );
       expect(mockClient.calls[3]?.sql).toContain('DELETE FROM tenant_plugins');
     });
@@ -387,9 +518,7 @@ describe('PluginMarketService', () => {
     it('runs lifecycle hooks after persisting an installed plugin', async () => {
       const lifecycleHook = vi.fn(async () => undefined);
       const hookModuleLoader = vi.fn(() => lifecycleHook);
-      const packageJsonResolver = vi.fn(
-        () => '/repo/node_modules/@nodeadmin/plugin-kanban/package.json'
-      );
+      const packageJsonResolver = vi.fn(() => '/repo/node_modules/@nodeadmin/plugin-kanban/package.json');
       const mockClient = createMockClient([
         { rows: [], rowCount: 0 },
         { rows: [], rowCount: 0 },
@@ -420,24 +549,22 @@ describe('PluginMarketService', () => {
       const mockPool = createMockPool([]);
       mockPool.connect = vi.fn(async () => mockClient);
       (service as unknown as { pool: typeof mockPool }).pool = mockPool;
-      (service as unknown as { hookModuleLoader: typeof hookModuleLoader }).hookModuleLoader =
-        hookModuleLoader;
-      (
-        service as unknown as { packageJsonResolver: typeof packageJsonResolver }
-      ).packageJsonResolver = packageJsonResolver;
+      (service as unknown as { hookModuleLoader: typeof hookModuleLoader }).hookModuleLoader = hookModuleLoader;
+      (service as unknown as { packageJsonResolver: typeof packageJsonResolver }).packageJsonResolver =
+        packageJsonResolver;
 
       await service.installPlugin('tenant-1', '@nodeadmin/plugin-kanban', '1.2.0');
 
       expect(packageJsonResolver).toHaveBeenCalledWith('@nodeadmin/plugin-kanban');
       expect(hookModuleLoader).toHaveBeenCalledWith(
-        '/repo/node_modules/@nodeadmin/plugin-kanban/scripts/install.cjs'
+        expect.stringMatching(/plugin-kanban[/\\]scripts[/\\]install\.cjs/),
       );
       expect(lifecycleHook).toHaveBeenCalledWith(
         expect.objectContaining({
           pluginId: '@nodeadmin/plugin-kanban',
           tenantId: 'tenant-1',
           version: '1.2.0',
-        })
+        }),
       );
       expect(mockClient.calls[3]?.sql).toContain('INSERT INTO tenant_plugins');
     });
@@ -447,9 +574,7 @@ describe('PluginMarketService', () => {
         throw new Error('install hook failed');
       });
       const hookModuleLoader = vi.fn(() => lifecycleHook);
-      const packageJsonResolver = vi.fn(
-        () => '/repo/node_modules/@nodeadmin/plugin-kanban/package.json'
-      );
+      const packageJsonResolver = vi.fn(() => '/repo/node_modules/@nodeadmin/plugin-kanban/package.json');
       const mockClient = createMockClient([
         { rows: [], rowCount: 0 },
         { rows: [], rowCount: 0 },
@@ -480,19 +605,60 @@ describe('PluginMarketService', () => {
       const mockPool = createMockPool([]);
       mockPool.connect = vi.fn(async () => mockClient);
       (service as unknown as { pool: typeof mockPool }).pool = mockPool;
-      (service as unknown as { hookModuleLoader: typeof hookModuleLoader }).hookModuleLoader =
-        hookModuleLoader;
-      (
-        service as unknown as { packageJsonResolver: typeof packageJsonResolver }
-      ).packageJsonResolver = packageJsonResolver;
+      (service as unknown as { hookModuleLoader: typeof hookModuleLoader }).hookModuleLoader = hookModuleLoader;
+      (service as unknown as { packageJsonResolver: typeof packageJsonResolver }).packageJsonResolver =
+        packageJsonResolver;
 
-      await expect(
-        service.installPlugin('tenant-1', '@nodeadmin/plugin-kanban', '1.2.0')
-      ).rejects.toThrow('install hook failed');
+      await expect(service.installPlugin('tenant-1', '@nodeadmin/plugin-kanban', '1.2.0')).rejects.toThrow(
+        'install hook failed',
+      );
 
       expect(mockClient.calls[3]?.sql).toContain('INSERT INTO tenant_plugins');
       expect(mockClient.calls.at(-1)?.sql).toBe('ROLLBACK');
       expect(mockClient.calls.some((call) => call.sql === 'COMMIT')).toBe(false);
+    });
+
+    it('throws BadRequestException when the lifecycle hook export is not a function', async () => {
+      const hookModuleLoader = vi.fn(() => ({ notAFunction: true }));
+      const packageJsonResolver = vi.fn(() => '/repo/node_modules/@nodeadmin/plugin-kanban/package.json');
+      const mockClient = createMockClient([
+        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
+        {
+          rows: [
+            {
+              manifest: {
+                author: { name: 'NodeAdmin Team' },
+                description: 'Board view',
+                displayName: 'Kanban',
+                engines: { nodeAdmin: '>=0.1.0' },
+                entrypoints: { server: './dist/server/index.js' },
+                id: '@nodeadmin/plugin-kanban',
+                lifecycle: { onInstall: './scripts/install.cjs' },
+                permissions: ['backlog:view'],
+                version: '1.2.0',
+              },
+              min_platform_version: '>=0.1.0',
+              server_package: '@nodeadmin/plugin-kanban@1.2.0',
+              version: '1.2.0',
+            },
+          ],
+          rowCount: 1,
+        },
+        { rows: [], rowCount: 1 },
+        { rows: [], rowCount: 0 },
+      ]);
+      const mockPool = createMockPool([]);
+      mockPool.connect = vi.fn(async () => mockClient);
+      (service as unknown as { pool: typeof mockPool }).pool = mockPool;
+      (service as unknown as { hookModuleLoader: typeof hookModuleLoader }).hookModuleLoader = hookModuleLoader;
+      (service as unknown as { packageJsonResolver: typeof packageJsonResolver }).packageJsonResolver =
+        packageJsonResolver;
+
+      await expect(service.installPlugin('tenant-1', '@nodeadmin/plugin-kanban', '1.2.0')).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(mockClient.calls.at(-1)?.sql).toBe('ROLLBACK');
     });
   });
 
@@ -527,7 +693,7 @@ describe('PluginMarketService', () => {
             version: '1.2.0',
           },
           serverPackage: '@nodeadmin/plugin-kanban@1.2.0',
-        })
+        }),
       ).resolves.toEqual({
         pluginId: '@nodeadmin/plugin-kanban',
         publishedVersion: '1.2.0',

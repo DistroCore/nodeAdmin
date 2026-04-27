@@ -33,14 +33,10 @@ function LinkedAccountsSection(): JSX.Element {
     mutationFn: (provider: string) => apiClient.del(`/api/v1/auth/oauth-accounts/${provider}`),
     onSuccess: (_, provider) => {
       queryClient.invalidateQueries({ queryKey: ['oauth-accounts'] });
-      toast.success(
-        t({ id: 'profile.unlinkSuccess' }, { provider: t({ id: `profile.provider.${provider}` }) })
-      );
+      toast.success(t({ id: 'profile.unlinkSuccess' }, { provider: t({ id: `profile.provider.${provider}` }) }));
     },
     onError: (_, provider) => {
-      toast.error(
-        t({ id: 'profile.unlinkFailed' }, { provider: t({ id: `profile.provider.${provider}` }) })
-      );
+      toast.error(t({ id: 'profile.unlinkFailed' }, { provider: t({ id: `profile.provider.${provider}` }) }));
     },
   });
 
@@ -51,14 +47,9 @@ function LinkedAccountsSection(): JSX.Element {
       {OAUTH_PROVIDERS.map((provider) => {
         const isLinked = linkedProviders.has(provider);
         return (
-          <div
-            key={provider}
-            className="flex items-center justify-between rounded-md border border-border px-3 py-2"
-          >
+          <div key={provider} className="flex items-center justify-between rounded-md border border-border px-3 py-2">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-foreground">
-                {t({ id: `profile.provider.${provider}` })}
-              </span>
+              <span className="text-sm font-medium text-foreground">{t({ id: `profile.provider.${provider}` })}</span>
               <Badge variant={isLinked ? 'default' : 'secondary'}>
                 {isLinked ? t({ id: 'profile.linked' }) : t({ id: 'profile.notLinked' })}
               </Badge>
@@ -68,10 +59,7 @@ function LinkedAccountsSection(): JSX.Element {
                 onClick={() => {
                   if (
                     window.confirm(
-                      t(
-                        { id: 'profile.unlinkConfirm' },
-                        { provider: t({ id: `profile.provider.${provider}` }) }
-                      )
+                      t({ id: 'profile.unlinkConfirm' }, { provider: t({ id: `profile.provider.${provider}` }) }),
                     )
                   ) {
                     unlinkMutation.mutate(provider);
@@ -165,9 +153,7 @@ export function ProfilePanel(): JSX.Element {
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">{t({ id: 'profile.roles' })}</dt>
-                <dd className="text-foreground">
-                  {userRoles.length > 0 ? userRoles.join(', ') : '—'}
-                </dd>
+                <dd className="text-foreground">{userRoles.length > 0 ? userRoles.join(', ') : '—'}</dd>
               </div>
               {import.meta.env.VITE_SINGLE_TENANT_MODE !== 'true' && (
                 <div className="flex justify-between">
@@ -186,9 +172,7 @@ export function ProfilePanel(): JSX.Element {
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">
-                {t({ id: 'profile.currentPassword' })}
-              </label>
+              <label className="mb-1 block text-xs text-muted-foreground">{t({ id: 'profile.currentPassword' })}</label>
               <Input
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder={t({ id: 'profile.currentPassword' })}
@@ -197,9 +181,7 @@ export function ProfilePanel(): JSX.Element {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">
-                {t({ id: 'profile.newPassword' })}
-              </label>
+              <label className="mb-1 block text-xs text-muted-foreground">{t({ id: 'profile.newPassword' })}</label>
               <Input
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder={t({ id: 'profile.newPassword' })}
@@ -208,9 +190,7 @@ export function ProfilePanel(): JSX.Element {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">
-                {t({ id: 'auth.confirmPassword' })}
-              </label>
+              <label className="mb-1 block text-xs text-muted-foreground">{t({ id: 'auth.confirmPassword' })}</label>
               <Input
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder={t({ id: 'auth.confirmPassword' })}
@@ -236,9 +216,7 @@ export function ProfilePanel(): JSX.Element {
           <CardTitle className="text-sm">{t({ id: 'profile.linkedAccounts' })}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="mb-3 text-xs text-muted-foreground">
-            {t({ id: 'profile.linkedAccounts.desc' })}
-          </p>
+          <p className="mb-3 text-xs text-muted-foreground">{t({ id: 'profile.linkedAccounts.desc' })}</p>
           <LinkedAccountsSection />
         </CardContent>
       </Card>

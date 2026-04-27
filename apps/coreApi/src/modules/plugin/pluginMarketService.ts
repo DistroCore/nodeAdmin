@@ -1,9 +1,88 @@
 import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Pool, type PoolClient } from 'pg';
 import type { PluginManifest } from '@nodeadmin/shared-types';
+import { runtimeConfig } from '../../app/runtimeConfig';
+import { DatabaseService } from '../../infrastructure/database/databaseService';
 import { validatePluginManifest } from './manifestValidator';
+
+const REMOTE_REGISTRY_CACHE_TTL_MS = 5 * 60 * 1000;
+
+interface MarketplacePluginSummary {
+  authorName: string | null;
+  description: string | null;
+  displayName: string;
+  downloadCount: number;
+  id: string;
+  isCompatible: boolean;
+  latestVersion: string;
+  minPlatformVersion: string | null;
+}
+
+interface MarketplacePluginListResponse {
+  page: number;
+  pageSize: number;
+  plugins: MarketplacePluginSummary[];
+  total: number;
+}
+
+interface MarketplacePluginVersionDetails {
+  bundleUrl: string;
+  changelog: string | null;
+  isCompatible: boolean;
+  minPlatformVersion: string | null;
+  publishedAt: string;
+  serverPackage: string;
+  version: string;
+}
+
+interface MarketplacePluginDetailsResponse {
+  authorEmail: string | null;
+  authorName: string | null;
+  description: string | null;
+  displayName: string;
+  downloadCount: number;
+  id: string;
+  isPublic: boolean;
+  latestVersion: string;
+  versions: MarketplacePluginVersionDetails[];
+}
+
+interface RemoteRegistryResponse {
+  plugins: RemoteRegistryPlugin[];
+  updated: string;
+  version: number;
+}
+
+interface RemoteRegistryPlugin {
+  author?: {
+    email?: string;
+    name?: string;
+  };
+  description?: string;
+  displayName: string;
+  id: string;
+  latestVersion: string;
+  versions: RemoteRegistryPluginVersion[];
+}
+
+interface RemoteRegistryPluginVersion {
+  bundleUrl: string;
+  changelog?: string;
+  manifest: PluginManifest;
+  minPlatformVersion?: string;
+  publishedAt: string;
+  serverPackage: string;
+  version: string;
+}
+
+interface RemoteRegistryCacheEntry {
+  data: RemoteRegistryResponse;
+  expiresAt: number;
+}
+
+let remoteRegistryCache: RemoteRegistryCacheEntry | null = null;
 
 interface PluginRegistryRow {
   author_email?: string | null;
@@ -65,6 +144,7 @@ type PluginLifecycleHandler = (context: PluginLifecycleContext) => Promise<unkno
 
 @Injectable()
 export class PluginMarketService {
+  private readonly logger = new Logger(PluginMarketService.name);
   private readonly platformVersion = '0.1.0';
   private readonly pool: Pool | null;
   private readonly requireFromRoot = createRequire(resolve(process.cwd(), 'package.json'));
@@ -72,13 +152,8 @@ export class PluginMarketService {
   private packageJsonResolver: PackageJsonResolver = (packageName) =>
     this.requireFromRoot.resolve(`${packageName}/package.json`);
 
-  constructor() {
-    const databaseUrl = process.env.DATABASE_URL?.trim();
-    if (!databaseUrl) {
-      this.pool = null;
-    } else {
-      this.pool = new Pool({ connectionString: databaseUrl, max: 10 });
-    }
+  constructor(@Inject(DatabaseService) private readonly databaseService: DatabaseService) {
+    this.pool = (this.databaseService.drizzle?.$client as Pool | undefined) ?? null;
   }
 
   async listMarketplacePlugins(page = 1, pageSize = 20, search?: string) {
@@ -94,7 +169,7 @@ export class PluginMarketService {
       `SELECT COUNT(*)::int AS count
        FROM plugin_registry pr
        WHERE pr.is_public = true ${searchClause}`,
-      searchParams
+      searchParams,
     );
 
     const rowsResult = await this.pool.query<PluginRegistryRow>(
@@ -113,30 +188,23 @@ export class PluginMarketService {
        WHERE pr.is_public = true ${searchClause}
        ORDER BY pr.display_name ASC
        LIMIT $${searchParams.length + 1} OFFSET $${searchParams.length + 2}`,
-      [...searchParams, pageSize, offset]
+      [...searchParams, pageSize, offset],
     );
 
+    const total = countResult.rows[0]?.count ?? 0;
+    if (total === 0 && this.hasRemoteRegistryUrl()) {
+      return this.fetchRemoteRegistry(page, pageSize, search);
+    }
+
     return {
-      items: rowsResult.rows.map((row) => ({
-        authorName: row.author_name ?? null,
-        description: row.description,
-        displayName: row.display_name,
-        downloadCount: row.download_count,
-        id: row.id,
-        isCompatible: this.isVersionCompatible(
-          this.platformVersion,
-          row.min_platform_version ?? `>=${this.platformVersion}`
-        ),
-        latestVersion: row.latest_version,
-        minPlatformVersion: row.min_platform_version ?? null,
-      })),
+      plugins: rowsResult.rows.map((row) => this.mapMarketplacePluginSummary(row)),
       page,
       pageSize,
-      total: countResult.rows[0]?.count ?? 0,
+      total,
     };
   }
 
-  async getPluginDetails(pluginId: string) {
+  async getPluginDetails(pluginId: string): Promise<MarketplacePluginDetailsResponse> {
     if (!this.pool) {
       throw new NotFoundException('Plugin not found');
     }
@@ -152,11 +220,18 @@ export class PluginMarketService {
               download_count
        FROM plugin_registry
        WHERE id = $1`,
-      [pluginId]
+      [pluginId],
     );
 
     const plugin = pluginResult.rows[0];
     if (!plugin) {
+      if (this.hasRemoteRegistryUrl()) {
+        const remotePlugin = await this.findRemotePluginDetails(pluginId);
+        if (remotePlugin) {
+          return remotePlugin;
+        }
+      }
+
       throw new NotFoundException('Plugin not found');
     }
 
@@ -170,7 +245,7 @@ export class PluginMarketService {
        FROM plugin_versions
        WHERE plugin_id = $1
        ORDER BY published_at DESC`,
-      [pluginId]
+      [pluginId],
     );
 
     return {
@@ -182,18 +257,7 @@ export class PluginMarketService {
       id: plugin.id,
       isPublic: plugin.is_public,
       latestVersion: plugin.latest_version,
-      versions: versionsResult.rows.map((row) => ({
-        bundleUrl: row.bundle_url,
-        changelog: row.changelog,
-        isCompatible: this.isVersionCompatible(
-          this.platformVersion,
-          row.min_platform_version ?? `>=${this.platformVersion}`
-        ),
-        minPlatformVersion: row.min_platform_version,
-        publishedAt: this.toIsoString(row.published_at),
-        serverPackage: row.server_package,
-        version: row.version,
-      })),
+      versions: versionsResult.rows.map((row) => this.mapMarketplacePluginVersion(row)),
     };
   }
 
@@ -203,14 +267,13 @@ export class PluginMarketService {
     }
 
     return this.withTenantContext(tenantId, async (client) => {
-      const versionResult = await client.query<InstallPluginVersionRow>(
-        `SELECT version, min_platform_version, manifest, server_package
-         FROM plugin_versions
-         WHERE plugin_id = $1 AND version = $2`,
-        [pluginId, version]
-      );
+      let selectedVersion = await this.findLocalPluginVersion(client, pluginId, version);
 
-      const selectedVersion = versionResult.rows[0];
+      // Fallback to remote registry when local DB has no matching version
+      if (!selectedVersion) {
+        selectedVersion = await this.findRemotePluginVersion(pluginId, version);
+      }
+
       if (!selectedVersion) {
         throw new NotFoundException('Plugin version not found');
       }
@@ -219,7 +282,7 @@ export class PluginMarketService {
         selectedVersion.min_platform_version &&
         !this.isVersionCompatible(this.platformVersion, selectedVersion.min_platform_version)
       ) {
-        throw new Error('Plugin version is not compatible with this platform');
+        throw new BadRequestException('Plugin version is not compatible with this platform');
       }
 
       await client.query(
@@ -231,7 +294,7 @@ export class PluginMarketService {
                        auto_update = EXCLUDED.auto_update,
                        installed_at = EXCLUDED.installed_at,
                        enabled_at = now()`,
-        [tenantId, pluginId, version]
+        [tenantId, pluginId, version],
       );
 
       await this.runLifecycleHook(client, {
@@ -244,16 +307,20 @@ export class PluginMarketService {
       });
 
       return {
-        enabled: true,
+        success: true,
+        installedVersion: selectedVersion.version,
         pluginId,
-        tenantId,
-        version,
       };
     });
   }
 
   async updatePlugin(tenantId: string, pluginId: string, version: string) {
-    return this.installPlugin(tenantId, pluginId, version);
+    const result = await this.installPlugin(tenantId, pluginId, version);
+    return {
+      success: result.success,
+      updatedVersion: result.installedVersion,
+      pluginId: result.pluginId,
+    };
   }
 
   async uninstallPlugin(tenantId: string, pluginId: string) {
@@ -269,7 +336,7 @@ export class PluginMarketService {
            ON pv.plugin_id = tp.plugin_name
           AND pv.version = tp.installed_version
          WHERE tp.tenant_id = $1 AND tp.plugin_name = $2`,
-        [tenantId, pluginId]
+        [tenantId, pluginId],
       );
 
       const installedPlugin = lifecycleResult.rows[0];
@@ -287,13 +354,12 @@ export class PluginMarketService {
         `DELETE FROM tenant_plugins
          WHERE tenant_id = $1 AND plugin_name = $2
          RETURNING plugin_name`,
-        [tenantId, pluginId]
+        [tenantId, pluginId],
       );
 
       return {
         pluginId,
-        removed: true,
-        tenantId,
+        success: true,
       };
     });
   }
@@ -311,15 +377,12 @@ export class PluginMarketService {
 
       const currentVersionResult = await client.query<{ latest_version: string }>(
         `SELECT latest_version FROM plugin_registry WHERE id = $1`,
-        [manifest.id]
+        [manifest.id],
       );
       const currentLatestVersion = currentVersionResult.rows[0]?.latest_version ?? null;
       const nextLatestVersion =
         currentLatestVersion === null ||
-        this.compareVersions(
-          this.parseVersion(manifest.version),
-          this.parseVersion(currentLatestVersion)
-        ) > 0
+        this.compareVersions(this.parseVersion(manifest.version), this.parseVersion(currentLatestVersion)) > 0
           ? manifest.version
           : currentLatestVersion;
 
@@ -340,7 +403,7 @@ export class PluginMarketService {
           manifest.author.name,
           manifest.author.email ?? null,
           nextLatestVersion,
-        ]
+        ],
       );
 
       await client.query(
@@ -354,7 +417,7 @@ export class PluginMarketService {
           input.serverPackage,
           manifest.engines.nodeAdmin,
           input.changelog ?? null,
-        ]
+        ],
       );
 
       await client.query('COMMIT');
@@ -414,10 +477,7 @@ export class PluginMarketService {
     return this.compareVersions(version, this.parseVersion(normalizedRange)) === 0;
   }
 
-  private async withTenantContext<T>(
-    tenantId: string,
-    callback: (client: PoolClient) => Promise<T>
-  ): Promise<T> {
+  private async withTenantContext<T>(tenantId: string, callback: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.pool!.connect();
 
     try {
@@ -457,6 +517,332 @@ export class PluginMarketService {
     return new Date(value).toISOString();
   }
 
+  private createEmptyMarketplaceResponse(page: number, pageSize: number): MarketplacePluginListResponse {
+    return {
+      page,
+      pageSize,
+      plugins: [],
+      total: 0,
+    };
+  }
+
+  private mapMarketplacePluginSummary(row: {
+    author_name?: string | null;
+    description: string | null;
+    display_name: string;
+    download_count: number;
+    id: string;
+    latest_version: string;
+    min_platform_version?: string | null;
+  }): MarketplacePluginSummary {
+    const minPlatformVersion = row.min_platform_version ?? null;
+
+    return {
+      authorName: row.author_name ?? null,
+      description: row.description,
+      displayName: row.display_name,
+      downloadCount: row.download_count,
+      id: row.id,
+      isCompatible: this.isVersionCompatible(this.platformVersion, minPlatformVersion ?? `>=${this.platformVersion}`),
+      latestVersion: row.latest_version,
+      minPlatformVersion,
+    };
+  }
+
+  private mapMarketplacePluginVersion(row: PluginVersionRow): MarketplacePluginVersionDetails {
+    return {
+      bundleUrl: row.bundle_url,
+      changelog: row.changelog,
+      isCompatible: this.isVersionCompatible(
+        this.platformVersion,
+        row.min_platform_version ?? `>=${this.platformVersion}`,
+      ),
+      minPlatformVersion: row.min_platform_version,
+      publishedAt: this.toIsoString(row.published_at),
+      serverPackage: row.server_package,
+      version: row.version,
+    };
+  }
+
+  private hasRemoteRegistryUrl(): boolean {
+    return runtimeConfig.pluginRegistry.url.trim().length > 0;
+  }
+
+  private async fetchRemoteRegistry(
+    page: number,
+    pageSize: number,
+    search?: string,
+  ): Promise<MarketplacePluginListResponse> {
+    const registry = await this.getRemoteRegistry();
+    if (!registry) {
+      return this.createEmptyMarketplaceResponse(page, pageSize);
+    }
+
+    const normalizedSearch = search?.trim().toLowerCase() ?? '';
+    const filteredPlugins = registry.plugins.filter((plugin) => {
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      return (
+        plugin.id.toLowerCase().includes(normalizedSearch) ||
+        plugin.displayName.toLowerCase().includes(normalizedSearch)
+      );
+    });
+
+    const offset = (page - 1) * pageSize;
+    const plugins = filteredPlugins
+      .slice(offset, offset + pageSize)
+      .map((plugin) => this.mapRemotePluginSummary(plugin));
+
+    return {
+      page,
+      pageSize,
+      plugins,
+      total: filteredPlugins.length,
+    };
+  }
+
+  private async findRemotePluginDetails(pluginId: string): Promise<MarketplacePluginDetailsResponse | null> {
+    const registry = await this.getRemoteRegistry();
+    const plugin = registry?.plugins.find((entry) => entry.id === pluginId);
+
+    if (!plugin) {
+      return null;
+    }
+
+    return this.mapRemotePluginDetails(plugin);
+  }
+
+  private async getRemoteRegistry(): Promise<RemoteRegistryResponse | null> {
+    const cachedRegistry = this.getCachedRemoteRegistry();
+    if (cachedRegistry) {
+      return cachedRegistry;
+    }
+
+    const registryUrl = runtimeConfig.pluginRegistry.url.trim();
+    if (!registryUrl) {
+      return null;
+    }
+
+    try {
+      const response = await fetch(registryUrl, { signal: AbortSignal.timeout(10000) });
+      if (!response.ok) {
+        throw new Error(`Remote registry request failed with status ${response.status}`);
+      }
+
+      const payload: unknown = await response.json();
+      const registry = this.parseRemoteRegistry(payload);
+      remoteRegistryCache = {
+        data: registry,
+        expiresAt: Date.now() + REMOTE_REGISTRY_CACHE_TTL_MS,
+      };
+
+      return registry;
+    } catch (error) {
+      remoteRegistryCache = null;
+      this.logger.warn(
+        `Failed to fetch remote plugin registry from ${registryUrl}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return null;
+    }
+  }
+
+  private getCachedRemoteRegistry(): RemoteRegistryResponse | null {
+    if (!remoteRegistryCache) {
+      return null;
+    }
+
+    if (remoteRegistryCache.expiresAt <= Date.now()) {
+      remoteRegistryCache = null;
+      return null;
+    }
+
+    return remoteRegistryCache.data;
+  }
+
+  private parseRemoteRegistry(payload: unknown): RemoteRegistryResponse {
+    if (!isRecord(payload) || !Array.isArray(payload.plugins)) {
+      throw new Error('Remote registry payload is invalid');
+    }
+
+    return {
+      plugins: payload.plugins.map((plugin) => this.parseRemotePlugin(plugin)),
+      updated: typeof payload.updated === 'string' ? payload.updated : '',
+      version: typeof payload.version === 'number' ? payload.version : 1,
+    };
+  }
+
+  private parseRemotePlugin(payload: unknown): RemoteRegistryPlugin {
+    if (!isRecord(payload) || typeof payload.id !== 'string' || typeof payload.displayName !== 'string') {
+      throw new Error('Remote registry plugin entry is invalid');
+    }
+
+    return {
+      author: this.parseRemoteAuthor(payload.author),
+      description: typeof payload.description === 'string' ? payload.description : undefined,
+      displayName: payload.displayName,
+      id: payload.id,
+      latestVersion: typeof payload.latestVersion === 'string' ? payload.latestVersion : '',
+      versions: Array.isArray(payload.versions)
+        ? payload.versions.map((version) => this.parseRemotePluginVersion(version))
+        : [],
+    };
+  }
+
+  private parseRemoteAuthor(payload: unknown): { email?: string; name?: string } | undefined {
+    if (!isRecord(payload)) {
+      return undefined;
+    }
+
+    return {
+      email: typeof payload.email === 'string' ? payload.email : undefined,
+      name: typeof payload.name === 'string' ? payload.name : undefined,
+    };
+  }
+
+  private parseRemotePluginVersion(payload: unknown): RemoteRegistryPluginVersion {
+    if (
+      !isRecord(payload) ||
+      typeof payload.version !== 'string' ||
+      typeof payload.bundleUrl !== 'string' ||
+      typeof payload.serverPackage !== 'string' ||
+      typeof payload.publishedAt !== 'string' ||
+      !isRecord(payload.manifest)
+    ) {
+      throw new Error('Remote registry plugin version entry is invalid');
+    }
+
+    return {
+      bundleUrl: payload.bundleUrl,
+      changelog: typeof payload.changelog === 'string' ? payload.changelog : undefined,
+      manifest: payload.manifest as unknown as PluginManifest,
+      minPlatformVersion: typeof payload.minPlatformVersion === 'string' ? payload.minPlatformVersion : undefined,
+      publishedAt: payload.publishedAt,
+      serverPackage: payload.serverPackage,
+      version: payload.version,
+    };
+  }
+
+  private mapRemotePluginSummary(plugin: RemoteRegistryPlugin): MarketplacePluginSummary {
+    const latestVersion = this.resolveRemoteLatestVersion(plugin);
+    const minPlatformVersion = this.resolveRemoteMinPlatformVersion(plugin, latestVersion?.version ?? null);
+
+    return {
+      authorName: plugin.author?.name ?? null,
+      description: plugin.description ?? null,
+      displayName: plugin.displayName,
+      downloadCount: 0,
+      id: plugin.id,
+      isCompatible: this.isVersionCompatible(this.platformVersion, minPlatformVersion ?? `>=${this.platformVersion}`),
+      latestVersion: latestVersion?.version ?? plugin.latestVersion,
+      minPlatformVersion,
+    };
+  }
+
+  private mapRemotePluginDetails(plugin: RemoteRegistryPlugin): MarketplacePluginDetailsResponse {
+    const versions = [...plugin.versions]
+      .sort((left, right) => this.compareVersions(this.parseVersion(right.version), this.parseVersion(left.version)))
+      .map((version) => {
+        const minPlatformVersion = version.minPlatformVersion ?? version.manifest.engines.nodeAdmin ?? null;
+
+        return {
+          bundleUrl: version.bundleUrl,
+          changelog: version.changelog ?? null,
+          isCompatible: this.isVersionCompatible(
+            this.platformVersion,
+            minPlatformVersion ?? `>=${this.platformVersion}`,
+          ),
+          minPlatformVersion,
+          publishedAt: this.toIsoString(version.publishedAt),
+          serverPackage: version.serverPackage,
+          version: version.version,
+        };
+      });
+
+    return {
+      authorEmail: plugin.author?.email ?? null,
+      authorName: plugin.author?.name ?? null,
+      description: plugin.description ?? null,
+      displayName: plugin.displayName,
+      downloadCount: 0,
+      id: plugin.id,
+      isPublic: true,
+      latestVersion: this.resolveRemoteLatestVersion(plugin)?.version ?? plugin.latestVersion,
+      versions,
+    };
+  }
+
+  private resolveRemoteLatestVersion(plugin: RemoteRegistryPlugin): RemoteRegistryPluginVersion | null {
+    return (
+      plugin.versions.find((version) => version.version === plugin.latestVersion) ??
+      plugin.versions
+        .slice()
+        .sort((left, right) =>
+          this.compareVersions(this.parseVersion(right.version), this.parseVersion(left.version)),
+        )[0] ??
+      null
+    );
+  }
+
+  private resolveRemoteMinPlatformVersion(plugin: RemoteRegistryPlugin, version: string | null): string | null {
+    const versionEntry = version ? plugin.versions.find((entry) => entry.version === version) : null;
+
+    return versionEntry?.minPlatformVersion ?? versionEntry?.manifest.engines.nodeAdmin ?? null;
+  }
+
+  private async findLocalPluginVersion(
+    client: PoolClient,
+    pluginId: string,
+    version: string,
+  ): Promise<InstallPluginVersionRow | null> {
+    const result = await client.query<InstallPluginVersionRow>(
+      `SELECT version, min_platform_version, manifest, server_package
+       FROM plugin_versions
+       WHERE plugin_id = $1 AND version = $2`,
+      [pluginId, version],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  private async findRemotePluginVersion(
+    pluginId: string,
+    version: string,
+  ): Promise<{
+    manifest: PluginManifest;
+    min_platform_version: string | null;
+    server_package: string;
+    version: string;
+  } | null> {
+    if (!this.hasRemoteRegistryUrl()) {
+      return null;
+    }
+
+    try {
+      const registry = await this.fetchRemoteRegistryRaw();
+      if (!registry) return null;
+
+      const plugin = registry.plugins.find((p) => p.id === pluginId);
+      if (!plugin) return null;
+
+      const versionEntry = plugin.versions.find((v) => v.version === version);
+      if (!versionEntry) return null;
+
+      return {
+        manifest: versionEntry.manifest,
+        min_platform_version: versionEntry.minPlatformVersion ?? versionEntry.manifest.engines.nodeAdmin ?? null,
+        server_package: versionEntry.serverPackage,
+        version: versionEntry.version,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private async fetchRemoteRegistryRaw(): Promise<RemoteRegistryResponse | null> {
+    return this.getRemoteRegistry();
+  }
+
   private async runLifecycleHook(
     client: PoolClient,
     input: {
@@ -466,7 +852,7 @@ export class PluginMarketService {
       serverPackage: string | null;
       tenantId: string;
       version: string | null;
-    }
+    },
   ): Promise<void> {
     const hookPath = input.hookPath?.trim();
 
@@ -474,13 +860,8 @@ export class PluginMarketService {
       return;
     }
 
-    const packageRoot = dirname(
-      this.packageJsonResolver(this.extractPackageName(input.serverPackage))
-    );
-    const handler = this.resolveLifecycleHandler(
-      this.hookModuleLoader(resolve(packageRoot, hookPath)),
-      hookPath
-    );
+    const packageRoot = dirname(this.packageJsonResolver(this.extractPackageName(input.serverPackage)));
+    const handler = this.resolveLifecycleHandler(this.hookModuleLoader(resolve(packageRoot, hookPath)), hookPath);
 
     await handler({
       client,
@@ -510,7 +891,7 @@ export class PluginMarketService {
       return loadedModule.default as PluginLifecycleHandler;
     }
 
-    throw new Error(`Lifecycle hook '${hookPath}' must export a function`);
+    throw new BadRequestException(`Lifecycle hook '${hookPath}' must export a function`);
   }
 }
 

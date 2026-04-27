@@ -87,7 +87,7 @@ async function run() {
     socket,
     'messageReceived',
     (message) => Boolean(message && message.messageId === messageId),
-    5000
+    5000,
   );
 
   const sendAck = await new Promise((resolve, reject) => {
@@ -106,7 +106,7 @@ async function run() {
         }
 
         resolve(ack);
-      }
+      },
     );
   });
 
@@ -122,8 +122,8 @@ async function run() {
         sendAck,
       },
       null,
-      2
-    )
+      2,
+    ),
   );
 }
 

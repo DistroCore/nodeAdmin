@@ -23,7 +23,7 @@ export const buttonVariants = cva(
       size: 'default',
       variant: 'default',
     },
-  }
+  },
 );
 
 export interface ButtonProps
@@ -31,14 +31,8 @@ export interface ButtonProps
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className: customClassName, size, variant, ...props }, ref) => {
-    return (
-      <button
-        className={className(buttonVariants({ size, variant }), customClassName)}
-        ref={ref}
-        {...props}
-      />
-    );
-  }
+    return <button className={className(buttonVariants({ size, variant }), customClassName)} ref={ref} {...props} />;
+  },
 );
 
 Button.displayName = 'Button';

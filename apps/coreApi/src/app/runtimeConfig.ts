@@ -1,3 +1,6 @@
+import * as fs from 'fs';
+import { DEFAULT_TENANT_ID } from './constants';
+
 interface RuntimeConfig {
   auth: {
     accessExpiresIn: string;
@@ -18,6 +21,9 @@ interface RuntimeConfig {
     enabled: boolean;
     maxRetry: number;
     pollIntervalMs: number;
+  };
+  pluginRegistry: {
+    url: string;
   };
   redis: {
     clusterNodes: string[];
@@ -72,15 +78,36 @@ interface RuntimeConfig {
   swagger: {
     enabled: boolean;
   };
+  githubOAuth: {
+    clientId: string;
+    clientSecret: string;
+    callbackUrl: string;
+  };
+}
+
+function readSecret(name: string, fallback?: string): string {
+  const secretFile = process.env[`${name}_FILE`];
+  if (typeof secretFile === 'string' && secretFile.trim().length > 0) {
+    const fileValue = fs.readFileSync(secretFile.trim(), 'utf8').trim();
+    if (fileValue.length > 0) {
+      return fileValue;
+    }
+  }
+
+  const envValue = process.env[name];
+  if (typeof envValue === 'string' && envValue.trim().length > 0) {
+    return envValue.trim();
+  }
+
+  if (typeof fallback === 'string') {
+    return fallback;
+  }
+
+  throw new Error(`[config] Missing required environment variable: ${name}`);
 }
 
 function readRequiredEnv(name: string): string {
-  const value = process.env[name];
-  if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new Error(`[config] Missing required environment variable: ${name}`);
-  }
-
-  return value.trim();
+  return readSecret(name);
 }
 
 function readCsvEnv(name: string): string[] {
@@ -164,6 +191,11 @@ export const runtimeConfig: RuntimeConfig = {
     maxRetry: readPositiveInt('OUTBOX_MAX_RETRY', 5),
     pollIntervalMs: readPositiveInt('OUTBOX_POLL_INTERVAL_MS', 2000),
   },
+  pluginRegistry: {
+    url:
+      process.env.PLUGIN_REGISTRY_URL?.trim() ||
+      'https://raw.githubusercontent.com/DistroCore/nodeAdminPlugin/main/registry.json',
+  },
   port: readPort(),
   rateLimit: {
     authRequestsPerMinute: readPositiveInt('HTTP_AUTH_RATE_LIMIT_PER_MINUTE', 30),
@@ -196,7 +228,7 @@ export const runtimeConfig: RuntimeConfig = {
     pingTimeout: readPositiveInt('SOCKETIO_PING_TIMEOUT', 60000),
   },
   tenant: {
-    defaultTenantId: process.env.DEFAULT_TENANT_ID?.trim() || 'default',
+    defaultTenantId: process.env.DEFAULT_TENANT_ID?.trim() || DEFAULT_TENANT_ID,
     singleTenantMode: readBooleanEnv('SINGLE_TENANT_MODE', false),
   },
   database: {
@@ -218,5 +250,10 @@ export const runtimeConfig: RuntimeConfig = {
   },
   swagger: {
     enabled: readBooleanEnv('SWAGGER_ENABLED', true),
+  },
+  githubOAuth: {
+    clientId: process.env.GITHUB_OAUTH_CLIENT_ID?.trim() || '',
+    clientSecret: process.env.GITHUB_OAUTH_CLIENT_SECRET?.trim() || '',
+    callbackUrl: process.env.GITHUB_OAUTH_CALLBACK_URL?.trim() || 'http://localhost:3000/api/v1/auth/github/callback',
   },
 };

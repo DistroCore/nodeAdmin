@@ -20,11 +20,9 @@ export class ImPresenceService {
   private readonly statusByStreamUser = new Map<string, PresenceStatus>();
 
   constructor(private readonly connectionRegistry: ConnectionRegistry) {
-    this.connectionGauge = metrics
-      .getMeter('im-presence')
-      .createObservableGauge('im.connections.by_tenant', {
-        description: 'Number of active WebSocket connections per tenant',
-      });
+    this.connectionGauge = metrics.getMeter('im-presence').createObservableGauge('im.connections.by_tenant', {
+      description: 'Number of active WebSocket connections per tenant',
+    });
 
     this.connectionGauge.addCallback((observableResult) => {
       const staleTenantIds: string[] = [];
@@ -93,7 +91,7 @@ export class ImPresenceService {
     tenantId: string,
     conversationId: string,
     userId: string,
-    status: PresenceStatus
+    status: PresenceStatus,
   ): PresenceStatusChangedEvent {
     const key = this.toStatusKey(tenantId, conversationId, userId);
     this.statusByStreamUser.set(key, status);

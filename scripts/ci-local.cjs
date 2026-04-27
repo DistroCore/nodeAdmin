@@ -6,6 +6,7 @@ const { argv } = require('process');
 const args = argv.slice(2);
 const runFull = args.includes('--full');
 const runAcceptance = args.includes('--acceptance');
+const runChecks = args.includes('--checks') || runFull;
 
 const GREEN = '\x1b[32m';
 const RED = '\x1b[31m';
@@ -91,15 +92,22 @@ function printSummary() {
 // ── Stage 1: Static Analysis + Unit Tests + Build ──────────────────────────
 
 async function main() {
-  process.stdout.write(
-    `\n${BOLD}${CYAN}═══ Stage 1: Static Analysis + Unit Tests + Build ═══${RESET}\n`
-  );
+  process.stdout.write(`\n${BOLD}${CYAN}═══ Stage 1: Static Analysis + Unit Tests + Build ═══${RESET}\n`);
 
   let stage1Pass = true;
   stage1Pass = runStage('Format Check', 'npm run format:check') && stage1Pass;
   stage1Pass = runStage('Lint', 'npm run lint') && stage1Pass;
-  stage1Pass = runStage('Unit Tests', 'npm run test:coreApi') && stage1Pass;
+  stage1Pass = runStage('Unit Tests (backend)', 'npm run test:coreApi') && stage1Pass;
+  stage1Pass = runStage('Unit Tests (frontend)', 'npm run test:adminPortal') && stage1Pass;
   stage1Pass = runStage('Build', 'npm run build') && stage1Pass;
+
+  // ── Optional: Structural Checks ────────────────────────────────────────────
+  if (runChecks) {
+    process.stdout.write(`\n${BOLD}${CYAN}═══ Structural Checks ═══${RESET}\n`);
+    stage1Pass = runStage('Naming Conventions', 'node scripts/checkNamingConventions.cjs') && stage1Pass;
+    stage1Pass = runStage('Layer Dependencies', 'node scripts/checkLayerDependencies.cjs') && stage1Pass;
+    stage1Pass = runStage('Doc Drift', 'node scripts/checkDocDrift.cjs') && stage1Pass;
+  }
 
   if (!stage1Pass) {
     process.stdout.write(`\n${RED}${BOLD}Stage 1 FAILED — aborting.${RESET}\n`);
@@ -130,9 +138,7 @@ async function main() {
   }
 
   if (stage2Pass) {
-    stage2Pass =
-      runStage('Integration Tests', 'npm run test:coreApi:integration', { timeout: 120_000 }) &&
-      stage2Pass;
+    stage2Pass = runStage('Integration Tests', 'npm run test:coreApi:integration', { timeout: 120_000 }) && stage2Pass;
   }
 
   process.stdout.write(`\n${CYAN}Shutting down infra...${RESET}\n`);

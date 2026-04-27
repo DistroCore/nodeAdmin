@@ -1,5 +1,6 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { Pool } from 'pg';
+import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Pool, type PoolClient } from 'pg';
+import { DatabaseService } from '../../infrastructure/database/databaseService';
 import { PluginMarketService } from './pluginMarketService';
 
 interface AutoUpdateRow {
@@ -13,21 +14,24 @@ interface PluginVersionCandidateRow {
   version: string;
 }
 
+interface TenantRow {
+  id: string;
+}
+
 @Injectable()
 export class PluginAutoUpdateService implements OnModuleInit, OnModuleDestroy {
   private static readonly pollIntervalMs = 300_000;
 
   private readonly logger = new Logger(PluginAutoUpdateService.name);
   private intervalHandle: NodeJS.Timeout | null = null;
+  private isRunning = false;
   private readonly pool: Pool | null;
 
-  constructor(private readonly pluginMarketService: PluginMarketService) {
-    const databaseUrl = process.env.DATABASE_URL?.trim();
-    if (!databaseUrl) {
-      this.pool = null;
-    } else {
-      this.pool = new Pool({ connectionString: databaseUrl, max: 10 });
-    }
+  constructor(
+    @Inject(DatabaseService) private readonly databaseService: DatabaseService,
+    private readonly pluginMarketService: PluginMarketService,
+  ) {
+    this.pool = (this.databaseService.drizzle?.$client as Pool | undefined) ?? null;
   }
 
   async onModuleInit(): Promise<void> {
@@ -35,9 +39,16 @@ export class PluginAutoUpdateService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    await this.runAutoUpdateCycle();
+    try {
+      await this.runAutoUpdateCycle();
+    } catch (error) {
+      this.logCycleError('Initial plugin auto-update cycle failed.', error);
+    }
+
     this.intervalHandle = setInterval(() => {
-      void this.runAutoUpdateCycle();
+      void this.runAutoUpdateCycle().catch((error) => {
+        this.logCycleError('Scheduled plugin auto-update cycle failed.', error);
+      });
     }, PluginAutoUpdateService.pollIntervalMs);
   }
 
@@ -46,12 +57,6 @@ export class PluginAutoUpdateService implements OnModuleInit, OnModuleDestroy {
       clearInterval(this.intervalHandle);
       this.intervalHandle = null;
     }
-
-    if (this.pool) {
-      await this.pool.end().catch(() => {
-        this.logger.warn('Failed to close plugin auto-update database pool cleanly.');
-      });
-    }
   }
 
   async runAutoUpdateCycle(): Promise<void> {
@@ -59,15 +64,46 @@ export class PluginAutoUpdateService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    const client = await this.pool.connect();
     try {
-      await client.query('BEGIN');
+      if (this.isRunning) {
+        this.logger.warn('Skipping plugin auto-update cycle because a previous run is still in progress.');
+        return;
+      }
 
+      this.isRunning = true;
+
+      const tenantsResult = await this.pool.query<TenantRow>(
+        `SELECT id
+         FROM tenants
+         ORDER BY id ASC`,
+      );
+
+      for (const tenant of tenantsResult.rows) {
+        const pendingUpdates = await this.collectPendingUpdatesForTenant(tenant.id);
+
+        for (const update of pendingUpdates) {
+          await this.pluginMarketService.installPlugin(tenant.id, update.pluginId, update.version);
+        }
+      }
+    } finally {
+      this.isRunning = false;
+    }
+  }
+
+  private async collectPendingUpdatesForTenant(
+    tenantId: string,
+  ): Promise<Array<{ pluginId: string; version: string }>> {
+    return this.withTenantContext(tenantId, async (client) => {
       const installedPlugins = await client.query<AutoUpdateRow>(
         `SELECT tenant_id, plugin_name, installed_version
          FROM tenant_plugins
-         WHERE auto_update = true AND installed_version IS NOT NULL`
+         WHERE tenant_id = $1
+           AND auto_update = true
+           AND installed_version IS NOT NULL`,
+        [tenantId],
       );
+
+      const updates: Array<{ pluginId: string; version: string }> = [];
 
       for (const installedPlugin of installedPlugins.rows) {
         const versionsResult = await client.query<PluginVersionCandidateRow>(
@@ -75,14 +111,14 @@ export class PluginAutoUpdateService implements OnModuleInit, OnModuleDestroy {
            FROM plugin_versions
            WHERE plugin_id = $1
            ORDER BY published_at DESC`,
-          [installedPlugin.plugin_name]
+          [installedPlugin.plugin_name],
         );
 
         const compatibleVersion = this.pluginMarketService.resolveInstallableVersion(
           versionsResult.rows.map((row) => ({
             minPlatformVersion: row.min_platform_version,
             version: row.version,
-          }))
+          })),
         );
 
         if (
@@ -93,23 +129,35 @@ export class PluginAutoUpdateService implements OnModuleInit, OnModuleDestroy {
           continue;
         }
 
-        await client.query(
-          `UPDATE tenant_plugins
-           SET installed_version = $1,
-               installed_at = now(),
-               enabled = true
-           WHERE tenant_id = $2 AND plugin_name = $3`,
-          [compatibleVersion.version, installedPlugin.tenant_id, installedPlugin.plugin_name]
-        );
+        updates.push({
+          pluginId: installedPlugin.plugin_name,
+          version: compatibleVersion.version,
+        });
       }
 
+      return updates;
+    });
+  }
+
+  private async withTenantContext<T>(tenantId: string, callback: (client: PoolClient) => Promise<T>): Promise<T> {
+    const client = await this.pool!.connect();
+
+    try {
+      await client.query('BEGIN');
+      await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [tenantId]);
+      const result = await callback(client);
       await client.query('COMMIT');
+      return result;
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
     } finally {
       client.release();
     }
+  }
+
+  private logCycleError(message: string, error: unknown): void {
+    this.logger.error(message, error instanceof Error ? error.stack : String(error));
   }
 
   private compareVersions(left: string, right: string): number {

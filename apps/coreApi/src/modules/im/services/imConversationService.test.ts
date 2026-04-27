@@ -17,16 +17,29 @@ function createMockMessageRepository() {
   };
 }
 
+function createMockConversationRepository() {
+  return {
+    create: vi.fn(),
+    listMembers: vi.fn(),
+  };
+}
+
 describe('ImConversationService', () => {
   let service: ImConversationService;
   let connectionRegistry: ReturnType<typeof createMockConnectionRegistry>;
+  let conversationRepository: ReturnType<typeof createMockConversationRepository>;
   let messageRepository: ReturnType<typeof createMockMessageRepository>;
   let identity: AuthIdentity;
 
   beforeEach(() => {
     connectionRegistry = createMockConnectionRegistry();
+    conversationRepository = createMockConversationRepository();
     messageRepository = createMockMessageRepository();
-    service = new ImConversationService(connectionRegistry as never, messageRepository as never);
+    service = new ImConversationService(
+      connectionRegistry as never,
+      conversationRepository as never,
+      messageRepository as never,
+    );
     identity = {
       jti: 'jti-1',
       roles: ['tenant:user'],
@@ -61,11 +74,7 @@ describe('ImConversationService', () => {
       tenantId: identity.tenantId,
       userId: identity.userId,
     });
-    expect(messageRepository.getLatest).toHaveBeenCalledWith(
-      identity.tenantId,
-      'conversation-1',
-      50
-    );
+    expect(messageRepository.getLatest).toHaveBeenCalledWith(identity.tenantId, 'conversation-1', 50);
     expect(result).toEqual({
       context: {
         conversationId: 'conversation-1',

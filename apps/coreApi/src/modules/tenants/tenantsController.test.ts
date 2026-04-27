@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TenantsController } from './tenantsController';
+import { TenantsService } from './tenantsService';
+import { CreateTenantDto } from './dto/createTenantDto';
+import { UpdateTenantDto } from './dto/updateTenantDto';
 
 function createMockTenantsService() {
   return {
@@ -17,7 +20,7 @@ describe('TenantsController', () => {
 
   beforeEach(() => {
     service = createMockTenantsService();
-    controller = new TenantsController(service as any);
+    controller = new TenantsController(service as unknown as TenantsService);
   });
 
   describe('list', () => {
@@ -41,7 +44,14 @@ describe('TenantsController', () => {
   describe('create', () => {
     it('should delegate to service with dto fields', async () => {
       service.create.mockResolvedValue({ id: 't-1' });
-      await controller.create({ name: 'T', slug: 't', logo: 'logo.png', isActive: true } as any);
+      const dto: CreateTenantDto = {
+        name: 'T',
+        slug: 't',
+        logo: 'logo.png',
+        isActive: true,
+      };
+
+      await controller.create(dto);
       expect(service.create).toHaveBeenCalledWith({
         name: 'T',
         slug: 't',
@@ -54,7 +64,9 @@ describe('TenantsController', () => {
   describe('update', () => {
     it('should delegate to service with mapped data', async () => {
       service.update.mockResolvedValue({ id: 't-1' });
-      await controller.update('t-1', { name: 'Updated' } as any);
+      const dto: UpdateTenantDto = { name: 'Updated' };
+
+      await controller.update('t-1', dto);
       expect(service.update).toHaveBeenCalledWith('t-1', {
         name: 'Updated',
         logo: undefined,

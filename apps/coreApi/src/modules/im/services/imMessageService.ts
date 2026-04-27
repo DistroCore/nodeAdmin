@@ -3,11 +3,7 @@ import { metrics, SpanStatusCode, trace } from '@opentelemetry/api';
 import { WsException } from '@nestjs/websockets';
 import { runtimeConfig } from '../../../app/runtimeConfig';
 import { SocketContext } from '../../../infrastructure/connectionRegistry';
-import {
-  AppendResult,
-  PendingMessage,
-  StoredMessage,
-} from '../../../infrastructure/inMemoryMessageStore';
+import { AppendResult, PendingMessage, StoredMessage } from '../../../infrastructure/inMemoryMessageStore';
 import { ImMessageRepository } from '../../../infrastructure/database/imMessageRepository';
 import { AuthIdentity } from '../../auth/authIdentity';
 import { SendMessageDto } from '../dto/sendMessageDto';
@@ -47,60 +43,42 @@ export class ImMessageService implements OnModuleInit, OnModuleDestroy {
   private static readonly queueWarnIntervalMs = 5000;
   private static readonly meter = metrics.getMeter('coreApi-im');
   private static readonly tracer = trace.getTracer('coreApi-im');
-  private static readonly appendedCounter = ImMessageService.meter.createCounter(
-    'im_messages_appended_total',
-    {
-      description: 'Total IM messages accepted by the server.',
-    }
-  );
-  private static readonly appendDurationMs = ImMessageService.meter.createHistogram(
-    'im_message_append_ms',
-    {
-      description: 'Latency of append pipeline for IM messages.',
-      unit: 'ms',
-    }
-  );
-  private static readonly appendAckDurationMs = ImMessageService.meter.createHistogram(
-    'im_message_ack_ms',
-    {
-      description: 'Latency from message receive to ACK.',
-      unit: 'ms',
-    }
-  );
+  private static readonly appendedCounter = ImMessageService.meter.createCounter('im_messages_appended_total', {
+    description: 'Total IM messages accepted by the server.',
+  });
+  private static readonly appendDurationMs = ImMessageService.meter.createHistogram('im_message_append_ms', {
+    description: 'Latency of append pipeline for IM messages.',
+    unit: 'ms',
+  });
+  private static readonly appendAckDurationMs = ImMessageService.meter.createHistogram('im_message_ack_ms', {
+    description: 'Latency from message receive to ACK.',
+    unit: 'ms',
+  });
   private static readonly persistQueueWaitDurationMs = ImMessageService.meter.createHistogram(
     'im_message_persist_queue_wait_ms',
     {
       description: 'Time spent waiting in persistence queue.',
       unit: 'ms',
-    }
+    },
   );
-  private static readonly persistDbWriteDurationMs = ImMessageService.meter.createHistogram(
-    'im_message_db_write_ms',
-    {
-      description: 'Repository append latency (DB + outbox transaction).',
-      unit: 'ms',
-    }
-  );
+  private static readonly persistDbWriteDurationMs = ImMessageService.meter.createHistogram('im_message_db_write_ms', {
+    description: 'Repository append latency (DB + outbox transaction).',
+    unit: 'ms',
+  });
   private static readonly persistOutboxWriteDurationMs = ImMessageService.meter.createHistogram(
     'im_message_outbox_write_ms',
     {
       description: 'Outbox write latency marker (currently within repository transaction).',
       unit: 'ms',
-    }
+    },
   );
-  private static readonly persistBatchSizeHistogram = ImMessageService.meter.createHistogram(
-    'im_persist_batch_size',
-    {
-      description: 'Message count of each async persistence batch.',
-    }
-  );
-  private static readonly sequenceSeedDurationMs = ImMessageService.meter.createHistogram(
-    'im_sequence_seed_ms',
-    {
-      description: 'Latency of initial sequence cache seed query.',
-      unit: 'ms',
-    }
-  );
+  private static readonly persistBatchSizeHistogram = ImMessageService.meter.createHistogram('im_persist_batch_size', {
+    description: 'Message count of each async persistence batch.',
+  });
+  private static readonly sequenceSeedDurationMs = ImMessageService.meter.createHistogram('im_sequence_seed_ms', {
+    description: 'Latency of initial sequence cache seed query.',
+    unit: 'ms',
+  });
 
   private readonly logger = new Logger(ImMessageService.name);
   private readonly rateLimitByIdentity = new Map<string, RateLimitWindow>();
@@ -144,11 +122,7 @@ export class ImMessageService implements OnModuleInit, OnModuleDestroy {
     await this.flushQueue(true);
   }
 
-  async appendMessage(
-    context: SocketContext,
-    payload: SendMessageDto,
-    identity: AuthIdentity
-  ): Promise<AppendResult> {
+  async appendMessage(context: SocketContext, payload: SendMessageDto, identity: AuthIdentity): Promise<AppendResult> {
     const sameConversation =
       context.conversationId === payload.conversationId &&
       context.tenantId === identity.tenantId &&
@@ -185,7 +159,7 @@ export class ImMessageService implements OnModuleInit, OnModuleDestroy {
         const backpressureStatus = this.backpressure.checkCapacity(this.queue.length);
         if (backpressureStatus.shouldReject) {
           throw new WsException(
-            `System overloaded (queue at ${backpressureStatus.utilizationPercent.toFixed(1)}% capacity). Please retry later.`
+            `System overloaded (queue at ${backpressureStatus.utilizationPercent.toFixed(1)}% capacity). Please retry later.`,
           );
         }
 
@@ -211,11 +185,7 @@ export class ImMessageService implements OnModuleInit, OnModuleDestroy {
           return duplicateResult;
         }
 
-        const sequenceId = await this.reserveSequence(
-          streamKey,
-          context.tenantId,
-          context.conversationId
-        );
+        const sequenceId = await this.reserveSequence(streamKey, context.tenantId, context.conversationId);
         const createdAt = new Date().toISOString();
         const pendingMessage: PendingMessage = {
           content: sanitizedContent,
@@ -363,7 +333,7 @@ export class ImMessageService implements OnModuleInit, OnModuleDestroy {
 
             await this.persistWithRetry(entry);
           }
-        })()
+        })(),
       );
     }
 
@@ -398,13 +368,7 @@ export class ImMessageService implements OnModuleInit, OnModuleDestroy {
               tenantId: entry.message.tenantId,
             });
 
-            this.cacheAppendResult(
-              entry.streamKey,
-              entry.message.messageId,
-              persisted,
-              true,
-              Date.now()
-            );
+            this.cacheAppendResult(entry.streamKey, entry.message.messageId, persisted, true, Date.now());
             const currentSequence = this.sequenceByStream.get(entry.streamKey) ?? 0;
             if (persisted.message.sequenceId > currentSequence) {
               this.sequenceByStream.set(entry.streamKey, persisted.message.sequenceId);
@@ -425,7 +389,7 @@ export class ImMessageService implements OnModuleInit, OnModuleDestroy {
               this.dropFailedCacheEntry(entry.streamKey, entry.message.messageId);
               const reason = error instanceof Error ? error.message : String(error);
               this.logger.error(
-                `Failed to persist IM message ${entry.message.messageId} (tenant=${entry.message.tenantId}, conversation=${entry.message.conversationId}) after ${ImMessageService.persistMaxRetry} attempts: ${reason}`
+                `Failed to persist IM message ${entry.message.messageId} (tenant=${entry.message.tenantId}, conversation=${entry.message.conversationId}) after ${ImMessageService.persistMaxRetry} attempts: ${reason}`,
               );
               throw error;
             }
@@ -448,11 +412,7 @@ export class ImMessageService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  private async reserveSequence(
-    streamKey: string,
-    tenantId: string,
-    conversationId: string
-  ): Promise<number> {
+  private async reserveSequence(streamKey: string, tenantId: string, conversationId: string): Promise<number> {
     await this.seedSequenceIfNeeded(streamKey, tenantId, conversationId);
     const currentSequence = this.sequenceByStream.get(streamKey) ?? 0;
     const nextSequence = currentSequence + 1;
@@ -460,11 +420,7 @@ export class ImMessageService implements OnModuleInit, OnModuleDestroy {
     return nextSequence;
   }
 
-  private async seedSequenceIfNeeded(
-    streamKey: string,
-    tenantId: string,
-    conversationId: string
-  ): Promise<void> {
+  private async seedSequenceIfNeeded(streamKey: string, tenantId: string, conversationId: string): Promise<void> {
     if (this.sequenceByStream.has(streamKey)) {
       return;
     }
@@ -504,11 +460,7 @@ export class ImMessageService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private getCachedAppendResult(
-    streamKey: string,
-    messageId: string,
-    now: number
-  ): AppendResult | null {
+  private getCachedAppendResult(streamKey: string, messageId: string, now: number): AppendResult | null {
     const streamCache = this.cachedResultByStream.get(streamKey);
     if (!streamCache) {
       return null;
@@ -539,10 +491,9 @@ export class ImMessageService implements OnModuleInit, OnModuleDestroy {
     messageId: string,
     result: AppendResult,
     persisted: boolean,
-    now: number
+    now: number,
   ): void {
-    const streamCache =
-      this.cachedResultByStream.get(streamKey) ?? new Map<string, CachedAppendResult>();
+    const streamCache = this.cachedResultByStream.get(streamKey) ?? new Map<string, CachedAppendResult>();
     streamCache.set(messageId, {
       cachedAtMs: now,
       persisted,
@@ -598,7 +549,7 @@ export class ImMessageService implements OnModuleInit, OnModuleDestroy {
 
     this.lastQueueWarnAtMs = now;
     this.logger.warn(
-      `IM persist queue pressure detected: queueLength=${queueLength}, batchSize=${ImMessageService.persistBatchSize}, concurrency=${ImMessageService.persistConcurrency}.`
+      `IM persist queue pressure detected: queueLength=${queueLength}, batchSize=${ImMessageService.persistBatchSize}, concurrency=${ImMessageService.persistConcurrency}.`,
     );
   }
 
@@ -644,18 +595,14 @@ export class ImMessageService implements OnModuleInit, OnModuleDestroy {
     context: SocketContext,
     messageId: string,
     content: string,
-    identity: AuthIdentity
+    identity: AuthIdentity,
   ): Promise<StoredMessage> {
     const sanitizedContent = this.sanitizeContent(content);
     if (!sanitizedContent) {
       throw new WsException('Edited message content is empty after sanitization.');
     }
 
-    const updated = await this.messageRepository.updateContent(
-      identity.tenantId,
-      messageId,
-      sanitizedContent
-    );
+    const updated = await this.messageRepository.updateContent(identity.tenantId, messageId, sanitizedContent);
 
     if (!updated) {
       throw new WsException('Message not found or already deleted.');
@@ -668,17 +615,9 @@ export class ImMessageService implements OnModuleInit, OnModuleDestroy {
     return updated;
   }
 
-  async deleteMessage(
-    context: SocketContext,
-    messageId: string,
-    identity: AuthIdentity
-  ): Promise<StoredMessage> {
+  async deleteMessage(context: SocketContext, messageId: string, identity: AuthIdentity): Promise<StoredMessage> {
     // First fetch to verify ownership before soft-deleting
-    const latest = await this.messageRepository.getLatest(
-      identity.tenantId,
-      context.conversationId,
-      200
-    );
+    const latest = await this.messageRepository.getLatest(identity.tenantId, context.conversationId, 200);
 
     const target = latest.find((m) => m.messageId === messageId);
     if (!target) {
@@ -700,14 +639,10 @@ export class ImMessageService implements OnModuleInit, OnModuleDestroy {
   async markAsRead(
     context: SocketContext,
     lastReadMessageId: string,
-    identity: AuthIdentity
+    identity: AuthIdentity,
   ): Promise<{ conversationId: string; lastReadMessageId: string; userId: string }> {
     // Find the sequence ID for the referenced message
-    const latest = await this.messageRepository.getLatest(
-      identity.tenantId,
-      context.conversationId,
-      200
-    );
+    const latest = await this.messageRepository.getLatest(identity.tenantId, context.conversationId, 200);
 
     const target = latest.find((m) => m.messageId === lastReadMessageId);
     if (!target) {
@@ -718,7 +653,7 @@ export class ImMessageService implements OnModuleInit, OnModuleDestroy {
       identity.tenantId,
       context.conversationId,
       identity.userId,
-      target.sequenceId
+      target.sequenceId,
     );
 
     return {

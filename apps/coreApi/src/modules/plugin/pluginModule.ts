@@ -11,19 +11,7 @@ import { PluginService } from './pluginService';
 @Module({
   imports: [InfrastructureModule],
   controllers: [PluginController, AdminPluginController],
-  providers: [
-    PluginService,
-    PluginGuard,
-    PluginMarketService,
-    PluginRegistryService,
-    PluginAutoUpdateService,
-  ],
-  exports: [
-    PluginService,
-    PluginGuard,
-    PluginMarketService,
-    PluginRegistryService,
-    PluginAutoUpdateService,
-  ],
+  providers: [PluginService, PluginGuard, PluginMarketService, PluginRegistryService, PluginAutoUpdateService],
+  exports: [PluginService, PluginGuard, PluginMarketService, PluginRegistryService, PluginAutoUpdateService],
 })
 export class PluginModule {}

@@ -53,11 +53,7 @@ export function Timeline({
         <div className="py-8 text-center">
           <p className="text-sm text-destructive">{errorMessage}</p>
           {onRetry ? (
-            <button
-              className="mt-2 text-xs text-primary hover:underline"
-              onClick={onRetry}
-              type="button"
-            >
+            <button className="mt-2 text-xs text-primary hover:underline" onClick={onRetry} type="button">
               {loadMoreLabel}
             </button>
           ) : null}
@@ -80,9 +76,7 @@ export function Timeline({
               )}
               <div className="min-w-0 flex-1">
                 <div className="text-sm">{item.title}</div>
-                {item.subtitle ? (
-                  <div className="mt-0.5 text-xs text-muted-foreground">{item.subtitle}</div>
-                ) : null}
+                {item.subtitle ? <div className="mt-0.5 text-xs text-muted-foreground">{item.subtitle}</div> : null}
                 {item.timestamp ? (
                   <div className="mt-0.5 text-xs text-muted-foreground/70">{item.timestamp}</div>
                 ) : null}

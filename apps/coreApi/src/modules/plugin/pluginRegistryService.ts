@@ -7,10 +7,7 @@ import { ManifestValidationError, validatePluginManifest } from './manifestValid
 
 interface FileSystemLike {
   readFile(path: string, encoding: BufferEncoding): Promise<string>;
-  readdir(
-    path: string,
-    options: { withFileTypes: true }
-  ): Promise<Array<Pick<Dirent, 'isDirectory' | 'name'>>>;
+  readdir(path: string, options: { withFileTypes: true }): Promise<Array<Pick<Dirent, 'isDirectory' | 'name'>>>;
 }
 
 type ModuleLoader = (modulePath: string) => unknown;
@@ -34,24 +31,31 @@ export class PluginRegistryService {
   async scanInstalledPlugins(): Promise<RegisteredPlugin[]> {
     const directoryEntries = await this.readPluginDirectories();
     const registrations: RegisteredPlugin[] = [];
+    this.registry.clear();
 
     for (const entry of directoryEntries) {
-      const packageRoot = join(this.nodeModulesScopePath, entry.name);
-      const manifest = await this.readManifest(packageRoot);
+      try {
+        const packageRoot = join(this.nodeModulesScopePath, entry.name);
+        const manifest = await this.readManifest(packageRoot);
 
-      if (!manifest) {
-        continue;
+        if (!manifest) {
+          continue;
+        }
+
+        const registration: RegisteredPlugin = {
+          id: manifest.id,
+          manifest,
+          packageRoot,
+          routePrefix: this.toRoutePrefix(manifest.id),
+        };
+
+        registrations.push(registration);
+        this.registry.set(registration.id, registration);
+      } catch (error) {
+        this.logger.warn(
+          `Skipping plugin ${entry.name}: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
-
-      const registration: RegisteredPlugin = {
-        id: manifest.id,
-        manifest,
-        packageRoot,
-        routePrefix: this.toRoutePrefix(manifest.id),
-      };
-
-      registrations.push(registration);
-      this.registry.set(registration.id, registration);
     }
 
     registrations.sort((left, right) => left.id.localeCompare(right.id));

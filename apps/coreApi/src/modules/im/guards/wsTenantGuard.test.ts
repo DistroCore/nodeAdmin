@@ -13,7 +13,7 @@ function createExecutionContext(
       headers: Record<string, unknown>;
     };
   },
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
 ): ExecutionContext {
   return {
     switchToWs: () => ({
@@ -205,7 +205,7 @@ describe('WsTenantGuard', () => {
   it('rejects malformed authorization headers when no auth token is provided', () => {
     const guard = new WsTenantGuard(
       { verifyAccessPrincipal: vi.fn() } as unknown as AuthService,
-      { resolve: vi.fn() } as unknown as TenantContextResolver
+      { resolve: vi.fn() } as unknown as TenantContextResolver,
     );
     const client = {
       data: {},

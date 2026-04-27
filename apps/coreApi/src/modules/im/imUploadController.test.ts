@@ -1,10 +1,8 @@
-import {
-  BadRequestException,
-  PayloadTooLargeException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { BadRequestException, PayloadTooLargeException, UnauthorizedException } from '@nestjs/common';
+import type { FastifyRequest } from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { setupTestEnv } from '../../__tests__/helpers';
+import type { AuthIdentity } from '../auth/authIdentity';
 
 setupTestEnv();
 
@@ -26,20 +24,33 @@ interface MockMultipartFile {
   toBuffer: ReturnType<typeof vi.fn>;
 }
 
-function createRequest(fileResult: MockMultipartFile | null | Error) {
-  return {
-    file: vi.fn(async () => {
+interface MockUploadRequest {
+  file: (options?: unknown) => Promise<MockMultipartFile | null>;
+  lastOptions?: unknown;
+}
+
+const mockUser: AuthIdentity = {
+  jti: 'jti-1',
+  principalType: 'user',
+  roles: ['user'],
+  tenantId: 'tenant-1',
+  userId: 'user-1',
+};
+
+function createRequest(fileResult: MockMultipartFile | null | Error): MockUploadRequest {
+  const request: MockUploadRequest = {
+    file: vi.fn(async (options?: unknown) => {
+      request.lastOptions = options;
+
       if (fileResult instanceof Error) {
         throw fileResult;
       }
 
       return fileResult;
     }),
-    lastOptions: undefined as unknown,
-  } as {
-    file: ReturnType<typeof vi.fn>;
-    lastOptions?: unknown;
   };
+
+  return request;
 }
 
 describe('ImUploadController', () => {
@@ -58,12 +69,7 @@ describe('ImUploadController', () => {
       toBuffer: vi.fn().mockResolvedValue(buffer),
     });
 
-    const result = await controller.upload(request as any, {
-      jti: 'jti-1',
-      roles: ['user'],
-      tenantId: 'tenant-1',
-      userId: 'user-1',
-    });
+    const result = await controller.upload(request as unknown as FastifyRequest, mockUser);
 
     expect(request.file).toHaveBeenCalledWith({
       limits: { fileSize: expect.any(Number) },
@@ -84,14 +90,9 @@ describe('ImUploadController', () => {
       toBuffer: vi.fn(),
     });
 
-    await expect(
-      controller.upload(request as any, {
-        jti: 'jti-1',
-        roles: ['user'],
-        tenantId: 'tenant-1',
-        userId: 'user-1',
-      })
-    ).rejects.toThrow(BadRequestException);
+    await expect(controller.upload(request as unknown as FastifyRequest, mockUser)).rejects.toThrow(
+      BadRequestException,
+    );
 
     expect(writeFile).not.toHaveBeenCalled();
   });
@@ -100,14 +101,9 @@ describe('ImUploadController', () => {
     const error = Object.assign(new Error('File too large'), { code: 'FST_REQ_FILE_TOO_LARGE' });
     const request = createRequest(error);
 
-    await expect(
-      controller.upload(request as any, {
-        jti: 'jti-1',
-        roles: ['user'],
-        tenantId: 'tenant-1',
-        userId: 'user-1',
-      })
-    ).rejects.toThrow(PayloadTooLargeException);
+    await expect(controller.upload(request as unknown as FastifyRequest, mockUser)).rejects.toThrow(
+      PayloadTooLargeException,
+    );
 
     expect(mkdir).not.toHaveBeenCalled();
     expect(writeFile).not.toHaveBeenCalled();
@@ -120,9 +116,9 @@ describe('ImUploadController', () => {
       toBuffer: vi.fn().mockResolvedValue(Buffer.from('image-bytes')),
     });
 
-    await expect(controller.upload(request as any, undefined as any)).rejects.toThrow(
-      UnauthorizedException
-    );
+    await expect(
+      controller.upload(request as unknown as FastifyRequest, undefined as unknown as AuthIdentity),
+    ).rejects.toThrow(UnauthorizedException);
 
     expect(request.file).not.toHaveBeenCalled();
     expect(writeFile).not.toHaveBeenCalled();

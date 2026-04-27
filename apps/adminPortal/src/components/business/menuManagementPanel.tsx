@@ -8,6 +8,7 @@ import { ConfirmDialog } from '@/components/ui/dialog';
 import { DataTable } from '@/components/ui/dataTable';
 import { useToast } from '@/components/ui/toast';
 import { useApiClient } from '@/hooks/useApiClient';
+import { usePermissionStore } from '@/stores/usePermissionStore';
 import { MenuItem } from '@nodeadmin/shared-types';
 import { NavIcon } from '@/app/layout/navIcon';
 import { MenuFormDialog } from './menuFormDialog';
@@ -39,6 +40,7 @@ export function MenuManagementPanel(): JSX.Element {
   const { formatMessage: t } = useIntl();
   const apiClient = useApiClient();
   const toast = useToast();
+  const canManage = usePermissionStore((s) => s.hasPermission('menus:manage'));
   const [editingMenu, setEditingMenu] = useState<MenuItem | undefined>(undefined);
   const [childParentId, setChildParentId] = useState<string | undefined>(undefined);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -105,13 +107,15 @@ export function MenuManagementPanel(): JSX.Element {
             <CardTitle className="text-base">{t({ id: 'menus.title' })}</CardTitle>
             <CardDescription>{t({ id: 'menus.desc' })}</CardDescription>
           </div>
-          <Button
-            className="hidden h-11 w-full md:flex md:h-9 md:w-auto"
-            onClick={() => setShowCreateDialog(true)}
-            size="sm"
-          >
-            {t({ id: 'menus.create' })}
-          </Button>
+          {canManage && (
+            <Button
+              className="hidden h-11 w-full md:flex md:h-9 md:w-auto"
+              onClick={() => setShowCreateDialog(true)}
+              size="sm"
+            >
+              {t({ id: 'menus.create' })}
+            </Button>
+          )}
         </CardHeader>
 
         <DataTable<TreeNode>
@@ -119,10 +123,7 @@ export function MenuManagementPanel(): JSX.Element {
             {
               header: t({ id: 'menus.colName' }),
               cell: (node) => (
-                <div
-                  className="flex items-center gap-2"
-                  style={{ paddingLeft: `${node.level * 20}px` }}
-                >
+                <div className="flex items-center gap-2" style={{ paddingLeft: `${node.level * 20}px` }}>
                   <NavIcon name={node.menu.icon} />
                   <span className="font-medium">{node.menu.name}</span>
                 </div>
@@ -130,9 +131,7 @@ export function MenuManagementPanel(): JSX.Element {
             },
             {
               header: t({ id: 'menus.colPath' }),
-              cell: (node) => (
-                <span className="font-mono text-xs text-muted-foreground">{node.menu.path}</span>
-              ),
+              cell: (node) => <span className="font-mono text-xs text-muted-foreground">{node.menu.path}</span>,
               className: 'hidden md:table-cell',
             },
             {
@@ -154,28 +153,32 @@ export function MenuManagementPanel(): JSX.Element {
               className: 'text-right',
               cell: (node) => (
                 <div className="flex flex-col items-end gap-1 md:flex-row md:justify-end md:gap-3">
-                  <button
-                    className="flex min-h-11 min-w-11 items-center justify-center text-sm text-primary hover:underline"
-                    onClick={() => openEditDialog(node.menu)}
-                    type="button"
-                  >
-                    {t({ id: 'menus.edit' })}
-                  </button>
-                  <button
-                    className="flex min-h-11 min-w-11 items-center justify-center text-sm text-primary hover:underline"
-                    onClick={() => openCreateChildDialog(node.menu.id)}
-                    type="button"
-                  >
-                    {t({ id: 'menus.createChild' })}
-                  </button>
-                  <button
-                    className="flex min-h-11 min-w-11 items-center justify-center text-sm text-destructive hover:underline"
-                    disabled={deleteMutation.isPending}
-                    onClick={() => openDeleteConfirm(node.menu)}
-                    type="button"
-                  >
-                    {t({ id: 'menus.delete' })}
-                  </button>
+                  {canManage && (
+                    <>
+                      <button
+                        className="flex min-h-11 min-w-11 items-center justify-center text-sm text-primary hover:underline"
+                        onClick={() => openEditDialog(node.menu)}
+                        type="button"
+                      >
+                        {t({ id: 'menus.edit' })}
+                      </button>
+                      <button
+                        className="flex min-h-11 min-w-11 items-center justify-center text-sm text-primary hover:underline"
+                        onClick={() => openCreateChildDialog(node.menu.id)}
+                        type="button"
+                      >
+                        {t({ id: 'menus.createChild' })}
+                      </button>
+                      <button
+                        className="flex min-h-11 min-w-11 items-center justify-center text-sm text-destructive hover:underline"
+                        disabled={deleteMutation.isPending}
+                        onClick={() => openDeleteConfirm(node.menu)}
+                        type="button"
+                      >
+                        {t({ id: 'menus.delete' })}
+                      </button>
+                    </>
+                  )}
                 </div>
               ),
             },
@@ -191,11 +194,13 @@ export function MenuManagementPanel(): JSX.Element {
         />
       </Card>
 
-      <div className="fixed bottom-0 left-0 right-0 border-t bg-background p-4 md:hidden">
-        <Button className="h-11 w-full" onClick={() => setShowCreateDialog(true)}>
-          {t({ id: 'menus.create' })}
-        </Button>
-      </div>
+      {canManage && (
+        <div className="fixed bottom-0 left-0 right-0 border-t bg-background p-4 md:hidden">
+          <Button className="h-11 w-full" onClick={() => setShowCreateDialog(true)}>
+            {t({ id: 'menus.create' })}
+          </Button>
+        </div>
+      )}
 
       <MenuFormDialog
         key={editingMenu?.id ?? 'create'}

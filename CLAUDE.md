@@ -6,6 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **nodeAdmin** is an enterprise-grade, multi-tenant SaaS middleware platform with an IM (Instant Messaging) module. It is organized as an npm workspace monorepo.
 
+## Branch Strategy (Git Flow)
+
+| Branch    | Purpose               | Rules                                                                |
+| --------- | --------------------- | -------------------------------------------------------------------- |
+| `master`  | **Stable / Release**  | Only merged from `develop` at milestone completion; no direct pushes |
+| `develop` | **Development trunk** | All daily development, PR merges, and CI validation happen here      |
+
+- All AI agents and developers **default to working on `develop`**
+- After a milestone, the tech lead merges `develop` → `master` (preferably via PR + review)
+- Hotfixes branch off `master`, fix merges back to both `master` and `develop`
+
 ## Commands
 
 All commands are run from the repo root unless noted.
@@ -27,9 +38,29 @@ npm run build            # Build both CoreApi (tsc → CommonJS) and AdminPortal
 
 ```bash
 npm run test:coreApi    # Run backend unit tests with Vitest
+npm run test:adminPortal # Run frontend unit tests with Vitest
 npm run test:e2e:web     # Run Playwright E2E tests for AdminPortal
-npm run lint             # ESLint on all apps/**/*.{ts,tsx} — zero warnings allowed
+npm run lint             # ESLint on all apps/**/*.{ts,tsx} — zero warnings/errors allowed
 npm run format:check     # Prettier format check
+npm run ci:local         # Full local CI: format + lint + unit tests + build (+ structural checks with --full)
+```
+
+### Structural Checks
+
+```bash
+npm run check:naming     # Validate directory/file naming conventions
+npm run check:layers     # Enforce controller→service→repository layering
+npm run check:docs       # Detect doc drift (stale dates, missing index refs)
+npm run cleanup:ai       # Scan for AI-generated code smells
+```
+
+### Operations & Diagnostics
+
+```bash
+npm run status           # Print project status card (milestones, infra, open TODOs)
+npm run diagnose         # Runtime service health check (ports, Docker containers)
+npm run playbook         # Fault query playbook (connection spikes, Kafka lag, Redis health)
+npm run smoke:mvp        # Automated MVP release smoke test
 ```
 
 ### Infrastructure
@@ -121,20 +152,20 @@ src/
 
 ## Naming Conventions (Enforced)
 
-| Entity | Convention | Example |
-|--------|-----------|---------|
-| Directories | `lowercase` | `components/`, `modules/`, `business/` |
-| Business files | `lowerCamelCase` | `messagePanel.tsx`, `conversationService.ts` |
-| Framework/config files | Official names | `package.json`, `vite.config.ts`, `tsconfig.json` |
-| React components (export) | `PascalCase` function | `export function ManagementOverviewPanel()` |
-| Variables & functions | `camelCase` | |
-| Constants | `UPPER_SNAKE_CASE` | |
-| Types & interfaces | `PascalCase` | `interface UserProfile`, `type MessageEvent` |
+| Entity                    | Convention            | Example                                           |
+| ------------------------- | --------------------- | ------------------------------------------------- |
+| Directories               | `lowercase`           | `components/`, `modules/`, `business/`            |
+| Business files            | `lowerCamelCase`      | `messagePanel.tsx`, `conversationService.ts`      |
+| Framework/config files    | Official names        | `package.json`, `vite.config.ts`, `tsconfig.json` |
+| React components (export) | `PascalCase` function | `export function ManagementOverviewPanel()`       |
+| Variables & functions     | `camelCase`           |                                                   |
+| Constants                 | `UPPER_SNAKE_CASE`    |                                                   |
+| Types & interfaces        | `PascalCase`          | `interface UserProfile`, `type MessageEvent`      |
 
 ## Coding Rules
 
-- **No `any` type** — unless absolutely necessary with an explanatory comment
-- **No `console.log`** — use structured logging
+- **No `any` type** — enforced by ESLint `no-explicit-any: error`; zero tolerance
+- **No `console.log`** — enforced by ESLint `no-console: error` (console.warn/error/info allowed); use structured logging
 - **No hardcoded** `tenantId`, `userId`, `conversationId`, or API base URLs
 - **No double-writes** — always use the outbox transaction pattern for Kafka events
 - Do not auto-install new dependencies or auto-commit/push

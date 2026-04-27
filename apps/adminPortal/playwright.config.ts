@@ -18,17 +18,24 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'], channel: 'chrome' },
     },
-    {
-      name: 'mobile-chrome',
-      use: { ...devices['Pixel 5'] },
-    },
+    // Mobile tests moved to mobile.spec.ts with test.use(devices['Pixel 5'])
+    // so they run within the single chromium project — avoids doubling CI time
   ],
-  webServer: {
-    command: 'npm run dev -- --host 127.0.0.1 --port 3000',
-    port: 3000,
-    reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
-  },
+  webServer: process.env.CI
+    ? {
+        // In CI, serve the production build with preview — no HMR WebSocket,
+        // no dev server noise, faster startup, mirrors real deployment
+        command: 'npx vite preview --host 127.0.0.1 --port 3000',
+        port: 3000,
+        reuseExistingServer: false,
+        timeout: 30_000,
+      }
+    : {
+        command: 'npm run dev -- --host 127.0.0.1 --port 3000',
+        port: 3000,
+        reuseExistingServer: true,
+        timeout: 60_000,
+      },
 });

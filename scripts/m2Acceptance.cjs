@@ -45,8 +45,8 @@ async function run() {
         steps,
       },
       null,
-      2
-    )
+      2,
+    ),
   );
 
   if (result === 'fail') {

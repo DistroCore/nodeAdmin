@@ -56,11 +56,7 @@ export class PluginSandboxModule {
 
   static validatePermissions(permissions: string[]): void {
     for (const permission of permissions) {
-      if (
-        !PLUGIN_PERMISSION_WHITELIST.includes(
-          permission as (typeof PLUGIN_PERMISSION_WHITELIST)[number]
-        )
-      ) {
+      if (!PLUGIN_PERMISSION_WHITELIST.includes(permission as (typeof PLUGIN_PERMISSION_WHITELIST)[number])) {
         throw new Error(`Plugin permission '${permission}' is not allowed`);
       }
     }

@@ -23,7 +23,6 @@ export const navItems: NavItem[] = [
     labelId: 'nav.im',
     path: '/im',
     permission: 'im:view',
-    pluginCode: 'im',
   },
   {
     icon: 'users',

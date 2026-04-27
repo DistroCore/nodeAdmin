@@ -139,12 +139,7 @@ Examples:
 
     // Register in appModule
     if (!noRegister) {
-      const result = appendToAppModule(
-        config.entityNameLower,
-        paths.modulesDir,
-        paths.appModulePath,
-        dryRun
-      );
+      const result = appendToAppModule(config.entityNameLower, paths.modulesDir, paths.appModulePath, dryRun);
       if (result) {
         console.log(dryRun ? `  Would add: ${result}` : `  Registered: ${result}`);
       } else {
@@ -173,15 +168,9 @@ Examples:
     // i18n keys
     const displayColumns = table.columns.filter(
       (c) =>
-        ![
-          'id',
-          'tenantId',
-          'createdAt',
-          'updatedAt',
-          'passwordHash',
-          'passwordSalt',
-          'configJson',
-        ].includes(c.propertyName) && !c.isAutoManaged
+        !['id', 'tenantId', 'createdAt', 'updatedAt', 'passwordHash', 'passwordSalt', 'configJson'].includes(
+          c.propertyName,
+        ) && !c.isAutoManaged,
     );
     const formColumns = table.columns.filter((c) => !shouldExcludeFromCreateDto(c));
 
@@ -190,7 +179,7 @@ Examples:
       displayColumns,
       formColumns,
       paths.frontendPaths.i18nDir,
-      dryRun
+      dryRun,
     );
     if (dryRun) {
       console.log('\n  i18n keys (en):');
@@ -203,16 +192,12 @@ Examples:
 
     // Registration (navConfig + route + shared-types)
     if (!noRegister) {
-      const navResult = appendToNavConfig(
-        config.entityNameLower,
-        paths.frontendPaths.navConfigPath,
-        dryRun
-      );
+      const navResult = appendToNavConfig(config.entityNameLower, paths.frontendPaths.navConfigPath, dryRun);
       if (navResult) {
         console.log(
           dryRun
             ? `  Would add to navConfig.ts: ${config.entityNameLower}`
-            : `  navConfig.ts: added ${config.entityNameLower}`
+            : `  navConfig.ts: added ${config.entityNameLower}`,
         );
       } else {
         console.log('  navConfig.ts: already registered (skipped)');
@@ -222,14 +207,10 @@ Examples:
         config.entityName,
         config.entityNameLower,
         paths.frontendPaths.appRootPath,
-        dryRun
+        dryRun,
       );
       if (routeResult) {
-        console.log(
-          dryRun
-            ? `  Would add route: /${config.entityNameLower}s`
-            : `  appRoot.tsx: ${routeResult}`
-        );
+        console.log(dryRun ? `  Would add route: /${config.entityNameLower}s` : `  appRoot.tsx: ${routeResult}`);
       } else {
         console.log('  appRoot.tsx: already registered (skipped)');
       }
@@ -239,7 +220,7 @@ Examples:
         config.entityNameLower,
         table,
         paths.frontendPaths.sharedTypesPath,
-        dryRun
+        dryRun,
       );
       if (typesResult) {
         console.log(dryRun ? `  Would add: ${typesResult}` : `  shared-types: ${typesResult}`);

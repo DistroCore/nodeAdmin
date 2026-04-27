@@ -40,7 +40,7 @@ export async function createApp(): Promise<NestFastifyApplication> {
       requestTimeout: runtimeConfig.fastify.requestTimeout,
       bodyLimit: runtimeConfig.fastify.bodyLimit,
       maxParamLength: runtimeConfig.fastify.maxParamLength,
-    })
+    }),
   );
 
   app.setGlobalPrefix('api/v1', {
@@ -69,7 +69,7 @@ export async function createApp(): Promise<NestFastifyApplication> {
       whitelist: true,
       transform: true,
       forbidNonWhitelisted: true,
-    })
+    }),
   );
   app.useGlobalFilters(new UnifiedExceptionFilter());
   app.enableShutdownHooks();
@@ -95,11 +95,7 @@ export async function createApp(): Promise<NestFastifyApplication> {
     const limit = isAuthPath
       ? runtimeConfig.rateLimit.authRequestsPerMinute
       : runtimeConfig.rateLimit.httpRequestsPerMinute;
-    const decision = rateLimiter.check(
-      `${request.ip}::${isAuthPath ? 'auth' : 'http'}`,
-      limit,
-      60_000
-    );
+    const decision = rateLimiter.check(`${request.ip}::${isAuthPath ? 'auth' : 'http'}`, limit, 60_000);
 
     reply.header('X-RateLimit-Limit', String(decision.limit));
     reply.header('X-RateLimit-Remaining', String(decision.remaining));
@@ -120,7 +116,7 @@ export async function createApp(): Promise<NestFastifyApplication> {
 
   if (runtimeConfig.security.enabled) {
     logger.log(
-      `HTTP rate limiting enabled (general=${runtimeConfig.rateLimit.httpRequestsPerMinute}/min, auth=${runtimeConfig.rateLimit.authRequestsPerMinute}/min).`
+      `HTTP rate limiting enabled (general=${runtimeConfig.rateLimit.httpRequestsPerMinute}/min, auth=${runtimeConfig.rateLimit.authRequestsPerMinute}/min).`,
     );
   }
 

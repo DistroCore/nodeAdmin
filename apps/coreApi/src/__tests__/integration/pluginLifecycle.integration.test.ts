@@ -7,14 +7,8 @@ import { createIntegrationContext, type IntegrationContext } from './integration
 
 const FIXTURE_PLUGIN_ID = '@nodeadmin/plugin-lifecycle-fixture';
 const FIXTURE_VERSION = '1.0.0';
-const FIXTURE_ROOT = resolve(
-  process.cwd(),
-  'apps/coreApi/src/__tests__/integration/fixtures/pluginLifecycle'
-);
-const FIXTURE_LINK_PATH = resolve(
-  process.cwd(),
-  'node_modules/@nodeadmin/plugin-lifecycle-fixture'
-);
+const FIXTURE_ROOT = resolve(process.cwd(), 'apps/coreApi/src/__tests__/integration/fixtures/pluginLifecycle');
+const FIXTURE_LINK_PATH = resolve(process.cwd(), 'node_modules/@nodeadmin/plugin-lifecycle-fixture');
 
 describe('plugin lifecycle integration', () => {
   let context: IntegrationContext;
@@ -22,10 +16,7 @@ describe('plugin lifecycle integration', () => {
   let uninstallMarkerPath: string;
 
   beforeAll(async () => {
-    uninstallMarkerPath = join(
-      await mkdtemp(join(tmpdir(), 'nodeadmin-plugin-lifecycle-')),
-      'uninstall.json'
-    );
+    uninstallMarkerPath = join(await mkdtemp(join(tmpdir(), 'nodeadmin-plugin-lifecycle-')), 'uninstall.json');
 
     await symlink(FIXTURE_ROOT, FIXTURE_LINK_PATH, 'dir').catch((error: NodeJS.ErrnoException) => {
       if (error.code !== 'EEXIST') {
@@ -77,7 +68,7 @@ describe('plugin lifecycle integration', () => {
       `SELECT enabled, installed_version, config
        FROM tenant_plugins
        WHERE tenant_id = $1 AND plugin_name = $2`,
-      ['default', FIXTURE_PLUGIN_ID]
+      ['default', FIXTURE_PLUGIN_ID],
     );
 
     expect(installedRow.rows[0]).toMatchObject({
@@ -96,7 +87,7 @@ describe('plugin lifecycle integration', () => {
       `SELECT 1
        FROM tenant_plugins
        WHERE tenant_id = $1 AND plugin_name = $2`,
-      ['default', FIXTURE_PLUGIN_ID]
+      ['default', FIXTURE_PLUGIN_ID],
     );
 
     expect(remainingRow.rowCount).toBe(0);
@@ -131,7 +122,7 @@ async function seedMarketplacePlugin(pool: Pool): Promise<void> {
       'Integration fixture for plugin install and uninstall lifecycle hooks',
       'nodeAdmin Test Suite',
       FIXTURE_VERSION,
-    ]
+    ],
   );
 
   await pool.query(
@@ -146,6 +137,6 @@ async function seedMarketplacePlugin(pool: Pool): Promise<void> {
       'https://example.invalid/plugin-lifecycle-fixture.js',
       `${FIXTURE_PLUGIN_ID}@${FIXTURE_VERSION}`,
       '>=0.1.0',
-    ]
+    ],
   );
 }

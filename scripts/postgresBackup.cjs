@@ -2,9 +2,7 @@ const cp = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const databaseUrl = (
-  process.env.DATABASE_URL || 'postgres://nodeadmin:nodeadmin@localhost:55432/nodeadmin'
-).trim();
+const databaseUrl = (process.env.DATABASE_URL || 'postgres://nodeadmin:nodeadmin@localhost:55432/nodeadmin').trim();
 const backupDir = path.resolve(__dirname, '..', 'Backups');
 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 const outputPath = path.join(backupDir, `nodeadmin-${timestamp}.sql`);
@@ -40,8 +38,8 @@ try {
         result: 'ok',
       },
       null,
-      2
-    )
+      2,
+    ),
   );
 } catch (error) {
   console.error('[postgresBackup] failed:', error);

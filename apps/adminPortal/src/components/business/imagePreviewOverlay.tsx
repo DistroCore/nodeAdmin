@@ -40,13 +40,7 @@ export function ImagePreviewOverlay({
           <Button disabled={uploading} onClick={onConfirm} size="sm" type="button">
             {uploading ? t({ id: 'im.uploading' }) : t({ id: 'im.sendImage' })}
           </Button>
-          <Button
-            disabled={uploading}
-            onClick={onCancel}
-            size="sm"
-            type="button"
-            variant="secondary"
-          >
+          <Button disabled={uploading} onClick={onCancel} size="sm" type="button" variant="secondary">
             {t({ id: 'common.cancel' })}
           </Button>
         </div>

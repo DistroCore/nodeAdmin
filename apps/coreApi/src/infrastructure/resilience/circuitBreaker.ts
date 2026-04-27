@@ -26,24 +26,15 @@ interface CircuitBreakerMetrics {
 
 export class CircuitBreaker {
   private static readonly meter = metrics.getMeter('coreApi-resilience');
-  private static readonly stateGauge = CircuitBreaker.meter.createObservableGauge(
-    'circuit_breaker_state',
-    {
-      description: 'Circuit breaker state (0=CLOSED, 1=OPEN, 2=HALF_OPEN)',
-    }
-  );
-  private static readonly tripsCounter = CircuitBreaker.meter.createCounter(
-    'circuit_breaker_trips_total',
-    {
-      description: 'Total number of circuit breaker trips',
-    }
-  );
-  private static readonly requestsCounter = CircuitBreaker.meter.createCounter(
-    'circuit_breaker_requests_total',
-    {
-      description: 'Total requests through circuit breaker',
-    }
-  );
+  private static readonly stateGauge = CircuitBreaker.meter.createObservableGauge('circuit_breaker_state', {
+    description: 'Circuit breaker state (0=CLOSED, 1=OPEN, 2=HALF_OPEN)',
+  });
+  private static readonly tripsCounter = CircuitBreaker.meter.createCounter('circuit_breaker_trips_total', {
+    description: 'Total number of circuit breaker trips',
+  });
+  private static readonly requestsCounter = CircuitBreaker.meter.createCounter('circuit_breaker_requests_total', {
+    description: 'Total requests through circuit breaker',
+  });
 
   private readonly logger: Logger;
   private state: CircuitBreakerState = CircuitBreakerState.CLOSED;
@@ -83,9 +74,7 @@ export class CircuitBreaker {
           result: 'rejected',
           state: 'half_open',
         });
-        throw new Error(
-          `Circuit breaker is HALF_OPEN and max attempts reached for ${this.config.name}`
-        );
+        throw new Error(`Circuit breaker is HALF_OPEN and max attempts reached for ${this.config.name}`);
       }
       this.halfOpenAttempts += 1;
     }
@@ -173,7 +162,7 @@ export class CircuitBreaker {
     this.metrics.lastStateChange = Date.now();
 
     this.logger.log(
-      `Circuit breaker transitioned: ${CircuitBreakerState[oldState]} → ${CircuitBreakerState[newState]}`
+      `Circuit breaker transitioned: ${CircuitBreakerState[oldState]} → ${CircuitBreakerState[newState]}`,
     );
   }
 

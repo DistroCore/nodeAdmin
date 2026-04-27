@@ -6,9 +6,7 @@ const { Kafka } = require('kafkajs');
 const defaultBaseUrl = 'http://127.0.0.1:11451';
 const baseUrl = (process.env.CORE_API_BASE_URL || defaultBaseUrl).trim();
 const socketUrl = (process.env.CORE_API_SOCKET_URL || baseUrl).trim();
-const databaseUrl = (
-  process.env.DATABASE_URL || 'postgres://nodeadmin:nodeadmin@localhost:55432/nodeadmin'
-).trim();
+const databaseUrl = (process.env.DATABASE_URL || 'postgres://nodeadmin:nodeadmin@localhost:55432/nodeadmin').trim();
 const kafkaBrokers = (process.env.KAFKA_BROKERS || 'localhost:9092')
   .split(',')
   .map((value) => value.trim())
@@ -162,7 +160,7 @@ async function run() {
             return;
           }
           resolve();
-        }
+        },
       );
     });
 
@@ -192,7 +190,7 @@ async function run() {
           ORDER BY created_at DESC
           LIMIT 1;
         `,
-        [messageId]
+        [messageId],
       );
       outboxRow = queryResult.rows[0];
     } finally {
@@ -219,8 +217,8 @@ async function run() {
           retryCount: outboxRow.retry_count,
         },
         null,
-        2
-      )
+        2,
+      ),
     );
   } finally {
     socket.disconnect();

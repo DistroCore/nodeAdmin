@@ -16,6 +16,10 @@ interface TenantItem {
   slug: string;
 }
 
+function resolveApiBaseUrl(): string {
+  return (import.meta.env.VITE_CORE_API_BASE_URL as string | undefined)?.trim() || '';
+}
+
 export function RegisterPage(): JSX.Element {
   const { formatMessage: t, locale } = useIntl();
   const navigate = useNavigate();
@@ -23,7 +27,7 @@ export function RegisterPage(): JSX.Element {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [tenantId, setTenantId] = useState('default');
+  const [tenantId, setTenantId] = useState('');
   const [tenants, setTenants] = useState<TenantItem[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -33,10 +37,7 @@ export function RegisterPage(): JSX.Element {
   const setLocale = useUiStore((s) => s.setLocale);
 
   useEffect(() => {
-    const apiBaseUrl =
-      (import.meta.env.VITE_CORE_API_BASE_URL as string | undefined)?.trim() ??
-      `http://${window.location.hostname}:11451`;
-    new ApiClient({ baseUrl: apiBaseUrl })
+    new ApiClient({ baseUrl: resolveApiBaseUrl() })
       .get<TenantItem[]>('/api/v1/tenants')
       .then(setTenants)
       .catch(() => {
@@ -47,16 +48,17 @@ export function RegisterPage(): JSX.Element {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!tenantId.trim()) {
+      setError('Tenant ID is required.');
+      return;
+    }
     if (password !== confirmPassword) {
       setError(t({ id: 'auth.passwordMismatch' }));
       return;
     }
     setLoading(true);
     try {
-      const apiBaseUrl =
-        (import.meta.env.VITE_CORE_API_BASE_URL as string | undefined)?.trim() ??
-        `http://${window.location.hostname}:11451`;
-      const client = new ApiClient({ baseUrl: apiBaseUrl });
+      const client = new ApiClient({ baseUrl: resolveApiBaseUrl() });
       const data = await client.post<{
         accessToken: string;
         identity: { tenantId: string; userId: string };
@@ -115,13 +117,7 @@ export function RegisterPage(): JSX.Element {
             </div>
           ) : null}
           <FormField label={t({ id: 'auth.name' })} htmlFor="reg-name">
-            <Input
-              autoComplete="name"
-              id="reg-name"
-              onChange={(e) => setName(e.target.value)}
-              required
-              value={name}
-            />
+            <Input autoComplete="name" id="reg-name" onChange={(e) => setName(e.target.value)} required value={name} />
           </FormField>
           <FormField label={t({ id: 'auth.email' })} htmlFor="reg-email">
             <Input
@@ -151,13 +147,7 @@ export function RegisterPage(): JSX.Element {
                 type="button"
               >
                 {showPassword ? (
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path
                       d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L6.59 6.59m7.532 7.532l3.29 3.29M3 3l18 18"
                       strokeLinecap="round"
@@ -165,18 +155,8 @@ export function RegisterPage(): JSX.Element {
                     />
                   </svg>
                 ) : (
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round" />
                     <path
                       d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
                       strokeLinecap="round"
@@ -232,11 +212,7 @@ export function RegisterPage(): JSX.Element {
                     strokeWidth="4"
                     fill="none"
                   />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
                 {t({ id: 'common.loading' })}
               </>

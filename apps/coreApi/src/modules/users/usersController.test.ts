@@ -1,4 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { UsersController } from './usersController';
+import { UsersService } from './usersService';
+import { CreateUserDto } from './dto/createUserDto';
+import { UpdateUserDto } from './dto/updateUserDto';
+import { ListUsersQueryDto } from './dto/listUsersQueryDto';
 
 function createMockUsersService() {
   return {
@@ -10,35 +15,38 @@ function createMockUsersService() {
   };
 }
 
-// Import controller after defining helpers
-import { UsersController } from './usersController';
-
 describe('UsersController', () => {
   let controller: UsersController;
   let service: ReturnType<typeof createMockUsersService>;
 
   beforeEach(() => {
     service = createMockUsersService();
-    controller = new UsersController(service as any);
+    controller = new UsersController(service as unknown as UsersService);
   });
 
   describe('list', () => {
     it('should pass query params to service with default tenantId', async () => {
       service.list.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 });
-      await controller.list({ page: 1, pageSize: 10 } as any);
+      const query: ListUsersQueryDto = { page: 1, pageSize: 10 };
+
+      await controller.list(query);
       expect(service.list).toHaveBeenCalledWith('default', 1, 10, undefined);
     });
 
     it('should pass tenantId from query', async () => {
       service.list.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 });
-      await controller.list({ tenantId: 't-1', page: 2, pageSize: 5, search: 'test' } as any);
+      const query: ListUsersQueryDto = { tenantId: 't-1', page: 2, pageSize: 5, search: 'test' };
+
+      await controller.list(query);
       expect(service.list).toHaveBeenCalledWith('t-1', 2, 5, 'test');
     });
 
     it('should forward pagination boundary values unchanged', async () => {
       service.list.mockResolvedValue({ items: [], total: 0, page: 999, pageSize: 100 });
 
-      await controller.list({ tenantId: 't-1', page: 999, pageSize: 100 } as any);
+      const query: ListUsersQueryDto = { tenantId: 't-1', page: 999, pageSize: 100 };
+
+      await controller.list(query);
 
       expect(service.list).toHaveBeenCalledWith('t-1', 999, 100, undefined);
     });
@@ -46,7 +54,9 @@ describe('UsersController', () => {
     it('should preserve an empty-string search term', async () => {
       service.list.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 });
 
-      await controller.list({ tenantId: 't-1', page: 1, pageSize: 20, search: '' } as any);
+      const query: ListUsersQueryDto = { tenantId: 't-1', page: 1, pageSize: 20, search: '' };
+
+      await controller.list(query);
 
       expect(service.list).toHaveBeenCalledWith('t-1', 1, 20, '');
     });
@@ -72,25 +82,29 @@ describe('UsersController', () => {
   describe('create', () => {
     it('should delegate to service with dto fields', async () => {
       service.create.mockResolvedValue({ id: 'u-1' });
-      await controller.create({
+      const dto: CreateUserDto = {
         tenantId: 't-1',
         email: 'a@b.com',
         password: 'p',
         name: 'N',
         roleIds: ['r-1'],
-      } as any);
+      };
+
+      await controller.create(dto);
       expect(service.create).toHaveBeenCalledWith('t-1', 'a@b.com', 'p', 'N', ['r-1']);
     });
 
     it('should preserve omitted optional roleIds on create', async () => {
       service.create.mockResolvedValue({ id: 'u-2' });
 
-      await controller.create({
+      const dto: CreateUserDto = {
         tenantId: 't-1',
         email: 'b@c.com',
         password: 'p',
         name: 'No Roles',
-      } as any);
+      };
+
+      await controller.create(dto);
 
       expect(service.create).toHaveBeenCalledWith('t-1', 'b@c.com', 'p', 'No Roles', undefined);
     });
@@ -99,7 +113,9 @@ describe('UsersController', () => {
   describe('update', () => {
     it('should delegate to service with mapped data', async () => {
       service.update.mockResolvedValue({ id: 'u-1' });
-      await controller.update('u-1', { name: 'New', isActive: true } as any, 't-1');
+      const dto: UpdateUserDto = { name: 'New', isActive: true };
+
+      await controller.update('u-1', dto, 't-1');
       expect(service.update).toHaveBeenCalledWith('t-1', 'u-1', {
         name: 'New',
         avatar: undefined,
@@ -113,8 +129,8 @@ describe('UsersController', () => {
 
       await controller.update(
         'u-1',
-        { avatar: 'avatar.png', isActive: false, roleIds: [] } as any,
-        't-1'
+        { avatar: 'avatar.png', isActive: false, roleIds: [] } satisfies UpdateUserDto,
+        't-1',
       );
 
       expect(service.update).toHaveBeenCalledWith('t-1', 'u-1', {

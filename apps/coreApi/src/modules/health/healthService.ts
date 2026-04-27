@@ -31,11 +31,7 @@ export class HealthService {
   constructor(private readonly databaseService: DatabaseService) {}
 
   async getHealth(): Promise<HealthResponse> {
-    const [database, redis, kafka] = await Promise.all([
-      this.checkDatabase(),
-      this.checkRedis(),
-      this.checkKafka(),
-    ]);
+    const [database, redis, kafka] = await Promise.all([this.checkDatabase(), this.checkRedis(), this.checkKafka()]);
 
     return {
       checks: {
@@ -53,7 +49,7 @@ export class HealthService {
   private resolveCompositeStatus(
     database: HealthCheckResult,
     redis: HealthCheckResult,
-    kafka: HealthCheckResult
+    kafka: HealthCheckResult,
   ): HealthStatus {
     if (database.status === 'error') {
       return 'error';

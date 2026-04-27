@@ -4,13 +4,12 @@ import { login } from './helpers';
 test.describe('Sidebar Navigation and 404', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
-    // Wait for sidebar menus to load from API
-    await page.waitForLoadState('networkidle');
+    // login() already waits for URL redirect and main content visibility
   });
 
   test('sidebar renders all navigation items for admin', async ({ page }) => {
     const sidebar = page.locator('aside.hidden.md\\:flex');
-    await expect(sidebar).toBeVisible();
+    await expect(sidebar).toBeVisible({ timeout: 10_000 });
 
     // Check items from en.json
     const expectedItems = [
@@ -28,7 +27,7 @@ test.describe('Sidebar Navigation and 404', () => {
     ];
 
     for (const item of expectedItems) {
-      await expect(sidebar.getByText(item)).toBeVisible({ timeout: 10_000 });
+      await expect(sidebar.getByText(item, { exact: true })).toBeVisible({ timeout: 10_000 });
     }
   });
 
@@ -53,25 +52,25 @@ test.describe('Sidebar Navigation and 404', () => {
     const sidebar = page.locator('aside.hidden.md\\:flex');
 
     await page.goto('/users');
-    await page.waitForLoadState('networkidle');
+    await expect(page.getByRole('main')).toBeVisible({ timeout: 10_000 });
     const usersLink = sidebar.locator('a').filter({ hasText: /^Users$/ });
-    await expect(usersLink).toHaveClass(/bg-primary/);
+    await expect(usersLink).toHaveClass(/bg-primary/, { timeout: 10_000 });
 
     await page.goto('/roles');
-    await page.waitForLoadState('networkidle');
+    await expect(page.getByRole('main')).toBeVisible({ timeout: 10_000 });
     const rolesLink = sidebar.locator('a').filter({ hasText: /^Roles$/ });
-    await expect(rolesLink).toHaveClass(/bg-primary/);
-    await expect(usersLink).not.toHaveClass(/bg-primary/);
+    await expect(rolesLink).toHaveClass(/bg-primary/, { timeout: 10_000 });
+    await expect(usersLink).not.toHaveClass(/bg-primary/, { timeout: 10_000 });
   });
 
   test('navigating to invalid URL shows 404 page', async ({ page }) => {
     await page.goto('/some-non-existent-route-123');
 
-    await expect(page.getByText('404')).toBeVisible();
-    await expect(page.getByText(/Page Not Found/i)).toBeVisible();
+    await expect(page.getByText('404')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/Page Not Found/i)).toBeVisible({ timeout: 10_000 });
 
     const backHomeBtn = page.getByRole('button', { name: /Back to Home/i });
-    await expect(backHomeBtn).toBeVisible();
+    await expect(backHomeBtn).toBeVisible({ timeout: 10_000 });
 
     await backHomeBtn.click();
     await expect(page).toHaveURL(/\/overview/);

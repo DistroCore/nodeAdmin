@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { DEFAULT_TENANT_ID } from '../../app/constants';
 import { RolesService } from './rolesService';
 import { CreateRoleDto } from './dto/createRoleDto';
 import { UpdateRoleDto } from './dto/updateRoleDto';
@@ -13,13 +14,13 @@ export class RolesController {
   @Get()
   @ApiOperation({ summary: 'List roles for a tenant' })
   async list(@Query('tenantId') tenantId?: string) {
-    return this.rolesService.list(tenantId ?? 'default');
+    return this.rolesService.list(tenantId ?? DEFAULT_TENANT_ID);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get role by ID' })
   async findOne(@Param('id') id: string, @Query('tenantId') tenantId?: string) {
-    return this.rolesService.findById(tenantId ?? 'default', id);
+    return this.rolesService.findById(tenantId ?? DEFAULT_TENANT_ID, id);
   }
 
   @Post()
@@ -30,12 +31,8 @@ export class RolesController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a role' })
-  async update(
-    @Param('id') id: string,
-    @Body() dto: UpdateRoleDto,
-    @Query('tenantId') tenantId?: string
-  ) {
-    return this.rolesService.update(tenantId ?? 'default', id, {
+  async update(@Param('id') id: string, @Body() dto: UpdateRoleDto, @Query('tenantId') tenantId?: string) {
+    return this.rolesService.update(tenantId ?? DEFAULT_TENANT_ID, id, {
       name: dto.name,
       description: dto.description,
       permissionIds: dto.permissionIds,
@@ -45,7 +42,7 @@ export class RolesController {
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a role' })
   async remove(@Param('id') id: string, @Query('tenantId') tenantId?: string) {
-    await this.rolesService.remove(tenantId ?? 'default', id);
+    await this.rolesService.remove(tenantId ?? DEFAULT_TENANT_ID, id);
     return { success: true };
   }
 }

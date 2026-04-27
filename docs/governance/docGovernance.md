@@ -1,5 +1,7 @@
 # 文档治理规范
 
+> **status**: approved | **last-reviewed**: 2026-04-10
+
 ## 1. 目标
 
 - 保证中台与 IM 项目文档可查、可追踪、可执行。
@@ -7,7 +9,7 @@
 
 ## 2. 目录与命名规则
 
-- 目录名必须使用 `UpperCamelCase`。
+- 目录名必须使用 `lowercase`（与仓库实践一致）。
 - 文件名必须使用 `lowerCamelCase`。
 - 文档只允许 `.md`。
 
@@ -27,10 +29,20 @@
 
 ## 3. 文档状态
 
+每个治理文档（`docs/governance/*.md`）必须在标题后包含状态行：
+
+```markdown
+> **status**: draft | **last-reviewed**: YYYY-MM-DD
+```
+
+状态定义：
+
 - `draft`：草稿，允许频繁修改。
 - `review`：评审中，等待负责人确认。
 - `approved`：已生效，作为执行基线。
 - `archived`：归档，不再更新。
+
+`checkDocDrift.cjs` 会校验所有治理文档是否携带合法 status 字段。
 
 ## 4. 变更规则
 
@@ -51,4 +63,5 @@
 
 ## 7. 最近更新时间
 
+- 2026-04-10（修订目录命名规则，由 `UpperCamelCase` 改为 `lowercase`，与仓库实际结构对齐）
 - 2026-02-28

@@ -10,13 +10,16 @@ test.describe('Release Control', () => {
     await page.goto('/release');
 
     await expect(page.getByRole('main').getByText(/Release Controls/i)).toBeVisible();
+    // Completion summary: "{done}/{total} completed"
     await expect(page.getByRole('main').getByText(/\d+\/\d+ completed/i)).toBeVisible();
 
     const mainArea = page.getByRole('main');
-    const checkRows = mainArea.locator('li').filter({ hasText: /configured/i });
-    await expect(checkRows.first()).toBeVisible();
-    await expect(checkRows).toHaveCount(5);
+    // Each check is rendered inside CardContent as a div with border, p-4, and contains a Badge
+    const checkItems = mainArea.locator('div.flex.items-center.justify-between.rounded-lg.border');
+    await expect(checkItems.first()).toBeVisible({ timeout: 10_000 });
+    await expect(checkItems).toHaveCount(5);
 
+    // Progress bar
     const progressBar = mainArea.locator('.bg-primary.transition-all');
     await expect(progressBar).toBeVisible();
   });

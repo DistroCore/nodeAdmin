@@ -98,12 +98,7 @@ function parseController(filePath: string): EndpointInfo[] {
       }
     }
 
-    if (
-      !line.startsWith('@') &&
-      !line.startsWith('//') &&
-      !line.startsWith('*') &&
-      line.length > 0
-    ) {
+    if (!line.startsWith('@') && !line.startsWith('//') && !line.startsWith('*') && line.length > 0) {
       currentSummary = '';
     }
   }

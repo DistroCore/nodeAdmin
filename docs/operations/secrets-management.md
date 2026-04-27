@@ -1,15 +1,18 @@
 # Secrets Management Implementation
 
 ## Overview
+
 This document describes the secrets management strategy for nodeAdmin, replacing plaintext `.env` files with secure secrets storage.
 
 ## Current State (Insecure)
+
 - Database passwords stored in `.env` file
 - JWT secrets in plaintext
 - Redis password (if any) in plaintext
 - All secrets committed to version control (via `.env.example`)
 
 ## Target State (Secure)
+
 - Secrets stored in Docker Secrets (development) or external secrets manager (production)
 - No plaintext secrets in configuration files
 - Secrets injected at runtime
@@ -18,27 +21,33 @@ This document describes the secrets management strategy for nodeAdmin, replacing
 ## Implementation Strategy
 
 ### Phase 1: Docker Secrets (Development/Staging)
+
 Use Docker Swarm secrets for local development and staging environments.
 
 **Pros**:
+
 - Built into Docker, no additional dependencies
 - Simple to use
 - Good for development and small deployments
 
 **Cons**:
+
 - Requires Docker Swarm mode (or docker-compose secrets)
 - Not suitable for large-scale production
 
 ### Phase 2: External Secrets Manager (Production)
+
 Migrate to HashiCorp Vault or AWS Secrets Manager for production.
 
 **Pros**:
+
 - Enterprise-grade security
 - Audit logging
 - Automatic rotation
 - Fine-grained access control
 
 **Cons**:
+
 - Additional infrastructure
 - More complex setup
 
@@ -155,7 +164,9 @@ config();
 ## Security Best Practices
 
 ### 1. Never Commit Secrets
+
 Add to `.gitignore`:
+
 ```
 .env
 .env.local
@@ -166,22 +177,26 @@ Add to `.gitignore`:
 ```
 
 ### 2. Rotate Secrets Regularly
+
 - Database passwords: Every 90 days
 - JWT secrets: Every 180 days
 - API keys: Every 90 days
 
 ### 3. Use Strong Secrets
+
 ```bash
 # Generate strong random secrets
 openssl rand -base64 32
 ```
 
 ### 4. Limit Secret Access
+
 - Use principle of least privilege
 - Only grant access to services that need it
 - Audit secret access regularly
 
 ### 5. Monitor Secret Usage
+
 - Log secret access (not the secret itself)
 - Alert on unusual access patterns
 - Track secret rotation
@@ -189,30 +204,35 @@ openssl rand -base64 32
 ## Migration Plan
 
 ### Step 1: Audit Current Secrets
+
 - [x] Database passwords (PostgreSQL, Redis)
 - [x] JWT secrets (access, refresh)
-- [ ] API keys (if any)
-- [ ] TLS certificates
+- [x] API keys (if any) — none found in current codebase
+- [x] TLS certificates — dev cert managed by `scripts/generateDevTlsCert.cjs`, not a secret candidate
 
 ### Step 2: Create Secrets Infrastructure
-- [ ] Set up secrets directory
-- [ ] Generate new secrets
-- [ ] Configure Docker Secrets
+
+- [x] Set up secrets directory (`.secrets/` with `.gitkeep` and `README.md`)
+- [x] Generate new secrets (documented in `.secrets/README.md`)
+- [x] Configure Docker Secrets (docker-compose.yml secrets block added)
 
 ### Step 3: Update Application
-- [ ] Modify runtimeConfig.ts
-- [ ] Update docker-compose.yml
-- [ ] Test secret loading
+
+- [x] Modify runtimeConfig.ts (`readSecret()` function with `_FILE` fallback)
+- [x] Update docker-compose.yml (`_FILE` environment variables added)
+- [x] Test secret loading
 
 ### Step 4: Verify and Deploy
+
 - [ ] Test in development
 - [ ] Verify no plaintext secrets remain
 - [ ] Deploy to staging
 - [ ] Deploy to production
 
 ### Step 5: Cleanup
+
 - [ ] Remove plaintext secrets from .env
-- [ ] Update documentation
+- [x] Update documentation
 - [ ] Train team on new process
 
 ## Rollback Plan
@@ -260,11 +280,13 @@ async function getSecret(secretName: string): Promise<string> {
 ## Monitoring and Alerts
 
 ### Prometheus Metrics
+
 - `secrets_load_success_total`: Number of successful secret loads
 - `secrets_load_failure_total`: Number of failed secret loads
 - `secrets_rotation_timestamp_seconds`: Last secret rotation timestamp
 
 ### Alert Rules
+
 ```yaml
 - alert: SecretLoadFailure
   expr: rate(secrets_load_failure_total[5m]) > 0
@@ -284,6 +306,7 @@ async function getSecret(secretName: string): Promise<string> {
 ```
 
 ## References
+
 - [Docker Secrets Documentation](https://docs.docker.com/engine/swarm/secrets/)
 - [HashiCorp Vault](https://www.vaultproject.io/)
 - [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/)

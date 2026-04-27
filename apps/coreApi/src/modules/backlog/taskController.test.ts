@@ -1,31 +1,30 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-function createMockBacklogService() {
-  return {
-    listTasks: vi.fn(),
-    findTaskById: vi.fn(),
-    createTask: vi.fn(),
-    updateTask: vi.fn(),
-    removeTask: vi.fn(),
-  };
-}
-
+import { BacklogService } from './backlogService';
 import { TaskController } from './taskController';
+import { CreateTaskDto } from './dto/createTaskDto';
+import { ListBacklogQueryDto } from './dto/listBacklogQueryDto';
+import { UpdateTaskDto } from './dto/updateTaskDto';
 
 describe('TaskController', () => {
   let controller: TaskController;
-  let service: ReturnType<typeof createMockBacklogService>;
+  let service: BacklogService;
 
   beforeEach(() => {
-    service = createMockBacklogService();
-    controller = new TaskController(service as any);
+    service = new BacklogService();
+    controller = new TaskController(service);
   });
 
   describe('list', () => {
     it('should pass query params to service with default tenantId', async () => {
-      service.listTasks.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 });
-      await controller.list({ page: 1, pageSize: 10 } as any);
-      expect(service.listTasks).toHaveBeenCalledWith('default', 1, 10, {
+      const listTasksSpy = vi
+        .spyOn(service, 'listTasks')
+        .mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 });
+      const query = Object.assign(new ListBacklogQueryDto(), { page: 1, pageSize: 10 });
+
+      await controller.list(query);
+
+      expect(listTasksSpy).toHaveBeenCalledWith('default', 1, 10, {
         status: undefined,
         sprintId: undefined,
         search: undefined,
@@ -33,16 +32,21 @@ describe('TaskController', () => {
     });
 
     it('should pass tenantId and filters from query', async () => {
-      service.listTasks.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 });
-      await controller.list({
+      const listTasksSpy = vi
+        .spyOn(service, 'listTasks')
+        .mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 });
+      const query = Object.assign(new ListBacklogQueryDto(), {
         tenantId: 't-1',
         page: 2,
         pageSize: 5,
         status: 'todo',
         sprintId: 's-1',
         search: 'bug',
-      } as any);
-      expect(service.listTasks).toHaveBeenCalledWith('t-1', 2, 5, {
+      });
+
+      await controller.list(query);
+
+      expect(listTasksSpy).toHaveBeenCalledWith('t-1', 2, 5, {
         status: 'todo',
         sprintId: 's-1',
         search: 'bug',
@@ -52,23 +56,27 @@ describe('TaskController', () => {
 
   describe('findOne', () => {
     it('should delegate to service with default tenantId', async () => {
-      service.findTaskById.mockResolvedValue({ id: 'task-1' });
+      const findTaskByIdSpy = vi.spyOn(service, 'findTaskById').mockResolvedValue({ id: 'task-1' });
+
       const result = await controller.findOne('task-1');
-      expect(service.findTaskById).toHaveBeenCalledWith('default', 'task-1');
+
+      expect(findTaskByIdSpy).toHaveBeenCalledWith('default', 'task-1');
       expect(result).toEqual({ id: 'task-1' });
     });
 
     it('should pass tenantId from query', async () => {
-      service.findTaskById.mockResolvedValue({ id: 'task-1' });
+      const findTaskByIdSpy = vi.spyOn(service, 'findTaskById').mockResolvedValue({ id: 'task-1' });
+
       await controller.findOne('task-1', 't-1');
-      expect(service.findTaskById).toHaveBeenCalledWith('t-1', 'task-1');
+
+      expect(findTaskByIdSpy).toHaveBeenCalledWith('t-1', 'task-1');
     });
   });
 
   describe('create', () => {
     it('should delegate to service with dto fields', async () => {
-      service.createTask.mockResolvedValue({ id: 'task-new' });
-      await controller.create({
+      const createTaskSpy = vi.spyOn(service, 'createTask').mockResolvedValue({ id: 'task-new' });
+      const dto = Object.assign(new CreateTaskDto(), {
         tenantId: 't-1',
         title: 'New Task',
         description: 'desc',
@@ -76,8 +84,11 @@ describe('TaskController', () => {
         priority: 'high',
         assigneeId: 'user-1',
         sprintId: 'sprint-1',
-      } as any);
-      expect(service.createTask).toHaveBeenCalledWith('t-1', {
+      });
+
+      await controller.create(dto);
+
+      expect(createTaskSpy).toHaveBeenCalledWith('t-1', {
         title: 'New Task',
         description: 'desc',
         status: 'todo',
@@ -90,13 +101,12 @@ describe('TaskController', () => {
 
   describe('update', () => {
     it('should delegate to service with mapped data', async () => {
-      service.updateTask.mockResolvedValue({ id: 'task-1', title: 'Updated' });
-      const result = await controller.update(
-        'task-1',
-        { title: 'Updated', status: 'done' } as any,
-        't-1'
-      );
-      expect(service.updateTask).toHaveBeenCalledWith('t-1', 'task-1', {
+      const updateTaskSpy = vi.spyOn(service, 'updateTask').mockResolvedValue({ id: 'task-1', title: 'Updated' });
+      const dto = Object.assign(new UpdateTaskDto(), { title: 'Updated', status: 'done' });
+
+      const result = await controller.update('task-1', dto, 't-1');
+
+      expect(updateTaskSpy).toHaveBeenCalledWith('t-1', 'task-1', {
         title: 'Updated',
         status: 'done',
       });
@@ -104,24 +114,31 @@ describe('TaskController', () => {
     });
 
     it('should use default tenantId when not provided', async () => {
-      service.updateTask.mockResolvedValue({ id: 'task-1' });
-      await controller.update('task-1', { title: 'Test' } as any);
-      expect(service.updateTask).toHaveBeenCalledWith('default', 'task-1', { title: 'Test' });
+      const updateTaskSpy = vi.spyOn(service, 'updateTask').mockResolvedValue({ id: 'task-1' });
+      const dto = Object.assign(new UpdateTaskDto(), { title: 'Test' });
+
+      await controller.update('task-1', dto);
+
+      expect(updateTaskSpy).toHaveBeenCalledWith('default', 'task-1', { title: 'Test' });
     });
   });
 
   describe('remove', () => {
     it('should delegate to service and return success', async () => {
-      service.removeTask.mockResolvedValue(undefined);
+      const removeTaskSpy = vi.spyOn(service, 'removeTask').mockResolvedValue(undefined);
+
       const result = await controller.remove('task-1', 't-1');
-      expect(service.removeTask).toHaveBeenCalledWith('t-1', 'task-1');
+
+      expect(removeTaskSpy).toHaveBeenCalledWith('t-1', 'task-1');
       expect(result).toEqual({ success: true });
     });
 
     it('should use default tenantId when not provided', async () => {
-      service.removeTask.mockResolvedValue(undefined);
+      const removeTaskSpy = vi.spyOn(service, 'removeTask').mockResolvedValue(undefined);
+
       await controller.remove('task-1');
-      expect(service.removeTask).toHaveBeenCalledWith('default', 'task-1');
+
+      expect(removeTaskSpy).toHaveBeenCalledWith('default', 'task-1');
     });
   });
 });

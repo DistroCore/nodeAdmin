@@ -5,6 +5,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FormField } from '@/components/ui/formField';
+import { useToast } from '@/components/ui/toast';
 import { useApiClient } from '@/hooks/useApiClient';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { className } from '@/lib/className';
@@ -37,6 +38,7 @@ interface UpdateUserData {
 export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogProps): JSX.Element {
   const { formatMessage: t } = useIntl();
   const apiClient = useApiClient();
+  const toast = useToast();
   const tenantId = useAuthStore((s) => s.tenantId);
   const isEdit = user !== undefined;
 
@@ -44,9 +46,7 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
   const [password, setPassword] = useState('');
   const [name, setName] = useState(user?.name ?? '');
   const [isActive, setIsActive] = useState(Boolean(user?.is_active ?? true));
-  const [selectedRoleIds, setSelectedRoleIds] = useState<Set<string>>(
-    new Set(user?.roles.map((r) => r.id) ?? [])
-  );
+  const [selectedRoleIds, setSelectedRoleIds] = useState<Set<string>>(new Set(user?.roles.map((r) => r.id) ?? []));
 
   const rolesQuery = useQuery({
     queryFn: () => apiClient.get<RoleItem[]>(`/api/v1/roles?tenantId=${tenantId ?? 'default'}`),
@@ -76,15 +76,28 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
   const saveMutation = useMutation({
     mutationFn: async (data: CreateUserData | UpdateUserData) => {
       if (isEdit && user) {
-        await apiClient.patch<UserItem>(
-          `/api/v1/users/${user.id}?tenantId=${tenantId ?? 'default'}`,
-          data
-        );
+        // Only send fields defined in UpdateUserDto (name, avatar, isActive, roleIds).
+        // email and password are NOT in the DTO — sending them causes 400.
+        const patchData: Record<string, unknown> = {};
+        if (data.name !== undefined) patchData.name = data.name;
+        if ('avatar' in data && data.avatar !== undefined) patchData.avatar = data.avatar;
+        if ('isActive' in data && data.isActive !== undefined) patchData.isActive = data.isActive;
+        if ('roleIds' in data && data.roleIds !== undefined) patchData.roleIds = data.roleIds;
+        await apiClient.patch<UserItem>(`/api/v1/users/${user.id}?tenantId=${tenantId ?? 'default'}`, patchData);
       } else {
         await apiClient.post<UserItem>('/api/v1/users', data);
       }
     },
-    onSuccess: handleSaveSuccess,
+    onSuccess: () => {
+      toast.success(t({ id: 'users.saveSuccess', defaultMessage: 'User saved successfully' }));
+      handleSaveSuccess();
+    },
+    onError: (error: Error) => {
+      toast.error(
+        t({ id: 'users.saveFailed', defaultMessage: 'Failed to save user' }),
+        error.message || t({ id: 'common.error.unknown' }),
+      );
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -135,13 +148,7 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
       <form onSubmit={handleSubmit}>
         <div className="space-y-4">
           <FormField label={t({ id: 'auth.email' })} htmlFor="user-email">
-            <Input
-              id="user-email"
-              required
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+            <Input id="user-email" required type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </FormField>
 
           <FormField
@@ -164,13 +171,7 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
           </FormField>
 
           <FormField label={t({ id: 'auth.name' })} htmlFor="user-name">
-            <Input
-              id="user-name"
-              required
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+            <Input id="user-name" required type="text" value={name} onChange={(e) => setName(e.target.value)} />
           </FormField>
 
           {isEdit && (
@@ -202,25 +203,19 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
                       strokeWidth="4"
                       fill="none"
                     />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                    />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
                   {t({ id: 'users.loadingRoles' })}
                 </div>
               ) : roles.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-2 italic">
-                  {t({ id: 'users.noRoles' })}
-                </p>
+                <p className="text-sm text-muted-foreground py-2 italic">{t({ id: 'users.noRoles' })}</p>
               ) : (
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {roles.map((role) => (
                     <label
                       className={className(
                         'flex items-center gap-3 rounded-md border border-transparent p-2 transition-all cursor-pointer hover:bg-accent/50',
-                        selectedRoleIds.has(role.id) ? 'bg-primary/5 border-primary/20' : ''
+                        selectedRoleIds.has(role.id) ? 'bg-primary/5 border-primary/20' : '',
                       )}
                       key={role.id}
                     >
@@ -233,7 +228,7 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
                       <span
                         className={className(
                           'text-sm font-medium',
-                          selectedRoleIds.has(role.id) ? 'text-primary' : 'text-muted-foreground'
+                          selectedRoleIds.has(role.id) ? 'text-primary' : 'text-muted-foreground',
                         )}
                       >
                         {role.name}
@@ -247,12 +242,7 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
-          <Button
-            disabled={isPending}
-            onClick={handleDialogClose}
-            type="button"
-            variant="secondary"
-          >
+          <Button disabled={isPending} onClick={handleDialogClose} type="button" variant="secondary">
             {t({ id: 'common.cancel' })}
           </Button>
           <Button disabled={isPending} type="submit">
@@ -268,11 +258,7 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
                     strokeWidth="4"
                     fill="none"
                   />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
                 {t({ id: 'common.saving' })}
               </>

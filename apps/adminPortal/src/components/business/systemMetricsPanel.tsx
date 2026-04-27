@@ -4,6 +4,7 @@ import { Card, CardDescription, CardHeader, CardTitle, CardContent } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useApiClient } from '@/hooks/useApiClient';
+import { POLL_INTERVALS } from '@/lib/pollingIntervals';
 
 interface MetricsResponse {
   cpu: {
@@ -27,7 +28,7 @@ export function SystemMetricsPanel(): JSX.Element {
   const metricsQuery = useQuery({
     queryFn: () => apiClient.get<MetricsResponse>('/api/v1/metrics'),
     queryKey: ['system-metrics'],
-    refetchInterval: 5000, // Poll every 5 seconds
+    refetchInterval: POLL_INTERVALS.metrics,
   });
 
   const metrics = metricsQuery.data;
@@ -60,9 +61,7 @@ export function SystemMetricsPanel(): JSX.Element {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {/* CPU */}
             <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-2 dark:bg-muted/20">
-              <div className="text-sm font-medium text-muted-foreground">
-                {t({ id: 'metrics.cpu' })}
-              </div>
+              <div className="text-sm font-medium text-muted-foreground">{t({ id: 'metrics.cpu' })}</div>
               <div className="flex items-end justify-between">
                 <div className="text-2xl font-bold text-foreground">
                   {metricsQuery.isLoading ? '...' : `${(cpuTotal / 1_000_000).toFixed(2)}s`}
@@ -73,9 +72,7 @@ export function SystemMetricsPanel(): JSX.Element {
 
             {/* Event Loop Lag */}
             <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-2 dark:bg-muted/20">
-              <div className="text-sm font-medium text-muted-foreground">
-                {t({ id: 'metrics.eventLoop' })}
-              </div>
+              <div className="text-sm font-medium text-muted-foreground">{t({ id: 'metrics.eventLoop' })}</div>
               <div className="flex items-end justify-between">
                 <div className="text-2xl font-bold text-foreground">
                   {metricsQuery.isLoading ? '...' : `${eventLoopLag.toFixed(2)} ms`}
@@ -86,9 +83,7 @@ export function SystemMetricsPanel(): JSX.Element {
 
             {/* Memory Usage (Heap Used) */}
             <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-2 dark:bg-muted/20">
-              <div className="text-sm font-medium text-muted-foreground">
-                {t({ id: 'metrics.heapUsed' })}
-              </div>
+              <div className="text-sm font-medium text-muted-foreground">{t({ id: 'metrics.heapUsed' })}</div>
               <div className="flex items-end justify-between">
                 <div className="text-2xl font-bold text-foreground">
                   {metricsQuery.isLoading ? '...' : formatMB(metrics?.memory.heapUsed ?? 0)}
@@ -98,16 +93,12 @@ export function SystemMetricsPanel(): JSX.Element {
 
             {/* Uptime */}
             <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-2 dark:bg-muted/20">
-              <div className="text-sm font-medium text-muted-foreground">
-                {t({ id: 'metrics.uptime' })}
-              </div>
+              <div className="text-sm font-medium text-muted-foreground">{t({ id: 'metrics.uptime' })}</div>
               <div className="flex items-end justify-between">
                 <div className="text-2xl font-bold text-foreground">
                   {metricsQuery.isLoading ? '...' : Math.floor(metrics?.uptime ?? 0)}
                 </div>
-                <div className="text-xs text-muted-foreground pb-1">
-                  {t({ id: 'metrics.uptimeUnit' })}
-                </div>
+                <div className="text-xs text-muted-foreground pb-1">{t({ id: 'metrics.uptimeUnit' })}</div>
               </div>
             </div>
           </div>

@@ -39,10 +39,13 @@ export type AppPermission =
   | 'menus:view'
   | 'modernizer:view'
   | 'overview:view'
+  | 'plugins:manage'
+  | 'plugins:view'
   | 'release:view'
   | 'roles:manage'
   | 'roles:view'
   | 'settings:view'
+  | 'tenants:manage'
   | 'tenants:view'
   | 'users:manage'
   | 'users:view';
@@ -130,6 +133,36 @@ export interface AuditLogItem {
   traceId: string;
   context: Record<string, unknown> | null;
   createdAt: string;
+}
+
+// ─── IM Conversation Types ────────────────────────────────────────────
+
+export type ConversationType = 'dm' | 'group';
+
+export type ConversationMemberRole = 'admin' | 'member';
+
+export interface ConversationMember {
+  userId: string;
+  role: ConversationMemberRole;
+  joinedAt: string;
+}
+
+export interface ConversationItem {
+  id: string;
+  tenantId: string;
+  type: ConversationType;
+  title: string | null;
+  creatorId: string | null;
+  members: ConversationMember[];
+  lastMessageAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateConversationRequest {
+  type: ConversationType;
+  title?: string;
+  memberUserIds: string[];
 }
 
 // ─── Modernizer Types ──────────────────────────────────────────────

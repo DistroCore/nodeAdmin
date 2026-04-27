@@ -5,9 +5,7 @@ test.describe('Audit Logs', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto('/audit');
-    await expect(
-      page.getByRole('main').getByRole('heading', { name: /Audit Logs/i })
-    ).toBeVisible();
+    await expect(page.getByRole('main').getByRole('heading', { name: /Audit Logs/i })).toBeVisible();
   });
 
   test('lists audit logs and filters by action', async ({ page }) => {
@@ -16,7 +14,7 @@ test.describe('Audit Logs', () => {
       page
         .getByRole('main')
         .getByText(/logged in/i)
-        .first()
+        .first(),
     ).toBeVisible();
 
     // Filter by login action

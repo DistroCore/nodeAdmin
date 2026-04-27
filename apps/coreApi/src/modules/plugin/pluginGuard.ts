@@ -1,29 +1,22 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
 import { TenantContextResolver } from '../../infrastructure/tenant/tenantContextResolver';
 import type { AuthIdentity } from '../auth/authIdentity';
-import { PLUGIN_METADATA_KEY } from './plugin.decorator';
 import { PluginService } from './pluginService';
 
 @Injectable()
 export class PluginGuard implements CanActivate {
   constructor(
-    private readonly reflector: Reflector,
     private readonly pluginService: PluginService,
-    private readonly tenantContextResolver: TenantContextResolver
+    private readonly tenantContextResolver: TenantContextResolver,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const pluginName = this.reflector.getAllAndOverride<string | undefined>(PLUGIN_METADATA_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-
-    if (!pluginName) {
+    const request = context.switchToHttp().getRequest<{ url?: string; user?: AuthIdentity }>();
+    const pluginId = this.extractPluginId(request.url);
+    if (!pluginId) {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest<{ user?: AuthIdentity }>();
     let tenantId: string;
 
     try {
@@ -32,11 +25,25 @@ export class PluginGuard implements CanActivate {
       throw new ForbiddenException('Tenant context is required for plugin-protected routes');
     }
 
-    const enabled = await this.pluginService.isPluginEnabled(tenantId, pluginName);
+    const enabled = await this.pluginService.isPluginEnabled(tenantId, pluginId);
     if (!enabled) {
-      throw new ForbiddenException(`Plugin '${pluginName}' is not enabled for this tenant`);
+      throw new ForbiddenException(`Plugin '${pluginId}' is not enabled for this tenant`);
     }
 
     return true;
+  }
+
+  private extractPluginId(url?: string): string | null {
+    if (!url) {
+      return null;
+    }
+
+    const pathname = url.split('?')[0];
+    const match = /^\/api\/v1\/plugins\/([^/]+)(?:\/|$)/.exec(pathname);
+    if (!match?.[1]) {
+      return null;
+    }
+
+    return `@nodeadmin/plugin-${decodeURIComponent(match[1])}`;
   }
 }

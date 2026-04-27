@@ -1,12 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useIntl } from 'react-intl';
-import type {
-  BacklogTask,
-  BacklogSprint,
-  UserItem,
-  PaginatedResponse,
-} from '@nodeadmin/shared-types';
+import type { BacklogTask, BacklogSprint, UserItem, PaginatedResponse } from '@nodeadmin/shared-types';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { FormField } from '@/components/ui/formField';
@@ -59,8 +54,7 @@ export function TaskFormDialog({ onClose, onSaved, open, task }: TaskFormDialogP
   });
 
   const sprintsQuery = useQuery({
-    queryFn: () =>
-      apiClient.get<PaginatedResponse<BacklogSprint>>('/api/v1/backlog/sprints?pageSize=100'),
+    queryFn: () => apiClient.get<PaginatedResponse<BacklogSprint>>('/api/v1/backlog/sprints?pageSize=100'),
     queryKey: ['backlog', 'sprints', 'list'],
     enabled: open,
   });
@@ -76,7 +70,15 @@ export function TaskFormDialog({ onClose, onSaved, open, task }: TaskFormDialogP
       tenantId: string;
     }) => {
       if (isEdit && task) {
-        await apiClient.patch(`/api/v1/backlog/tasks/${task.id}?tenantId=${data.tenantId}`, data);
+        // For PATCH: only send fields defined in UpdateTaskDto.
+        // Strip null values (backend @IsString() rejects null) and tenantId (not in UpdateTaskDto).
+        const payload: Record<string, string> = {};
+        for (const [key, value] of Object.entries(data)) {
+          if (value !== null && value !== undefined && key !== 'tenantId') {
+            payload[key] = value;
+          }
+        }
+        await apiClient.patch(`/api/v1/backlog/tasks/${task.id}?tenantId=${data.tenantId}`, payload);
       } else {
         await apiClient.post('/api/v1/backlog/tasks', data);
       }
@@ -115,20 +117,11 @@ export function TaskFormDialog({ onClose, onSaved, open, task }: TaskFormDialogP
   const sprints = sprintsQuery.data?.items ?? [];
 
   return (
-    <Dialog
-      onClose={handleClose}
-      open={open}
-      title={t({ id: isEdit ? 'backlog.editTask' : 'backlog.createTask' })}
-    >
+    <Dialog onClose={handleClose} open={open} title={t({ id: isEdit ? 'backlog.editTask' : 'backlog.createTask' })}>
       <form onSubmit={handleSubmit}>
         <div className="space-y-4">
           <FormField label={t({ id: 'backlog.fieldTitle' })} htmlFor="task-title">
-            <Input
-              id="task-title"
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
+            <Input id="task-title" required value={title} onChange={(e) => setTitle(e.target.value)} />
           </FormField>
 
           <FormField label={t({ id: 'backlog.fieldDescription' })} htmlFor="task-desc">
@@ -208,12 +201,7 @@ export function TaskFormDialog({ onClose, onSaved, open, task }: TaskFormDialogP
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
-          <Button
-            disabled={saveMutation.isPending}
-            type="button"
-            variant="secondary"
-            onClick={handleClose}
-          >
+          <Button disabled={saveMutation.isPending} type="button" variant="secondary" onClick={handleClose}>
             {t({ id: 'common.cancel' })}
           </Button>
           <Button disabled={saveMutation.isPending} type="submit">
@@ -229,11 +217,7 @@ export function TaskFormDialog({ onClose, onSaved, open, task }: TaskFormDialogP
                     strokeWidth="4"
                     fill="none"
                   />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
                 {t({ id: 'common.saving' })}
               </>

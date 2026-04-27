@@ -16,10 +16,7 @@ import { Server, Socket } from 'socket.io';
 import { runtimeConfig } from '../../app/runtimeConfig';
 import { AuditLogService } from '../../infrastructure/audit/auditLogService';
 import { CircuitBreaker } from '../../infrastructure/resilience/circuitBreaker';
-import {
-  DegradationManager,
-  DegradationFeature,
-} from '../../infrastructure/resilience/degradationManager';
+import { DegradationManager, DegradationFeature } from '../../infrastructure/resilience/degradationManager';
 import { AuthIdentity } from '../auth/authIdentity';
 import { JoinConversationDto } from './dto/joinConversationDto';
 import { SendMessageDto } from './dto/sendMessageDto';
@@ -45,9 +42,7 @@ import { StoredMessage } from '../../infrastructure/inMemoryMessageStore';
   pingTimeout: runtimeConfig.socketio.pingTimeout,
   transports: ['websocket'],
 })
-export class ImGateway
-  implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, OnModuleDestroy
-{
+export class ImGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, OnModuleDestroy {
   private readonly logger = new Logger(ImGateway.name);
 
   private redisPubClient: RedisPubSubClient | null = null;
@@ -73,7 +68,7 @@ export class ImGateway
     private readonly conversationService: ImConversationService,
     private readonly messageService: ImMessageService,
     private readonly presenceService: ImPresenceService,
-    private readonly auditLogService: AuditLogService
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   async afterInit(server: Server): Promise<void> {
@@ -123,9 +118,9 @@ export class ImGateway
             this.redisSubPool.push(subClient);
           }
 
-          server.adapter(createAdapter(this.redisPubClient as any, this.redisSubClient as any));
+          server.adapter(createAdapter(this.redisPubClient as RedisClientType, this.redisSubClient as RedisClientType));
           this.logger.log(
-            `Socket.IO Redis cluster adapter connected with pool size ${ImGateway.REDIS_POOL_SIZE}: ${runtimeConfig.redis.clusterNodes.join(', ')}`
+            `Socket.IO Redis cluster adapter connected with pool size ${ImGateway.REDIS_POOL_SIZE}: ${runtimeConfig.redis.clusterNodes.join(', ')}`,
           );
           return;
         }
@@ -146,22 +141,22 @@ export class ImGateway
           const subClient = pubClient.duplicate();
           await pubClient.connect();
           await subClient.connect();
-          this.redisPubPool.push(pubClient as any);
-          this.redisSubPool.push(subClient as any);
+          this.redisPubPool.push(pubClient as RedisClientType);
+          this.redisSubPool.push(subClient as RedisClientType);
         }
 
-        server.adapter(createAdapter(this.redisPubClient as any, this.redisSubClient as any));
+        server.adapter(createAdapter(this.redisPubClient as RedisClientType, this.redisSubClient as RedisClientType));
         this.logger.log(
-          `Socket.IO Redis adapter connected with pool size ${ImGateway.REDIS_POOL_SIZE}: ${runtimeConfig.redis.url}`
+          `Socket.IO Redis adapter connected with pool size ${ImGateway.REDIS_POOL_SIZE}: ${runtimeConfig.redis.url}`,
         );
       });
     } catch (error) {
       this.degradationManager.degrade(
         DegradationFeature.REDIS_ADAPTER,
-        `Redis connection failed: ${error instanceof Error ? error.message : String(error)}`
+        `Redis connection failed: ${error instanceof Error ? error.message : String(error)}`,
       );
       this.logger.error(
-        `Failed to initialize Socket.IO Redis adapter, degrading to single-node mode: ${String(error)}`
+        `Failed to initialize Socket.IO Redis adapter, degrading to single-node mode: ${String(error)}`,
       );
       await this.closeRedisClients();
     }
@@ -182,9 +177,7 @@ export class ImGateway
     if (context) {
       const roomKey = this.conversationService.toRoomKey(context.tenantId, context.conversationId);
       // Notify remaining room members that this user has left.
-      this.server
-        .to(roomKey)
-        .emit('presenceChanged', this.presenceService.createLeftEvent(context));
+      this.server.to(roomKey).emit('presenceChanged', this.presenceService.createLeftEvent(context));
     }
   }
 
@@ -203,24 +196,18 @@ export class ImGateway
         forbidNonWhitelisted: true,
         transform: true,
         whitelist: true,
-      })
+      }),
     )
-    payload: JoinConversationDto
+    payload: JoinConversationDto,
   ): Promise<{ ok: true; roomKey: string }> {
     const identity = this.requireIdentity(client);
-    const result = await this.conversationService.joinConversation(
-      client.id,
-      payload.conversationId,
-      identity
-    );
+    const result = await this.conversationService.joinConversation(client.id, payload.conversationId, identity);
 
     client.join(result.roomKey);
 
     client.emit('conversationHistory', result.history);
 
-    this.server
-      .to(result.roomKey)
-      .emit('presenceChanged', this.presenceService.createJoinedEvent(result.context));
+    this.server.to(result.roomKey).emit('presenceChanged', this.presenceService.createJoinedEvent(result.context));
 
     void this.auditLogService.record({
       action: 'im.join_conversation',
@@ -250,9 +237,9 @@ export class ImGateway
         forbidNonWhitelisted: true,
         transform: true,
         whitelist: true,
-      })
+      }),
     )
-    payload: SendMessageDto
+    payload: SendMessageDto,
   ): Promise<{ accepted: true; duplicate: boolean; messageId: string; sequenceId: number }> {
     const startTime = Date.now();
 
@@ -267,10 +254,7 @@ export class ImGateway
       const sequenceId = appendResult.message.sequenceId;
 
       if (!appendResult.duplicate) {
-        const roomKey = this.conversationService.toRoomKey(
-          context.tenantId,
-          context.conversationId
-        );
+        const roomKey = this.conversationService.toRoomKey(context.tenantId, context.conversationId);
         client.to(roomKey).emit('messageReceived', appendResult.message);
         client.emit('messageReceived', appendResult.message);
       }
@@ -299,7 +283,7 @@ export class ImGateway
       const duration = Date.now() - startTime;
       if (duration > 100) {
         this.logger.warn(
-          `sendMessage slow path: ${duration}ms messageId=${payload.messageId} conversationId=${payload.conversationId}`
+          `sendMessage slow path: ${duration}ms messageId=${payload.messageId} conversationId=${payload.conversationId}`,
         );
       }
     }
@@ -315,9 +299,9 @@ export class ImGateway
         forbidNonWhitelisted: true,
         transform: true,
         whitelist: true,
-      })
+      }),
     )
-    payload: TypingStatusDto
+    payload: TypingStatusDto,
   ): { ok: true } {
     const identity = this.requireIdentity(client);
     const context = this.conversationService.getContext(client.id);
@@ -346,9 +330,9 @@ export class ImGateway
         forbidNonWhitelisted: true,
         transform: true,
         whitelist: true,
-      })
+      }),
     )
-    payload: EditMessageDto
+    payload: EditMessageDto,
   ): Promise<{ ok: true; message: StoredMessage }> {
     const identity = this.requireIdentity(client);
     const context = this.conversationService.getContext(client.id);
@@ -356,12 +340,7 @@ export class ImGateway
       throw new WsException('Please join the matching conversation before editing messages.');
     }
 
-    const updated = await this.messageService.editMessage(
-      context,
-      payload.messageId,
-      payload.content,
-      identity
-    );
+    const updated = await this.messageService.editMessage(context, payload.messageId, payload.content, identity);
 
     const roomKey = this.conversationService.toRoomKey(context.tenantId, context.conversationId);
     this.server.to(roomKey).emit('messageEdited', { message: updated });
@@ -379,9 +358,9 @@ export class ImGateway
         forbidNonWhitelisted: true,
         transform: true,
         whitelist: true,
-      })
+      }),
     )
-    payload: DeleteMessageDto
+    payload: DeleteMessageDto,
   ): Promise<{ ok: true; message: StoredMessage }> {
     const identity = this.requireIdentity(client);
     const context = this.conversationService.getContext(client.id);
@@ -407,9 +386,9 @@ export class ImGateway
         forbidNonWhitelisted: true,
         transform: true,
         whitelist: true,
-      })
+      }),
     )
-    payload: MarkAsReadDto
+    payload: MarkAsReadDto,
   ): Promise<{ ok: true }> {
     const identity = this.requireIdentity(client);
     const context = this.conversationService.getContext(client.id);
@@ -417,11 +396,7 @@ export class ImGateway
       throw new WsException('Please join the matching conversation before marking as read.');
     }
 
-    const receipt = await this.messageService.markAsRead(
-      context,
-      payload.lastReadMessageId,
-      identity
-    );
+    const receipt = await this.messageService.markAsRead(context, payload.lastReadMessageId, identity);
 
     const roomKey = this.conversationService.toRoomKey(context.tenantId, context.conversationId);
     this.server.to(roomKey).emit('readReceiptUpdated', receipt);
@@ -439,9 +414,9 @@ export class ImGateway
         forbidNonWhitelisted: true,
         transform: true,
         whitelist: true,
-      })
+      }),
     )
-    payload: PresenceStatusDto
+    payload: PresenceStatusDto,
   ): { ok: true } {
     this.requireIdentity(client);
     const context = this.conversationService.getContext(client.id);
@@ -453,7 +428,7 @@ export class ImGateway
       context.tenantId,
       context.conversationId,
       context.userId,
-      payload.status
+      payload.status,
     );
 
     const roomKey = this.conversationService.toRoomKey(context.tenantId, context.conversationId);

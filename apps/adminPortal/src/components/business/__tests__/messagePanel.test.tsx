@@ -18,6 +18,7 @@ const mockSetUserId = vi.fn();
 const mockSetConnectionState = vi.fn();
 const mockSetConversationPanelOpen = vi.fn();
 const mockToggleConversationPanel = vi.fn();
+const mockNavigate = vi.fn();
 
 const permissionFlags = {
   canSend: true,
@@ -31,9 +32,8 @@ vi.mock('react-intl', () => ({
 }));
 
 vi.mock('react-router-dom', () => ({
-  NavLink: ({ children, to }: { children: React.ReactNode; to: string }) => (
-    <a href={to}>{children}</a>
-  ),
+  NavLink: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
+  useNavigate: () => mockNavigate,
 }));
 
 vi.mock('@/hooks/useApiClient', () => ({
@@ -54,9 +54,7 @@ vi.mock('@/hooks/useImSocket', () => ({
 }));
 
 vi.mock('@/stores/usePermissionStore', () => ({
-  usePermissionStore: (
-    selector: (state: { hasPermission: (permission: string) => boolean }) => unknown
-  ) =>
+  usePermissionStore: (selector: (state: { hasPermission: (permission: string) => boolean }) => unknown) =>
     selector({
       hasPermission: (permission: string) => {
         if (permission === 'im:view') {
@@ -81,7 +79,7 @@ vi.mock('@/stores/useAuthStore', () => ({
       setAccessToken: (token: string | null) => void;
       setTenantId: (tenantId: string) => void;
       setUserId: (userId: string) => void;
-    }) => unknown
+    }) => unknown,
   ) =>
     selector({
       accessToken: 'existing-access-token',
@@ -112,7 +110,7 @@ vi.mock('@/stores/useMessageStore', () => ({
       }>;
       resetMessages: typeof mockResetMessages;
       upsertMessage: typeof mockUpsertMessage;
-    }) => unknown
+    }) => unknown,
   ) =>
     selector({
       messages: [],
@@ -126,7 +124,7 @@ vi.mock('@/stores/useSocketStore', () => ({
     selector: (state: {
       connectionState: 'connected' | 'connecting' | 'disconnected' | 'reconnecting';
       setConnectionState: typeof mockSetConnectionState;
-    }) => unknown
+    }) => unknown,
   ) =>
     selector({
       connectionState: 'connected',
@@ -140,7 +138,7 @@ vi.mock('@/stores/useUiStore', () => ({
       imConversationPanelOpen: boolean;
       setImConversationPanelOpen: typeof mockSetConversationPanelOpen;
       toggleImConversationPanel: typeof mockToggleConversationPanel;
-    }) => unknown
+    }) => unknown,
   ) =>
     selector({
       imConversationPanelOpen: true,
@@ -173,7 +171,7 @@ function renderPanel(): void {
   render(
     <QueryClientProvider client={queryClient}>
       <MessagePanel />
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -186,9 +184,12 @@ describe('MessagePanel', () => {
       rows: [
         {
           id: 'conversation-1',
+          type: 'group',
+          title: 'General',
           lastMessagePreview: 'Latest message',
           name: 'General',
           unreadCount: 2,
+          updatedAt: '2026-04-11T00:00:00.000Z',
         },
       ],
     });
@@ -212,7 +213,13 @@ describe('MessagePanel', () => {
   });
 
   it('loads conversations and requests a dev token for the active tenant', async () => {
-    renderPanel();
+    // Must pass conversationIdOverride since BUG-1 fix: imConfig is null without a conversation
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MessagePanel conversationIdOverride="conv-1" />
+      </QueryClientProvider>,
+    );
 
     await waitFor(() => {
       expect(mockGet).toHaveBeenCalledWith('/api/v1/console/conversations?tenantId=tenant-1');

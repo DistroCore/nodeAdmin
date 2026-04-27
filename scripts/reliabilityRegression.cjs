@@ -106,8 +106,8 @@ async function run() {
           result: 'ok',
         },
         null,
-        2
-      )
+        2,
+      ),
     );
   } finally {
     socket.disconnect();

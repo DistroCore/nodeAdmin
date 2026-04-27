@@ -41,10 +41,7 @@ export function createMockClient(results?: QueryResult[]): MockClient {
  * - .query() returns results in order from the provided array.
  * - .connect() returns a MockClient for transaction testing.
  */
-export function createMockPool(
-  poolResults?: QueryResult[],
-  clientResults?: QueryResult[]
-): MockPool {
+export function createMockPool(poolResults?: QueryResult[], clientResults?: QueryResult[]): MockPool {
   const poolResultQueue = poolResults ? [...poolResults] : [];
   const defaultResult: QueryResult = { rows: [], rowCount: 0 };
 

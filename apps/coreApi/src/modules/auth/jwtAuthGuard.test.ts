@@ -9,10 +9,7 @@ import type { AuthIdentity } from './authIdentity';
 // reads request.user. It cannot be unit-tested outside the NestJS parameter
 // resolution pipeline. The guard tests verify request.user is populated correctly.
 
-function createHttpExecutionContext(
-  headers: Record<string, string>,
-  url: string
-): ExecutionContext {
+function createHttpExecutionContext(headers: Record<string, string>, url: string): ExecutionContext {
   const request = { headers, url } as {
     headers: Record<string, string>;
     url: string;
@@ -51,10 +48,7 @@ describe('JwtAuthGuard', () => {
     } as unknown as TenantContextResolver;
     const guard = new JwtAuthGuard(authService, tenantContextResolver);
 
-    const ctx = createHttpExecutionContext(
-      { authorization: 'Bearer valid-token' },
-      '/api/v1/users'
-    );
+    const ctx = createHttpExecutionContext({ authorization: 'Bearer valid-token' }, '/api/v1/users');
 
     const result = guard.canActivate(ctx);
     expect(result).toBe(true);
@@ -206,10 +200,7 @@ describe('JwtAuthGuard', () => {
       }),
     } as unknown as TenantContextResolver;
     const guard = new JwtAuthGuard(authService, tenantContextResolver);
-    const ctx = createHttpExecutionContext(
-      { authorization: 'Bearer valid-token' },
-      '/api/v1/users'
-    );
+    const ctx = createHttpExecutionContext({ authorization: 'Bearer valid-token' }, '/api/v1/users');
 
     expect(guard.canActivate(ctx)).toBe(true);
     expect(ctx.switchToHttp().getRequest<{ user?: AuthIdentity }>().user).toEqual({

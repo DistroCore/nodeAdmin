@@ -1,7 +1,8 @@
 import { useMemo, lazy, type ComponentType } from 'react';
+import { logger } from '@/lib/logger';
 
 export interface PluginLoaderResult {
-  Component: ComponentType<any> | null;
+  Component: ComponentType<Record<string, unknown>> | null;
   isLoading: boolean;
   error: Error | null;
 }
@@ -28,7 +29,7 @@ export function usePluginLoader(pluginId: string, uiUrl?: string): PluginLoaderR
           return { default: module.default };
         })
         .catch((err) => {
-          console.error(`Failed to load plugin "${pluginId}" from ${uiUrl}:`, err);
+          logger.error('usePluginLoader', `Failed to load plugin "${pluginId}" from ${uiUrl}`, err);
           throw err;
         });
     });

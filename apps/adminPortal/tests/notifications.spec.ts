@@ -9,9 +9,7 @@ test.describe('Notifications', () => {
   test('renders notifications panel with title and description', async ({ page }) => {
     await page.goto('/notifications');
 
-    await expect(
-      page.getByRole('main').getByRole('heading', { name: /Notifications/i })
-    ).toBeVisible();
+    await expect(page.getByRole('main').getByRole('heading', { name: /Notifications/i })).toBeVisible();
     await expect(page.getByText(/System events and recent audit logs/i)).toBeVisible();
   });
 
@@ -29,9 +27,7 @@ test.describe('Notifications', () => {
 
     // Either shows notifications or empty state
     const emptyState = page.getByText(/No notifications yet/i);
-    const actionLabels = page.getByText(
-      /Authentication|User Management|Tenant Change|System Event|Other/i
-    );
+    const actionLabels = page.getByText(/Authentication|User Management|Tenant Change|System Event|Other/i);
 
     const isEmpty = await emptyState.isVisible().catch(() => false);
     if (isEmpty) {
@@ -102,8 +98,10 @@ test.describe('Notifications', () => {
     // Should have an unread badge
     await expect(page.getByText(/^Unread$/)).toBeVisible({ timeout: 10000 });
 
-    // Click the notification to mark as read
-    await page.locator('.divide-y > div').first().click();
+    // Click the notification to mark as read (rendered as <button> elements inside .divide-y)
+    const firstNotification = page.locator('.divide-y button').first();
+    await firstNotification.waitFor({ state: 'visible', timeout: 10_000 });
+    await firstNotification.click();
 
     // Unread badge should disappear
     await expect(page.getByText(/^Unread$/)).not.toBeVisible();

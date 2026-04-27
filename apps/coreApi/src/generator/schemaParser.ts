@@ -77,9 +77,7 @@ function extractBalancedBlock(source: string, startIndex: number): string {
 }
 
 function parseColumnDefinition(definition: string): ParsedColumn | null {
-  const match = definition.match(
-    /(\w+)\s*:\s*(\w+)\s*\(\s*'([^']+)'(?:\s*,\s*\{([^}]*)\})?\s*\)([\s\S]*)/
-  );
+  const match = definition.match(/(\w+)\s*:\s*(\w+)\s*\(\s*'([^']+)'(?:\s*,\s*\{([^}]*)\})?\s*\)([\s\S]*)/);
 
   if (!match) {
     return null;
@@ -90,8 +88,7 @@ function parseColumnDefinition(definition: string): ParsedColumn | null {
 
   const isPrimary = chainText.includes('.primaryKey()') || propertyName === 'id';
   const hasDefaultFn = chainText.includes('.$defaultFn(');
-  const hasDefault =
-    hasDefaultFn || chainText.includes('.default(') || chainText.includes('.defaultNow(');
+  const hasDefault = hasDefaultFn || chainText.includes('.default(') || chainText.includes('.defaultNow(');
   const isNullable = !chainText.includes('.notNull()');
   const isAutoManaged = AUTO_MANAGED_COLUMNS.has(propertyName) || (isPrimary && hasDefaultFn);
 
@@ -178,20 +175,11 @@ export function parseSchema(schemaPath: string): Map<string, ParsedTable> {
   return tables;
 }
 
-export function resolveTable(
-  parsedTables: Map<string, ParsedTable>,
-  entityInput: string
-): ParsedTable {
+export function resolveTable(parsedTables: Map<string, ParsedTable>, entityInput: string): ParsedTable {
   const singularCamel = toCamelCase(entityInput);
   const pluralCamel = pluralize(singularCamel);
   const singularPascal = toPascalCase(entityInput);
-  const candidates = [
-    entityInput,
-    singularCamel,
-    pluralCamel,
-    singularPascal,
-    pluralCamel.toLowerCase(),
-  ];
+  const candidates = [entityInput, singularCamel, pluralCamel, singularPascal, pluralCamel.toLowerCase()];
 
   for (const candidate of candidates) {
     const table = parsedTables.get(candidate);

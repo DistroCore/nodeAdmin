@@ -20,9 +20,9 @@ test.describe('Permission Enforcement', () => {
 
     for (const p of pages) {
       await page.goto(p);
-      await expect(page.getByText(/You do not have permission/i)).not.toBeVisible();
+      await expect(page.getByText(/You do not have permission/i)).not.toBeVisible({ timeout: 10_000 });
       // Ensure the page main content is visible
-      await expect(page.getByRole('main')).toBeVisible();
+      await expect(page.getByRole('main')).toBeVisible({ timeout: 10_000 });
     }
   });
 
@@ -53,8 +53,8 @@ test.describe('Permission Enforcement', () => {
 
     // Can access overview
     await page.goto('/overview');
-    await expect(page.getByRole('main')).toBeVisible();
-    await expect(page.getByText(/You do not have permission/i)).not.toBeVisible();
+    await expect(page.getByRole('main')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/You do not have permission/i)).not.toBeVisible({ timeout: 10_000 });
 
     // Cannot access settings
     await page.goto('/settings');
@@ -88,8 +88,8 @@ test.describe('Permission Enforcement', () => {
 
     await page.getByRole('button', { name: /Register/i }).click();
     await page.waitForURL(/\/overview/, { timeout: 15_000 });
-    // Wait for sidebar menus to load
-    await page.waitForLoadState('networkidle');
+    // Wait for sidebar menus to load from API
+    await expect(page.getByRole('main')).toBeVisible({ timeout: 10_000 });
 
     const sidebar = page
       .locator('aside')
@@ -97,11 +97,11 @@ test.describe('Permission Enforcement', () => {
       .first();
 
     // Viewer should see Overview
-    await expect(sidebar.getByText(/Overview/i)).toBeVisible();
+    await expect(sidebar.getByText(/Overview/i)).toBeVisible({ timeout: 10_000 });
 
     // These should be hidden for viewer
-    await expect(sidebar.getByText(/Settings/i)).not.toBeVisible();
-    await expect(sidebar.getByText(/Release/i)).not.toBeVisible();
-    await expect(sidebar.getByText(/Tenants/i)).not.toBeVisible();
+    await expect(sidebar.getByText(/Settings/i)).not.toBeVisible({ timeout: 10_000 });
+    await expect(sidebar.getByText(/Release/i)).not.toBeVisible({ timeout: 10_000 });
+    await expect(sidebar.getByText(/Tenants/i)).not.toBeVisible({ timeout: 10_000 });
   });
 });
