@@ -13,6 +13,8 @@ import { useApiClient } from '@/hooks/useApiClient';
 import { usePermissionStore } from '@/stores/usePermissionStore';
 import { RoleFormDialog } from './roleFormDialog';
 
+const PAGE_SIZE = 10;
+
 export function RoleManagementPanel(): JSX.Element {
   const { formatMessage: t } = useIntl();
   const apiClient = useApiClient();
@@ -23,6 +25,7 @@ export function RoleManagementPanel(): JSX.Element {
   const [editRole, setEditRole] = useState<RoleItem | undefined>();
   const [deleteRole, setDeleteRole] = useState<RoleItem | undefined>();
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
 
   const rolesQuery = useQuery({
     queryFn: () => apiClient.get<RoleItem[]>('/api/v1/roles'),
@@ -53,6 +56,9 @@ export function RoleManagementPanel(): JSX.Element {
       role.name.toLowerCase().includes(search.toLowerCase()) ||
       role.description?.toLowerCase().includes(search.toLowerCase()),
   );
+  const totalPages = Math.max(1, Math.ceil(roles.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const pagedRoles = roles.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
 
   return (
     <section className="relative h-full overflow-y-auto pb-20 md:pb-0">
@@ -79,7 +85,10 @@ export function RoleManagementPanel(): JSX.Element {
             placeholder={t({ id: 'roles.search' })}
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(0);
+            }}
           />
         </div>
         <DataTable<RoleItem>
@@ -139,7 +148,7 @@ export function RoleManagementPanel(): JSX.Element {
               ),
             },
           ]}
-          data={roles}
+          data={pagedRoles}
           emptyMessage={t({ id: 'roles.empty' })}
           errorMessage={t({ id: 'roles.loadFailed' })}
           isError={rolesQuery.isError}
@@ -148,6 +157,31 @@ export function RoleManagementPanel(): JSX.Element {
           retryLabel={t({ id: 'common.retry' })}
           rowKey={(role) => role.id}
         />
+        {roles.length > PAGE_SIZE && (
+          <div className="mt-4 flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">
+              {t({ id: 'common.page_info' }, { page: safePage + 1, total: totalPages })}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={safePage <= 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+              >
+                {t({ id: 'common.previous' })}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={safePage >= totalPages - 1}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                {t({ id: 'common.next' })}
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       {canManage && (
