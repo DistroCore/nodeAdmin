@@ -48,7 +48,14 @@ export function LoginPage(): JSX.Element {
 
     new ApiClient({ baseUrl: resolveApiBaseUrl() })
       .get<TenantItem[]>('/api/v1/tenants')
-      .then(setTenants)
+      .then((list) => {
+        setTenants(list);
+        // Keep the controlled <select> in sync with its default-selected option
+        // (the browser shows the first option, but tenantId state would otherwise stay empty).
+        if (list.length > 0) {
+          setTenantId((prev) => prev || list[0].id);
+        }
+      })
       .catch(() => {
         /* ignore — tenant list is optional */
       });
