@@ -193,10 +193,9 @@ describe('RoleFormDialog', () => {
       expect(screen.getByText('View Users')).toBeInTheDocument();
     });
 
-    // Clear and type new name
+    // Set value directly (avoids Dialog focus-trap stealing focus mid-keystroke)
     const nameInput = screen.getByLabelText('roles.fieldName');
-    await user.clear(nameInput);
-    await user.type(nameInput, 'UpdatedRole');
+    fireEvent.change(nameInput, { target: { value: 'UpdatedRole' } });
 
     const saveButton = screen.getByText('common.save');
     await user.click(saveButton);
@@ -239,8 +238,9 @@ describe('RoleFormDialog', () => {
       expect(screen.getByText('View Users')).toBeInTheDocument();
     });
 
-    await user.type(screen.getByLabelText('roles.fieldName'), 'Test');
-    await user.type(screen.getByLabelText('roles.fieldDescription'), 'Desc');
+    // Set values directly (avoids Dialog focus-trap stealing focus mid-keystroke)
+    fireEvent.change(screen.getByLabelText('roles.fieldName'), { target: { value: 'Test' } });
+    fireEvent.change(screen.getByLabelText('roles.fieldDescription'), { target: { value: 'Desc' } });
 
     const saveButton = screen.getByText('common.save');
     await user.click(saveButton);

@@ -582,7 +582,7 @@
             "bearer": []
           }
         ],
-        "summary": "List roles for a tenant",
+        "summary": "List roles with pagination and search",
         "tags": [
           "roles"
         ]
