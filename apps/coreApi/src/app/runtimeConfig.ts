@@ -88,9 +88,17 @@ interface RuntimeConfig {
 function readSecret(name: string, fallback?: string): string {
   const secretFile = process.env[`${name}_FILE`];
   if (typeof secretFile === 'string' && secretFile.trim().length > 0) {
-    const fileValue = fs.readFileSync(secretFile.trim(), 'utf8').trim();
-    if (fileValue.length > 0) {
-      return fileValue;
+    const resolved = secretFile.trim();
+    try {
+      const stat = fs.statSync(resolved);
+      if (stat.isFile()) {
+        const fileValue = fs.readFileSync(resolved, 'utf8').trim();
+        if (fileValue.length > 0) {
+          return fileValue;
+        }
+      }
+    } catch {
+      // file doesn't exist, fall through
     }
   }
 
