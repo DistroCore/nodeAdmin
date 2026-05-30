@@ -230,4 +230,29 @@ describe('RoleManagementPanel', () => {
 
     expect(screen.getByText('common.retry')).toBeInTheDocument();
   });
+
+  it('10. Paginates client-side when roles exceed one page', async () => {
+    const manyRoles: RoleItem[] = Array.from({ length: 12 }, (_, i) => ({
+      id: `role-${i}`,
+      name: `Role ${i}`,
+      description: `desc ${i}`,
+      is_system: 0,
+      permissions: [],
+      created_at: '2025-01-01T00:00:00Z',
+      updated_at: '2025-01-01T00:00:00Z',
+    }));
+    mockGet.mockResolvedValue(manyRoles);
+    renderWithProviders(<RoleManagementPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Role 0')).toBeInTheDocument();
+    });
+
+    // Only the first PAGE_SIZE (10) rows render; rows 11/12 are sliced onto page 2
+    expect(screen.getByText('Role 9')).toBeInTheDocument();
+    expect(screen.queryByText('Role 10')).not.toBeInTheDocument();
+    // Pager controls appear once results exceed one page
+    expect(screen.getByText('common.next')).toBeInTheDocument();
+    expect(screen.getByText('common.previous')).toBeInTheDocument();
+  });
 });

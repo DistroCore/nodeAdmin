@@ -134,6 +134,11 @@ describe('LoginPage', () => {
     await waitFor(() => {
       expect(mockPost).toHaveBeenCalledWith('/api/v1/auth/sms/send', { phone: '+1234567890' });
     });
+
+    // After a successful send, the button switches to the resend-countdown label
+    await waitFor(() => {
+      expect(screen.getByText('auth.sms.resendIn')).toBeInTheDocument();
+    });
   });
 
   it('4. OAuth buttons are visible (GitHub, Google)', async () => {
