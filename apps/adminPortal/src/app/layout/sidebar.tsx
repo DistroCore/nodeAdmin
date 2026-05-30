@@ -121,7 +121,9 @@ export function Sidebar(): JSX.Element {
           >
             <NavIcon name={menu.icon} />
             {!sidebarCollapsed ? (
-              <span className="truncate">{displayName}</span>
+              <span className="truncate" data-testid={`nav-label-${menu.id}`}>
+                {displayName}
+              </span>
             ) : (
               <span className="absolute left-full ml-2 hidden whitespace-nowrap rounded bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md group-hover:block z-50">
                 {displayName}
