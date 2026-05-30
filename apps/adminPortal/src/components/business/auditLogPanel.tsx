@@ -62,7 +62,12 @@ export function AuditLogPanel(): JSX.Element {
     initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) => {
       const loaded = allPages.reduce((sum, pageData) => sum + pageData.items.length, 0);
-      return loaded < lastPage.total ? allPages.length + 1 : undefined;
+      // Stop when the server returns a short/empty page even if `total` disagrees
+      // (stale count or rows deleted between requests) — avoids an endless load-more loop.
+      if (lastPage.items.length < PAGE_SIZE || loaded >= lastPage.total) {
+        return undefined;
+      }
+      return allPages.length + 1;
     },
   });
 
@@ -105,6 +110,7 @@ export function AuditLogPanel(): JSX.Element {
   }, [query.data?.pages, search, t]);
 
   const handleLoadMore = () => {
+    if (query.isFetchingNextPage) return;
     void query.fetchNextPage();
   };
 
@@ -155,6 +161,7 @@ export function AuditLogPanel(): JSX.Element {
           hasMore={hasMore}
           isError={query.isError}
           isLoading={query.isLoading}
+          isLoadingMore={query.isFetchingNextPage}
           items={timelineItems}
           loadMoreLabel={t({ id: 'audit.loadMore' })}
           onLoadMore={handleLoadMore}

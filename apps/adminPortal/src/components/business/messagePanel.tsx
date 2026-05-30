@@ -1092,6 +1092,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
           </div>
         </header>
 
+        <div className="relative flex min-h-0 flex-1 flex-col">
         <div
           className={className(
             'min-h-0 flex-1 overflow-y-auto p-4 transition-colors relative scroll-smooth',

@@ -184,6 +184,7 @@ export function RoleFormDialog({ onClose, onSaved, open, role }: RoleFormDialogP
             ) : (
               <div className="space-y-2">
                 <Input
+                  aria-label={t({ id: 'roles.searchPermissions', defaultMessage: 'Search permissions...' })}
                   value={permissionSearch}
                   onChange={(e) => setPermissionSearch(e.target.value)}
                   placeholder={t({ id: 'roles.searchPermissions', defaultMessage: 'Search permissions...' })}
