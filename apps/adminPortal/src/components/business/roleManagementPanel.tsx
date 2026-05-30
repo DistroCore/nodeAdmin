@@ -28,8 +28,11 @@ export function RoleManagementPanel(): JSX.Element {
   const [page, setPage] = useState(0);
 
   const rolesQuery = useQuery({
-    queryFn: () => apiClient.get<RoleItem[]>('/api/v1/roles'),
-    queryKey: ['roles'],
+    queryFn: () =>
+      apiClient.get<{ items: RoleItem[]; total: number }>(
+        `/api/v1/roles?page=${page}&pageSize=${PAGE_SIZE}&search=${encodeURIComponent(search)}`,
+      ),
+    queryKey: ['roles', page, search],
   });
 
   const deleteMutation = useMutation({
