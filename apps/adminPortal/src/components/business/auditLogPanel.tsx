@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -37,33 +37,39 @@ function getActionVerb(action: string): string {
 export function AuditLogPanel(): JSX.Element {
   const { formatMessage: t } = useIntl();
   const apiClient = useApiClient();
-  const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [actionFilter, setActionFilter] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  const queryParams = useMemo(() => {
+  const buildQueryString = (pageParam: number): string => {
     const params = new URLSearchParams({
-      page: String(page),
+      page: String(pageParam),
       pageSize: String(PAGE_SIZE),
     });
     if (actionFilter) params.set('action', actionFilter);
     if (startDate) params.set('startDate', startDate);
     if (endDate) params.set('endDate', endDate);
     return params.toString();
-  }, [page, actionFilter, startDate, endDate]);
+  };
 
-  const query = useQuery({
-    queryFn: () => apiClient.get<PaginatedResponse<AuditLogItem>>(`/api/v1/console/audit-logs?${queryParams}`),
-    queryKey: ['audit-logs', queryParams],
+  // useInfiniteQuery accumulates pages, so "load more" appends rather than replacing.
+  // Filter state lives in the queryKey, so changing a filter resets pagination automatically.
+  const query = useInfiniteQuery({
+    queryKey: ['audit-logs', actionFilter, startDate, endDate],
+    queryFn: ({ pageParam }) =>
+      apiClient.get<PaginatedResponse<AuditLogItem>>(`/api/v1/console/audit-logs?${buildQueryString(pageParam)}`),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, pageData) => sum + pageData.items.length, 0);
+      return loaded < lastPage.total ? allPages.length + 1 : undefined;
+    },
   });
 
-  const total = query.data?.total ?? 0;
-  const hasMore = page * PAGE_SIZE < total;
+  const hasMore = query.hasNextPage;
 
   const timelineItems: TimelineItem[] = useMemo(() => {
-    const rawItems = query.data?.items ?? [];
+    const rawItems = query.data?.pages.flatMap((pageData) => pageData.items) ?? [];
     const filteredBySearch = search
       ? rawItems.filter(
           (item) =>
@@ -83,7 +89,7 @@ export function AuditLogPanel(): JSX.Element {
             : item.action.includes('delete')
               ? '-'
               : item.action.includes('login')
-                ? '\u2192'
+                ? '→'
                 : '~'}
         </div>
       ),
@@ -96,10 +102,10 @@ export function AuditLogPanel(): JSX.Element {
       subtitle: item.targetId ? `${item.targetType}/${item.targetId}` : undefined,
       timestamp: new Date(item.createdAt).toLocaleString(),
     }));
-  }, [query.data?.items, search, t]);
+  }, [query.data?.pages, search, t]);
 
   const handleLoadMore = () => {
-    setPage((prev) => prev + 1);
+    void query.fetchNextPage();
   };
 
   return (
@@ -123,30 +129,21 @@ export function AuditLogPanel(): JSX.Element {
             <Select
               options={ACTION_OPTIONS}
               value={actionFilter}
-              onChange={(val) => {
-                setActionFilter(val);
-                setPage(1);
-              }}
+              onChange={(val) => setActionFilter(val)}
               placeholder={t({ id: 'audit.allActions' })}
             />
           </div>
           <Input
             type="date"
             value={startDate}
-            onChange={(e) => {
-              setStartDate(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setStartDate(e.target.value)}
             placeholder={t({ id: 'audit.startDate' })}
             className="w-36"
           />
           <Input
             type="date"
             value={endDate}
-            onChange={(e) => {
-              setEndDate(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setEndDate(e.target.value)}
             placeholder={t({ id: 'audit.endDate' })}
             className="w-36"
           />

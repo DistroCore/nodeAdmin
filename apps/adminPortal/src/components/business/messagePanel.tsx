@@ -1025,8 +1025,19 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                 <h2 className="text-sm font-bold md:text-base leading-none mb-1">{activeConversationLabel}</h2>
                 <div className="flex items-center gap-1.5 text-[0.625rem] md:text-xs">
                   <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    {connectionState === 'connected' && (
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    )}
+                    <span
+                      className={className(
+                        'relative inline-flex rounded-full h-2 w-2',
+                        connectionState === 'connected'
+                          ? 'bg-green-500'
+                          : connectionState === 'reconnecting'
+                            ? 'bg-yellow-500'
+                            : 'bg-muted-foreground',
+                      )}
+                    ></span>
                   </span>
                   <span className="text-muted-foreground font-medium">
                     {t({ id: 'im.online' }, { count: presenceMembers.size })}
@@ -1097,6 +1108,27 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
           }}
           ref={messageViewportRef}
         >
+          {messages.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground">
+              <div className="rounded-full bg-muted p-4">
+                <svg className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
+                  />
+                </svg>
+              </div>
+              <p className="max-w-xs text-sm font-medium">
+                {imConfig
+                  ? t({ id: 'im.empty.noMessages', defaultMessage: 'No messages yet. Say hello!' })
+                  : t({
+                      id: 'im.empty.selectConversation',
+                      defaultMessage: 'Select a conversation to start chatting.',
+                    })}
+              </p>
+            </div>
+          ) : null}
           <div style={{ height: topSpacerHeight }} />
           <ul className="flex flex-col gap-5">
             {virtualItems.map((message) => {
@@ -1124,8 +1156,16 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                       })}
                     </span>
                     {isMe && (
-                      <div className="flex h-3 w-3 items-center justify-center">
-                        <svg className="h-2.5 w-2.5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <div
+                        className="flex h-3 w-3 items-center justify-center"
+                        title={t({ id: 'im.messageSent', defaultMessage: 'Sent' })}
+                      >
+                        <svg
+                          className="h-2.5 w-2.5 text-muted-foreground"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
                         </svg>
                       </div>

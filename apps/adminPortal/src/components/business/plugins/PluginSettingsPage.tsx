@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useIntl } from 'react-intl';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePluginStore } from '@/stores/usePluginStore';
 import { usePluginManagement } from '@/hooks/useMarketplace';
@@ -11,6 +12,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { NavIcon } from '@/app/layout/navIcon';
 
 export function PluginSettingsPage() {
+  const { formatMessage: t } = useIntl();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const plugins = usePluginStore((s) => s.plugins);
@@ -25,9 +27,11 @@ export function PluginSettingsPage() {
         <div className="rounded-full bg-destructive/10 p-3 text-destructive">
           <NavIcon name="alert" />
         </div>
-        <p className="text-destructive font-medium">Plugin not found.</p>
+        <p className="text-destructive font-medium">
+          {t({ id: 'plugins.settings.notFound', defaultMessage: 'Plugin not found.' })}
+        </p>
         <Button variant="outline" onClick={() => navigate('/plugins/installed')}>
-          Back to list
+          {t({ id: 'plugins.settings.backToList', defaultMessage: 'Back to list' })}
         </Button>
       </div>
     );
@@ -52,17 +56,29 @@ export function PluginSettingsPage() {
             <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
             </svg>
-            Back
+            {t({ id: 'common.back' })}
           </Button>
-          <h1 className="text-2xl font-bold tracking-tight">{plugin.manifest?.displayName || plugin.name} Settings</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {t(
+              { id: 'plugins.settings.title', defaultMessage: '{name} Settings' },
+              { name: plugin.manifest?.displayName || plugin.name },
+            )}
+          </h1>
         </div>
       </div>
 
       <Card className="shadow-sm">
         <form onSubmit={handleSubmit}>
           <CardHeader className="border-b bg-muted/30">
-            <CardTitle className="text-lg">Configuration</CardTitle>
-            <CardDescription>Configure the behavior and parameters for this plugin.</CardDescription>
+            <CardTitle className="text-lg">
+              {t({ id: 'plugins.settings.configuration', defaultMessage: 'Configuration' })}
+            </CardTitle>
+            <CardDescription>
+              {t({
+                id: 'plugins.settings.configurationDesc',
+                defaultMessage: 'Configure the behavior and parameters for this plugin.',
+              })}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6 pt-6">
             {Object.entries(config).length === 0 ? (
@@ -71,49 +87,59 @@ export function PluginSettingsPage() {
                   <NavIcon name="gear" />
                 </div>
                 <p className="text-sm text-muted-foreground italic">
-                  No configurable settings available for this plugin.
+                  {t({
+                    id: 'plugins.settings.noSettings',
+                    defaultMessage: 'No configurable settings available for this plugin.',
+                  })}
                 </p>
               </div>
             ) : (
-              Object.entries(config).map(([key, value]) => (
-                <div key={key} className="space-y-2">
-                  <Label htmlFor={key} className="text-sm font-semibold capitalize">
-                    {key.replace(/([A-Z])/g, ' $1').trim()}
-                  </Label>
-                  {typeof value === 'boolean' ? (
-                    <div className="rounded-md border p-3 transition-colors hover:bg-muted/20">
-                      <Checkbox
+              Object.entries(config).map(([key, value]) => {
+                const fieldLabel = key.replace(/([A-Z])/g, ' $1').trim();
+                return (
+                  <div key={key} className="space-y-2">
+                    <Label htmlFor={key} className="text-sm font-semibold capitalize">
+                      {fieldLabel}
+                    </Label>
+                    {typeof value === 'boolean' ? (
+                      <div className="rounded-md border p-3 transition-colors hover:bg-muted/20">
+                        <Checkbox
+                          id={key}
+                          checked={value}
+                          label={t(
+                            { id: 'plugins.settings.enableField', defaultMessage: 'Enable {field}' },
+                            { field: fieldLabel.toLowerCase() },
+                          )}
+                          onChange={(checked: boolean) => handleFieldChange(key, checked)}
+                        />
+                      </div>
+                    ) : typeof value === 'number' ? (
+                      <Input
                         id={key}
-                        checked={value}
-                        label={`Enable ${key
-                          .replace(/([A-Z])/g, ' $1')
-                          .trim()
-                          .toLowerCase()}`}
-                        onChange={(checked: boolean) => handleFieldChange(key, checked)}
+                        type="number"
+                        value={value}
+                        onChange={(e) => handleFieldChange(key, Number(e.target.value))}
+                        className="max-w-52"
                       />
-                    </div>
-                  ) : typeof value === 'number' ? (
-                    <Input
-                      id={key}
-                      type="number"
-                      value={value}
-                      onChange={(e) => handleFieldChange(key, Number(e.target.value))}
-                      className="max-w-52"
-                    />
-                  ) : (
-                    <Input id={key} value={value as string} onChange={(e) => handleFieldChange(key, e.target.value)} />
-                  )}
-                </div>
-              ))
+                    ) : (
+                      <Input
+                        id={key}
+                        value={value as string}
+                        onChange={(e) => handleFieldChange(key, e.target.value)}
+                      />
+                    )}
+                  </div>
+                );
+              })
             )}
           </CardContent>
           <CardFooter className="justify-end space-x-2 border-t bg-muted/10 pt-6">
             <Button variant="outline" type="button" onClick={() => navigate(-1)}>
-              Cancel
+              {t({ id: 'common.cancel' })}
             </Button>
             <Button type="submit" disabled={updateConfig.isPending || !hasChanges}>
               {updateConfig.isPending && <Spinner className="mr-2 h-4 w-4" />}
-              Save Changes
+              {t({ id: 'plugins.settings.saveChanges', defaultMessage: 'Save Changes' })}
             </Button>
           </CardFooter>
         </form>
