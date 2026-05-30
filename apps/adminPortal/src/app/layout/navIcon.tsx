@@ -15,6 +15,8 @@ const paths: Record<string, string> = {
   building:
     'M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z',
   bell: 'M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z',
+  list: 'M3 5h2v2H3V5zm0 6h2v2H3v-2zm0 6h2v2H3v-2zM7 5h14v2H7V5zm0 6h14v2H7v-2zm0 6h14v2H7v-2z',
+  scan: 'M3 5c0-1.1.9-2 2-2h3v2H5v3H3V5zm0 14v-4h2v3h3v2H5c-1.1 0-2-.9-2-2zM19 3c1.1 0 2 .9 2 2v3h-2V5h-3V3h3zm2 16c0 1.1-.9 2-2 2h-3v-2h3v-3h2v4zM4 11h16v2H4v-2z',
 };
 
 export function NavIcon({ name }: { name: string }): JSX.Element {

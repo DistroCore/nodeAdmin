@@ -157,6 +157,7 @@ export function MenuFormDialog({ onClose, onSaved, open, menu, parentId, menus }
 
           <FormField label={t({ id: 'menus.fieldParent' })} htmlFor="menu-parent">
             <Select
+              id="menu-parent"
               disabled={isChildMode}
               onChange={(value) => setSelectedParentId(value || null)}
               options={availableParents.map((m) => ({ value: m.id, label: m.name }))}
