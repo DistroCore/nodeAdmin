@@ -1315,7 +1315,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
           {/* Scroll to bottom button */}
           {!stickToBottom && messages.length > 5 && (
             <Button
-              className="fixed bottom-32 right-8 h-10 w-10 rounded-full shadow-lg border border-border animate-bounce"
+              className="absolute bottom-6 right-6 z-10 h-10 w-10 rounded-full shadow-lg border border-border animate-bounce"
               onClick={() => {
                 setStickToBottom(true);
                 if (messageViewportRef.current) {

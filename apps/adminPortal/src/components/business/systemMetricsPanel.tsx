@@ -160,10 +160,13 @@ export function SystemMetricsPanel(): JSX.Element {
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                       />
                     </svg>
-                    Updating...
+                    {t({ id: 'metrics.updating', defaultMessage: 'Updating...' })}
                   </span>
                 ) : (
-                  `Next update in 5s`
+                  t(
+                    { id: 'metrics.nextUpdate', defaultMessage: 'Next update in {seconds}s' },
+                    { seconds: Math.round(POLL_INTERVALS.metrics / 1000) },
+                  )
                 )}
               </p>
             </div>
