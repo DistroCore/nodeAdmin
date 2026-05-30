@@ -1,7 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { Pool, PoolClient } from 'pg';
-import { runtimeConfig } from '../../app/runtimeConfig';
 import { DatabaseService } from './databaseService';
 import {
   AppendResult,
