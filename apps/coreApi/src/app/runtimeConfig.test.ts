@@ -98,12 +98,14 @@ describe('runtimeConfig', () => {
       expect(runtimeConfig.auth.accessSecret).toBe('env-access-secret');
     });
 
-    it('throws when _FILE points to a non-existent file (no silent fallback)', async () => {
+    it('falls back to the env var when _FILE points to a non-existent file', async () => {
       process.env.JWT_ACCESS_SECRET_FILE = '/nonexistent/path/secret.txt';
       process.env.JWT_ACCESS_SECRET = 'env-access-secret';
       vi.resetModules();
 
-      await expect(import('./runtimeConfig')).rejects.toThrow('ENOENT');
+      const { runtimeConfig } = await import('./runtimeConfig');
+
+      expect(runtimeConfig.auth.accessSecret).toBe('env-access-secret');
     });
 
     it('throws when neither _FILE nor plain env var is set for a required secret', async () => {

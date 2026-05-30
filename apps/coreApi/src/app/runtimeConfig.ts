@@ -97,8 +97,12 @@ function readSecret(name: string, fallback?: string): string {
           return fileValue;
         }
       }
-    } catch {
-      // file doesn't exist, fall through
+    } catch (err) {
+      // Only a missing file should silently fall through to the env var.
+      // Real problems (permissions, I/O, symlink loops) must surface, not hide.
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw err;
+      }
     }
   }
 
