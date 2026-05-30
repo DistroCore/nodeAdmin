@@ -9,7 +9,7 @@ import { useToast } from '@/components/ui/toast';
 import { useApiClient } from '@/hooks/useApiClient';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { className } from '@/lib/className';
-import type { UserItem, RoleItem } from '@nodeadmin/shared-types';
+import type { UserItem, RoleItem, PaginatedResponse } from '@nodeadmin/shared-types';
 
 interface UserFormDialogProps {
   onClose: () => void;
@@ -49,11 +49,12 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
   const [selectedRoleIds, setSelectedRoleIds] = useState<Set<string>>(new Set(user?.roles.map((r) => r.id) ?? []));
 
   const rolesQuery = useQuery({
-    queryFn: () => apiClient.get<RoleItem[]>(`/api/v1/roles?tenantId=${tenantId ?? 'default'}`),
+    queryFn: () =>
+      apiClient.get<PaginatedResponse<RoleItem>>(`/api/v1/roles?pageSize=100&tenantId=${tenantId ?? 'default'}`),
     queryKey: ['roles', tenantId],
   });
 
-  const roles = Array.isArray(rolesQuery.data) ? rolesQuery.data : [];
+  const roles = rolesQuery.data?.items ?? [];
 
   const resetForm = () => {
     setEmail(user?.email ?? '');

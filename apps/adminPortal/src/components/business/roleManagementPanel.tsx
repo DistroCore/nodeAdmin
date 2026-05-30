@@ -30,7 +30,7 @@ export function RoleManagementPanel(): JSX.Element {
   const rolesQuery = useQuery({
     queryFn: () =>
       apiClient.get<{ items: RoleItem[]; total: number }>(
-        `/api/v1/roles?page=${page}&pageSize=${PAGE_SIZE}&search=${encodeURIComponent(search)}`,
+        `/api/v1/roles?page=${page + 1}&pageSize=${PAGE_SIZE}&search=${encodeURIComponent(search)}`,
       ),
     queryKey: ['roles', page, search],
   });
@@ -53,15 +53,9 @@ export function RoleManagementPanel(): JSX.Element {
     }
   };
 
-  const rawRoles = Array.isArray(rolesQuery.data) ? rolesQuery.data : [];
-  const roles = rawRoles.filter(
-    (role) =>
-      role.name.toLowerCase().includes(search.toLowerCase()) ||
-      role.description?.toLowerCase().includes(search.toLowerCase()),
-  );
-  const totalPages = Math.max(1, Math.ceil(roles.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages - 1);
-  const pagedRoles = roles.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+  const roles = rolesQuery.data?.items ?? [];
+  const total = rolesQuery.data?.total ?? 0;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <section className="relative h-full overflow-y-auto pb-20 md:pb-0">
@@ -151,7 +145,7 @@ export function RoleManagementPanel(): JSX.Element {
               ),
             },
           ]}
-          data={pagedRoles}
+          data={roles}
           emptyMessage={t({ id: 'roles.empty' })}
           errorMessage={t({ id: 'roles.loadFailed' })}
           isError={rolesQuery.isError}
@@ -159,32 +153,19 @@ export function RoleManagementPanel(): JSX.Element {
           onRetry={() => rolesQuery.refetch()}
           retryLabel={t({ id: 'common.retry' })}
           rowKey={(role) => role.id}
+          pagination={
+            totalPages > 0
+              ? {
+                  page,
+                  totalPages,
+                  onPageChange: setPage,
+                  pageInfo: t({ id: 'common.page_info' }, { page: page + 1, total: totalPages }),
+                  prevLabel: t({ id: 'common.previous' }),
+                  nextLabel: t({ id: 'common.next' }),
+                }
+              : undefined
+          }
         />
-        {roles.length > PAGE_SIZE && (
-          <div className="mt-4 flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">
-              {t({ id: 'common.page_info' }, { page: safePage + 1, total: totalPages })}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={safePage <= 0}
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-              >
-                {t({ id: 'common.previous' })}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={safePage >= totalPages - 1}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                {t({ id: 'common.next' })}
-              </Button>
-            </div>
-          </div>
-        )}
       </Card>
 
       {canManage && (
