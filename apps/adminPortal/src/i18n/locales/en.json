@@ -512,5 +512,7 @@
   "common.enabled": "Enabled",
   "common.disabled": "Disabled",
   "common.settings": "Settings",
-  "common.processing": "..."
+  "common.processing": "...",
+  "common.error.unknown": "An unexpected error occurred.",
+  "plugins.update_to": "Update to v{version}"
 }

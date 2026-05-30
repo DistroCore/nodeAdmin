@@ -512,5 +512,7 @@
   "common.enabled": "已启用",
   "common.disabled": "已禁用",
   "common.settings": "设置",
-  "common.processing": "..."
+  "common.processing": "...",
+  "common.error.unknown": "发生了未知错误。",
+  "plugins.update_to": "更新至 v{version}"
 }

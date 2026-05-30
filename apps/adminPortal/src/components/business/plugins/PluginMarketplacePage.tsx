@@ -3,6 +3,7 @@ import { useIntl } from 'react-intl';
 import { Link } from 'react-router-dom';
 import { useMarketplace, usePluginManagement } from '@/hooks/useMarketplace';
 import { usePluginStore } from '@/stores/usePluginStore';
+import { usePermissionStore } from '@/stores/usePermissionStore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button, buttonVariants } from '@/components/ui/button';
