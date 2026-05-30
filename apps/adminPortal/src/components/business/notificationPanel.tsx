@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { useIntl } from 'react-intl';
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -97,18 +97,27 @@ interface AuditLogResponse {
 
 const loadingRows = ['row-1', 'row-2', 'row-3', 'row-4', 'row-5'];
 
+const PAGE_SIZE = 20;
+
 export function NotificationPanel(): JSX.Element {
   const { formatMessage: t } = useIntl();
   const apiClient = useApiClient();
   const { markAsRead, markAllAsRead, readIds } = useNotificationStore();
 
-  const auditQuery = useQuery({
-    queryFn: () => apiClient.get<AuditLogResponse>('/api/v1/console/audit-logs?pageSize=50'),
+  const auditQuery = useInfiniteQuery({
     queryKey: ['notifications-logs'],
+    queryFn: ({ pageParam }) =>
+      apiClient.get<AuditLogResponse>(`/api/v1/console/audit-logs?page=${pageParam}&pageSize=${PAGE_SIZE}`),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, page) => sum + page.items.length, 0);
+      if (lastPage.items.length < PAGE_SIZE || loaded >= lastPage.total) return undefined;
+      return allPages.length + 1;
+    },
     refetchInterval: POLL_INTERVALS.notifications,
   });
 
-  const notifications = auditQuery.data?.items ?? [];
+  const notifications = auditQuery.data?.pages.flatMap((page: AuditLogResponse) => page.items) ?? [];
 
   const getTypeLabel = (action: string) => {
     if (action.includes('login') || action.includes('auth')) return t({ id: 'notifications.type.auth' });
@@ -193,6 +202,22 @@ export function NotificationPanel(): JSX.Element {
               );
             })}
           </div>
+          {auditQuery.hasNextPage ? (
+            <div className="flex justify-center border-t p-3">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={auditQuery.isFetchingNextPage}
+                onClick={() => {
+                  if (!auditQuery.isFetchingNextPage) void auditQuery.fetchNextPage();
+                }}
+              >
+                {auditQuery.isFetchingNextPage
+                  ? t({ id: 'common.loading' })
+                  : t({ id: 'common.loadMore', defaultMessage: 'Load more' })}
+              </Button>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </section>

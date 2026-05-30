@@ -86,7 +86,7 @@ describe('NotificationPanel', () => {
     renderPanel();
 
     await waitFor(() => {
-      expect(mockGet).toHaveBeenCalledWith('/api/v1/console/audit-logs?pageSize=50');
+      expect(mockGet).toHaveBeenCalledWith('/api/v1/console/audit-logs?page=1&pageSize=20');
     });
 
     // Items should render — check for action text
