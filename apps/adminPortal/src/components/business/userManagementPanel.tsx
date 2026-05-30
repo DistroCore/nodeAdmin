@@ -12,6 +12,7 @@ import { useApiClient } from '@/hooks/useApiClient';
 import { usePermissionStore } from '@/stores/usePermissionStore';
 import { type UserItem, type PaginatedResponse } from '@nodeadmin/shared-types';
 import { UserFormDialog } from './userFormDialog';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
 const PAGE_SIZE = 10;
 
@@ -27,12 +28,14 @@ export function UserManagementPanel(): JSX.Element {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
+  const debouncedSearch = useDebouncedValue(search);
+
   const usersQuery = useQuery({
     queryFn: () =>
       apiClient.get<PaginatedResponse<UserItem>>(
-        `/api/v1/users?pageSize=${PAGE_SIZE}&page=${page + 1}&search=${encodeURIComponent(search)}`,
+        `/api/v1/users?pageSize=${PAGE_SIZE}&page=${page + 1}&search=${encodeURIComponent(debouncedSearch)}`,
       ),
-    queryKey: ['users', page, search],
+    queryKey: ['users', page, debouncedSearch],
   });
 
   const deleteMutation = useMutation({

@@ -530,5 +530,11 @@
   "plugins.installed.loadFailed": "插件加载失败。",
   "im.messageSent": "已发送",
   "im.empty.noMessages": "还没有消息,打个招呼吧!",
-  "im.empty.selectConversation": "选择一个会话开始聊天。"
+  "im.empty.selectConversation": "选择一个会话开始聊天。",
+  "users.loadRolesFailed": "角色加载失败。",
+  "metrics.updating": "更新中...",
+  "metrics.nextUpdate": "{seconds} 秒后刷新",
+  "auth.tenantRequired": "请先选择租户。",
+  "auth.oauthFailed": "登录失败:{reason}",
+  "auth.sms.resendIn": "{seconds} 秒后可重发"
 }

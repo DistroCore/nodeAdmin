@@ -207,6 +207,17 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
                   </svg>
                   {t({ id: 'users.loadingRoles' })}
                 </div>
+              ) : rolesQuery.isError ? (
+                <div className="flex items-center gap-3 py-2 text-sm text-destructive">
+                  <span>{t({ id: 'users.loadRolesFailed', defaultMessage: 'Failed to load roles.' })}</span>
+                  <button
+                    type="button"
+                    onClick={() => rolesQuery.refetch()}
+                    className="font-medium underline hover:no-underline"
+                  >
+                    {t({ id: 'common.retry' })}
+                  </button>
+                </div>
               ) : roles.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-2 italic">{t({ id: 'users.noRoles' })}</p>
               ) : (

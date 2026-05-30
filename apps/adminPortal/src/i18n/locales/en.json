@@ -530,5 +530,11 @@
   "plugins.installed.loadFailed": "Failed to load plugins.",
   "im.messageSent": "Sent",
   "im.empty.noMessages": "No messages yet. Say hello!",
-  "im.empty.selectConversation": "Select a conversation to start chatting."
+  "im.empty.selectConversation": "Select a conversation to start chatting.",
+  "users.loadRolesFailed": "Failed to load roles.",
+  "metrics.updating": "Updating...",
+  "metrics.nextUpdate": "Next update in {seconds}s",
+  "auth.tenantRequired": "Tenant ID is required.",
+  "auth.oauthFailed": "Login failed: {reason}",
+  "auth.sms.resendIn": "Resend in {seconds}s"
 }

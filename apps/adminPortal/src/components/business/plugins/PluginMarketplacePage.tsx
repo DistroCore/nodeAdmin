@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useIntl } from 'react-intl';
 import { Link } from 'react-router-dom';
 import { useMarketplace, usePluginManagement } from '@/hooks/useMarketplace';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { usePluginStore } from '@/stores/usePluginStore';
 import { usePermissionStore } from '@/stores/usePermissionStore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -40,8 +41,9 @@ export function PluginMarketplacePage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const pageSize = 20;
+  const debouncedSearch = useDebouncedValue(search);
 
-  const { data, isLoading, error, refetch } = useMarketplace(page, pageSize, search);
+  const { data, isLoading, error, refetch } = useMarketplace(page, pageSize, debouncedSearch);
   const { install } = usePluginManagement();
   const plugins = usePluginStore((s) => s.plugins);
   const canManage = usePermissionStore((s) => s.hasPermission('plugins:manage'));
