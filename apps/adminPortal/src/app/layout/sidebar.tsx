@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { NavLink, useLocation } from 'react-router-dom';
 import { className } from '@/lib/className';
+import { logger } from '@/lib/logger';
 import { useMenuStore } from '@/stores/useMenuStore';
 import { usePermissionStore } from '@/stores/usePermissionStore';
 import { usePluginStore } from '@/stores/usePluginStore';
@@ -59,9 +60,21 @@ export function Sidebar(): JSX.Element {
     return () => mql.removeEventListener('change', handler);
   }, []);
 
+  // Don't fail silently: if menus loaded but came back empty, we're rendering the static
+  // navConfig fallback — usually a tenant / role-menu misconfiguration worth surfacing.
+  useEffect(() => {
+    if (menusLoaded && menus.length === 0) {
+      logger.warn(
+        'Sidebar',
+        'Menu tree is empty after load — using static navigation fallback. Check tenant / role-menu configuration.',
+      );
+    }
+  }, [menusLoaded, menus.length]);
+
   function linkClass(isActive: boolean): string {
     return className(
       'group relative flex h-10 items-center rounded-md text-sm font-medium transition-colors',
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
       sidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-3',
       isActive ? 'bg-primary text-primary-foreground shadow-sm' : 'hover:bg-[hsl(var(--sidebar-accent))]',
     );
@@ -87,8 +100,11 @@ export function Sidebar(): JSX.Element {
     return (
       <div key={menu.id}>
         {hasChildren ? (
-          <div
-            className={className(linkClass(isActive), 'cursor-pointer')}
+          <button
+            type="button"
+            aria-expanded={isExpanded}
+            aria-label={sidebarCollapsed ? displayName : undefined}
+            className={className(linkClass(isActive), 'w-full cursor-pointer text-left')}
             onClick={(e) => toggleGroup(menu.id, e)}
             style={{ paddingLeft: !sidebarCollapsed ? `${depth * 12 + 12}px` : undefined }}
           >
@@ -111,9 +127,10 @@ export function Sidebar(): JSX.Element {
                 {displayName}
               </span>
             )}
-          </div>
+          </button>
         ) : (
           <NavLink
+            aria-label={sidebarCollapsed ? displayName : undefined}
             className={() => linkClass(isActive)}
             onClick={() => setMobileMenuOpen(false)}
             style={{ paddingLeft: !sidebarCollapsed ? `${depth * 12 + 12}px` : undefined }}
