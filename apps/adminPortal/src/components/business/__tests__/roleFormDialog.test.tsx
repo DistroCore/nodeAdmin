@@ -206,7 +206,7 @@ describe('RoleFormDialog', () => {
         '/api/v1/roles/role-1?tenantId=tenant-1',
         expect.objectContaining({
           name: 'UpdatedRole',
-          tenantId: 'tenant-1',
+          permissionIds: expect.any(Array),
         }),
       );
     });

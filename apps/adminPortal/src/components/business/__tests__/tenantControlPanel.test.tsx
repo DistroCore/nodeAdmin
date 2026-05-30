@@ -9,6 +9,11 @@ const mockDel = vi.fn();
 const mockSuccess = vi.fn();
 const mockError = vi.fn();
 
+vi.mock('@/stores/usePermissionStore', () => ({
+  usePermissionStore: (selector: (state: { hasPermission: (permission: string) => boolean }) => unknown) =>
+    selector({ hasPermission: () => true }),
+}));
+
 vi.mock('react-intl', () => ({
   useIntl: () => ({
     formatMessage: ({ id }: { id: string }) => id,

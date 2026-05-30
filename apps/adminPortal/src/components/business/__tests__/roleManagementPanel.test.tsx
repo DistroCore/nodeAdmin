@@ -5,6 +5,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RoleManagementPanel } from '../roleManagementPanel';
 import type { RoleItem } from '@nodeadmin/shared-types';
 
+vi.mock('@/stores/usePermissionStore', () => ({
+  usePermissionStore: (selector: (state: { hasPermission: (permission: string) => boolean }) => unknown) =>
+    selector({ hasPermission: () => true }),
+}));
+
 // Mock react-intl
 vi.mock('react-intl', () => ({
   useIntl: () => ({
