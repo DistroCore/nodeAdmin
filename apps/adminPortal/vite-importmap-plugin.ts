@@ -1,5 +1,11 @@
 import type { Plugin } from 'vite';
 
+// NOTE: Changing this list (or the importmap JSON shape below) alters the inline
+// <script type="importmap"> content in the built index.html. The production CSP in
+// infra/nginx/nginx.conf and infra/docker/nginx/adminportal.conf pins this script via a
+// sha256 hash — out-of-sync hashes make the browser block the importmap (blank page).
+// After editing, rebuild and recompute the hash, then update both nginx configs:
+//   node -e "const fs=require('fs'),c=require('crypto');const m=fs.readFileSync('dist/index.html','utf8').match(/<script type=\"importmap\">([\s\S]*?)<\/script>/);console.log('sha256-'+c.createHash('sha256').update(m[1]).digest('base64'))"
 const SHARED_DEPS = [
   'react',
   'react-dom',
