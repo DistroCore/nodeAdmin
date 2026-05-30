@@ -455,6 +455,7 @@
   "notifications.empty": "暂无消息",
   "notifications.unread": "未读",
   "notifications.loadFailed": "加载消息失败",
+  "notifications.newCount": "{count} 条新通知,点击查看",
   "notifications.type.auth": "身份认证",
   "notifications.type.user": "用户管理",
   "notifications.type.tenant": "租户变更",

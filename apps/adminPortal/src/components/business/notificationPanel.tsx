@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useIntl } from 'react-intl';
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -102,8 +102,12 @@ const PAGE_SIZE = 20;
 export function NotificationPanel(): JSX.Element {
   const { formatMessage: t } = useIntl();
   const apiClient = useApiClient();
+  const queryClient = useQueryClient();
   const { markAsRead, markAllAsRead, readIds } = useNotificationStore();
 
+  // Infinite list — appends pages on "load more". No polling here: a background
+  // refetch would re-request every loaded page (request/memory amplification),
+  // so freshness is delegated to the lightweight head poll below.
   const auditQuery = useInfiniteQuery({
     queryKey: ['notifications-logs'],
     queryFn: ({ pageParam }) =>
@@ -114,8 +118,30 @@ export function NotificationPanel(): JSX.Element {
       if (lastPage.items.length < PAGE_SIZE || loaded >= lastPage.total) return undefined;
       return allPages.length + 1;
     },
+  });
+
+  // Lightweight head poll — always one request per interval, independent of how
+  // many pages the infinite list has loaded. Used only to detect new entries.
+  const headQuery = useQuery({
+    queryKey: ['notifications-head'],
+    queryFn: () => apiClient.get<AuditLogResponse>(`/api/v1/console/audit-logs?page=1&pageSize=${PAGE_SIZE}`),
     refetchInterval: POLL_INTERVALS.notifications,
   });
+
+  // Baseline is the total of the list's own first page (what the user is currently
+  // looking at). Comparing it to the freshly-polled head total yields how many new
+  // entries exist. Resetting the list (showLatest) refetches page 1, which moves the
+  // baseline forward automatically — no separate state to keep in sync.
+  const headTotal = headQuery.data?.total ?? 0;
+  const listTotal = auditQuery.data?.pages[0]?.total ?? 0;
+  const newCount = Math.max(0, headTotal - listTotal);
+
+  const showLatest = () => {
+    // Collapse the loaded pages back to a single fresh first page so the newest
+    // entries show at the top. The banner clears once the refetch settles (its new
+    // first-page total matches the head total).
+    void queryClient.resetQueries({ queryKey: ['notifications-logs'] });
+  };
 
   const notifications = auditQuery.data?.pages.flatMap((page: AuditLogResponse) => page.items) ?? [];
 
@@ -144,6 +170,15 @@ export function NotificationPanel(): JSX.Element {
           </Button>
         </CardHeader>
         <CardContent className="p-0">
+          {newCount > 0 && !auditQuery.isFetching ? (
+            <button
+              type="button"
+              onClick={showLatest}
+              className="flex w-full items-center justify-center gap-2 border-b bg-primary/10 p-2 text-sm font-medium text-primary transition-colors hover:bg-primary/15"
+            >
+              {t({ id: 'notifications.newCount' }, { count: newCount })}
+            </button>
+          ) : null}
           <div className="divide-y">
             {auditQuery.isLoading
               ? loadingRows.map((rowId) => (
@@ -212,9 +247,7 @@ export function NotificationPanel(): JSX.Element {
                   if (!auditQuery.isFetchingNextPage) void auditQuery.fetchNextPage();
                 }}
               >
-                {auditQuery.isFetchingNextPage
-                  ? t({ id: 'common.loading' })
-                  : t({ id: 'common.loadMore', defaultMessage: 'Load more' })}
+                {auditQuery.isFetchingNextPage ? t({ id: 'common.loading' }) : t({ id: 'audit.loadMore' })}
               </Button>
             </div>
           ) : null}

@@ -455,6 +455,7 @@
   "notifications.empty": "No notifications yet",
   "notifications.unread": "Unread",
   "notifications.loadFailed": "Failed to load notifications",
+  "notifications.newCount": "{count} new notifications — click to view",
   "notifications.type.auth": "Authentication",
   "notifications.type.user": "User Management",
   "notifications.type.tenant": "Tenant Change",
