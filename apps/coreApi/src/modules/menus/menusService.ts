@@ -5,14 +5,14 @@ import { DatabaseService } from '../../infrastructure/database/databaseService';
 
 export interface MenuItem {
   id: string;
-  parentId: string | null;
+  parent_id: string | null;
   name: string;
   path: string | null;
   icon: string | null;
-  sortOrder: number;
-  permissionCode: string | null;
-  isVisible: boolean;
-  createdAt: Date;
+  sort_order: number;
+  permission_code: string | null;
+  is_visible: boolean;
+  created_at: Date;
   children?: MenuItem[];
 }
 
