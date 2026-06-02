@@ -103,7 +103,7 @@ export function NotificationPanel(): JSX.Element {
   const { formatMessage: t } = useIntl();
   const apiClient = useApiClient();
   const queryClient = useQueryClient();
-  const { markAsRead, markAllAsRead, readIds } = useNotificationStore();
+  const { markAsRead, markAllAsRead, isRead } = useNotificationStore();
 
   // Infinite list — appends pages on "load more". No polling here: a background
   // refetch would re-request every loaded page (request/memory amplification),
@@ -154,7 +154,7 @@ export function NotificationPanel(): JSX.Element {
   };
 
   const handleMarkAllRead = () => {
-    markAllAsRead(notifications.map((n) => n.id));
+    markAllAsRead();
   };
 
   return (
@@ -198,7 +198,7 @@ export function NotificationPanel(): JSX.Element {
             ) : null}
 
             {notifications.map((notification) => {
-              const isUnread = !readIds.has(notification.id);
+              const isUnread = !isRead(notification.id, notification.createdAt);
               return (
                 <button
                   key={notification.id}

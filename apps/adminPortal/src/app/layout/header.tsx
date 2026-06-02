@@ -20,15 +20,16 @@ export function Header(): JSX.Element {
   const setMobileMenuOpen = useUiStore((s) => s.setMobileMenuOpen);
   const pageTitleId = resolveCurrentPageTitle(location.pathname);
   const userName = useAuthStore((s) => s.userName);
-  const { readIds } = useNotificationStore();
+  const { isRead } = useNotificationStore();
 
   const auditQuery = useQuery({
-    queryFn: () => apiClient.get<{ items: Array<{ id: string }> }>('/api/v1/console/audit-logs?pageSize=50'),
+    queryFn: () =>
+      apiClient.get<{ items: Array<{ id: string; createdAt: string }> }>('/api/v1/console/audit-logs?pageSize=50'),
     queryKey: ['notifications-badge-count'],
     refetchInterval: POLL_INTERVALS.auth,
   });
 
-  const unreadCount = (auditQuery.data?.items ?? []).filter((n) => !readIds.has(n.id)).length;
+  const unreadCount = (auditQuery.data?.items ?? []).filter((n) => !isRead(n.id, n.createdAt)).length;
 
   const toggleLocale = () => setLocale((locale === 'zh' ? 'en' : 'zh') as AppLocale);
 

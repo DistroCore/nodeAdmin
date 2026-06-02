@@ -25,8 +25,10 @@ const mockMarkAllAsRead = vi.fn();
 vi.mock('@/stores/useNotificationStore', () => ({
   useNotificationStore: () => ({
     readIds: new Set<string>(),
+    readBefore: null,
     markAsRead: mockMarkAsRead,
     markAllAsRead: mockMarkAllAsRead,
+    isRead: () => false,
   }),
 }));
 
