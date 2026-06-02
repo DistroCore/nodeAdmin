@@ -1,6 +1,6 @@
 # Harness 补强清单
 
-> **status**: draft | **last-reviewed**: 2026-04-10
+> **status**: draft | **last-reviewed**: 2026-06-03
 
 ## 1. 背景
 
@@ -107,4 +107,5 @@
 
 ## 12. 最近更新时间
 
+- 2026-06-03（D-022 schema 布尔列统一：`is_active`/`is_system`/`is_visible` 由 `INTEGER 0/1` 改为原生 `BOOLEAN`，DB 类型与 `schema.ts`/`shared-types` 真源对齐；新增 `docs/governance/harnessUsage.md` 文档化验证 / 迁移 harness 入口与 Docker 前置条件）
 - 2026-04-10（P0 全部完成：真源收敛、规则机器化、验证闭环；P1 技能扩展、监控 runbook 可执行化、性能验证入口、文档治理自动化完成；P2 质量评分卡脚本完成；TD-3 E2E flaky 根因修复并重新接入 CI）

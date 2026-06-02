@@ -1,6 +1,6 @@
 # 决策日志
 
-> **status**: approved | **last-reviewed**: 2026-04-10
+> **status**: approved | **last-reviewed**: 2026-06-03
 
 ## 记录规则
 
@@ -208,8 +208,19 @@
 - 影响范围：`apps/adminPortal/src/i18n/`、未来所有引入 i18n 的 FE 模块。
 - 责任人：前端负责人。
 
+### D-022
+
+- 日期：2026-06-03
+- 决策：将旧 RBAC 表（迁移 0016）的布尔语义列 `tenants.is_active`、`users.is_active`、`roles.is_system`、`menus.is_visible` 由 `INTEGER 0/1` 统一为原生 `BOOLEAN`，与 `schema.ts` 既有声明及较新表（`tenant_plugins.enabled`、`plugin*.is_public`）对齐。
+- 原因：同一仓库内布尔列类型分叉（0016 用 INTEGER，`schema.ts` 与新表用 boolean，`shared-types` 用 number），`menusService.getUserMenus` 的 `WHERE is_visible = true` 在 INTEGER 列上有运行期报错风险，且单测全 mock 掩盖了真实形态。尚未上线，借机收敛为单一正确类型。
+- 影响范围：新增 `0025_booleanize_rbac_flags.sql`（4 列 `ALTER ... TYPE boolean USING (col <> 0)`）；`packages/shared-types` 4 字段 number→boolean；`usersService`/`tenantsService` 插入/更新改传 JS 布尔；`authService`（全 truthy 判断）与 `menusService`（SQL `= true`）仅改类型标注、逻辑不变；前端消费方均为 `Boolean()`/truthy 用法无需改；一批单测 mock 的 `0/1` 改 `true/false`。
+- 回滚方式：还原代码改动并加反向迁移 `ALTER ... TYPE integer USING (col::int)`；尚未上线亦可直接重建开发库。
+- 验证：`npm run build`（跨包 tsc）+ lint + 后端 600 + 前端 136 单测全绿；迁移本体需在真实 Postgres 上 `npm run db:migrate` + integration 验证（流程见 `harnessUsage.md`）。
+- 责任人：架构负责人 / 项目负责人。
+
 ## 最近更新时间
 
+- 2026-06-03（D-022：RBAC 布尔列 `INTEGER`→`BOOLEAN` 统一；新增迁移 0025 与 `harnessUsage.md`；build + lint + 600/136 单测全绿，真库迁移验证待 Docker 起库后跑）
 - 2026-04-10（D-002 修订：目录命名由 `UpperCamelCase` 改为 `lowercase`，与仓库实际结构对齐）
 - 2026-04-08（P5 七个 PR 全部合入 master：#46 OpenAPI snapshot guard、#47 plugin lifecycle hooks、#49 backend coverage baseline、#48 react-intl 降级、#45 hooks/stores coverage、#43 design token sweep、#44 plugin UI polish；D-021 追加 react-intl 7.x API surface 限制说明；新增 D-020 / D-021，关闭 TD-1 / TD-2 两条挂账技术债的决策状态；新增 D-019 明确框架定位；同日补录 D-012 ~ D-018，对齐插件市场 / CI 加固 / TenantContext 实际落地）
 - 2026-03-01（补录 D-007 ~ D-011，对齐 brainstormingResults.md 决策建议）
