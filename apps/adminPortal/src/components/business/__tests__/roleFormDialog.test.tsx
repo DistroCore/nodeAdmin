@@ -64,7 +64,7 @@ const mockRole: RoleItem = {
   id: 'role-1',
   name: 'Admin',
   description: 'Admin role',
-  is_system: 0,
+  is_system: false,
   permissions: [{ id: 'perm-1', code: 'users:view', name: 'View Users' }],
   created_at: '2025-01-01T00:00:00Z',
   updated_at: '2025-01-01T00:00:00Z',

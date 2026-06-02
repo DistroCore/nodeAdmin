@@ -65,7 +65,7 @@ describe('UserManagementPanel', () => {
           created_at: '2026-04-02T00:00:00.000Z',
           email: 'alice@example.com',
           id: 'user-1',
-          is_active: 1,
+          is_active: true,
           name: 'Alice',
           phone: null,
           roles: [{ id: 'role-1', name: 'Admin' }],

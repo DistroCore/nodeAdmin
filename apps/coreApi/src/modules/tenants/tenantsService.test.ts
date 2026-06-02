@@ -100,7 +100,7 @@ describe('TenantsService', () => {
         { rows: [], rowCount: 0 },
         { rows: [], rowCount: 1 },
         {
-          rows: [{ id: 't-2', name: 'Dormant Tenant', slug: 'dormant', is_active: 0 }],
+          rows: [{ id: 't-2', name: 'Dormant Tenant', slug: 'dormant', is_active: false }],
           rowCount: 1,
         },
       ]);
@@ -112,11 +112,11 @@ describe('TenantsService', () => {
         isActive: false,
       });
 
-      expect(result.is_active).toBe(0);
+      expect(result.is_active).toBe(false);
       expect(mockPool.query).toHaveBeenNthCalledWith(
         2,
         'INSERT INTO tenants (id, name, slug, logo, is_active, config_json) VALUES ($1, $2, $3, $4, $5, $6)',
-        [expect.any(String), 'Dormant Tenant', 'dormant', null, 0, '{}'],
+        [expect.any(String), 'Dormant Tenant', 'dormant', null, false, '{}'],
       );
     });
   });
@@ -159,30 +159,30 @@ describe('TenantsService', () => {
     it('should deactivate a tenant by storing is_active = 0', async () => {
       const mockPool = createMockPool([
         { rows: [{ id: 't-1' }], rowCount: 1 },
-        { rows: [{ id: 't-1', name: 'Tenant 1', slug: 't1', is_active: 0 }], rowCount: 1 },
+        { rows: [{ id: 't-1', name: 'Tenant 1', slug: 't1', is_active: false }], rowCount: 1 },
       ]);
       setTenantsServicePool(service, mockPool);
 
       const result = await service.update('t-1', { isActive: false });
 
-      expect(result.is_active).toBe(0);
+      expect(result.is_active).toBe(false);
       expect(mockPool.query).toHaveBeenNthCalledWith(
         1,
         'UPDATE tenants SET is_active = $1, updated_at = now() WHERE id = $2 RETURNING id',
-        [0, 't-1'],
+        [false, 't-1'],
       );
     });
 
     it('should reactivate a tenant by storing is_active = 1', async () => {
       const mockPool = createMockPool([
         { rows: [{ id: 't-1' }], rowCount: 1 },
-        { rows: [{ id: 't-1', name: 'Tenant 1', slug: 't1', is_active: 1 }], rowCount: 1 },
+        { rows: [{ id: 't-1', name: 'Tenant 1', slug: 't1', is_active: true }], rowCount: 1 },
       ]);
       setTenantsServicePool(service, mockPool);
 
       const result = await service.update('t-1', { isActive: true });
 
-      expect(result.is_active).toBe(1);
+      expect(result.is_active).toBe(true);
     });
   });
 

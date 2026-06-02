@@ -63,7 +63,7 @@ describe('TenantControlPanel', () => {
         config_json: null,
         created_at: '2026-04-02T00:00:00.000Z',
         id: 'tenant-1',
-        is_active: 1,
+        is_active: true,
         logo: null,
         name: 'Default Tenant',
         slug: 'default',

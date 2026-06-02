@@ -40,7 +40,7 @@ interface UserRow {
   email: string;
   password_hash: string;
   name: string | null;
-  is_active: number;
+  is_active: boolean;
 }
 
 interface RoleRow {
@@ -318,7 +318,7 @@ export class AuthService {
   async resetPassword(email: string, newPassword: string, tenantId: string): Promise<void> {
     if (!this.pool) throw new UnauthorizedException('Database not available.');
 
-    const result = await this.pool.query<{ id: string; is_active: number }>(
+    const result = await this.pool.query<{ id: string; is_active: boolean }>(
       'SELECT id, is_active FROM users WHERE tenant_id = $1 AND email = $2',
       [tenantId, email],
     );
@@ -393,7 +393,7 @@ export class AuthService {
       phone: string;
       code: string;
       user_id: string | null;
-      is_active: number;
+      is_active: boolean;
     }>(
       `SELECT sc.id, sc.phone, sc.code, u.id AS user_id, u.is_active
        FROM sms_codes sc
@@ -461,7 +461,7 @@ export class AuthService {
     const existingResult = await this.pool.query<{
       user_id: string;
       name: string | null;
-      is_active: number;
+      is_active: boolean;
     }>(
       `SELECT oa.user_id, u.name, u.is_active
        FROM oauth_accounts oa

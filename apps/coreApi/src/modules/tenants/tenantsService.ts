@@ -1,4 +1,11 @@
-import { ConflictException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { DatabaseService } from '../../infrastructure/database/databaseService';
@@ -50,7 +57,7 @@ export class TenantsService {
     const id = randomUUID();
     await this.pool.query(
       'INSERT INTO tenants (id, name, slug, logo, is_active, config_json) VALUES ($1, $2, $3, $4, $5, $6)',
-      [id, data.name, data.slug, data.logo ?? null, data.isActive === false ? 0 : 1, '{}'],
+      [id, data.name, data.slug, data.logo ?? null, data.isActive !== false, '{}'],
     );
     return this.findById(id);
   }
@@ -72,7 +79,7 @@ export class TenantsService {
     }
     if (data.isActive !== undefined) {
       sets.push(`is_active = $${++idx}`);
-      params.push(data.isActive ? 1 : 0);
+      params.push(data.isActive);
     }
 
     if (sets.length === 0) return this.findById(id);
