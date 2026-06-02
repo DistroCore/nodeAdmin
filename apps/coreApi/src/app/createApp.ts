@@ -49,7 +49,7 @@ export async function createApp(): Promise<NestFastifyApplication> {
   });
 
   app.enableCors({
-    origin: true,
+    origin: runtimeConfig.corsOrigins,
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
   });
