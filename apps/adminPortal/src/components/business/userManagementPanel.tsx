@@ -139,7 +139,7 @@ export function UserManagementPanel(): JSX.Element {
               header: t({ id: 'users.colStatus' }),
               className: 'hidden sm:table-cell',
               cell: (user) => (
-                <Badge variant={user.is_active ? 'default' : 'secondary'}>
+                <Badge variant={user.is_active ? 'success' : 'secondary'}>
                   {user.is_active ? t({ id: 'users.active' }) : t({ id: 'users.inactive' })}
                 </Badge>
               ),

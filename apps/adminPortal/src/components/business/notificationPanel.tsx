@@ -99,8 +99,35 @@ const loadingRows = ['row-1', 'row-2', 'row-3', 'row-4', 'row-5'];
 
 const PAGE_SIZE = 20;
 
+const MINUTE = 60_000;
+const HOUR = 3_600_000;
+const DAY = 86_400_000;
+
+// Locale-aware relative time ("5 minutes ago" / "5 分钟前") via the native Intl
+// API — no extra i18n keys, follows the active locale. Falls back to a date for
+// anything older than a week.
+function formatRelativeTime(iso: string, locale: string): string {
+  const diffMs = new Date(iso).getTime() - Date.now();
+  const abs = Math.abs(diffMs);
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+  if (abs < HOUR) return rtf.format(Math.round(diffMs / MINUTE), 'minute');
+  if (abs < DAY) return rtf.format(Math.round(diffMs / HOUR), 'hour');
+  if (abs < 7 * DAY) return rtf.format(Math.round(diffMs / DAY), 'day');
+  return new Date(iso).toLocaleDateString(locale);
+}
+
+// Type-based accent for the icon circle, matching the dashboard's stat palette.
+function notificationAccent(action: string): string {
+  if (action.includes('login') || action.includes('auth'))
+    return 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400';
+  if (action.includes('user')) return 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400';
+  if (action.includes('tenant')) return 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400';
+  if (action.includes('system')) return 'bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400';
+  return 'bg-muted text-muted-foreground';
+}
+
 export function NotificationPanel(): JSX.Element {
-  const { formatMessage: t } = useIntl();
+  const { formatMessage: t, locale } = useIntl();
   const apiClient = useApiClient();
   const queryClient = useQueryClient();
   const { markAsRead, markAllAsRead, isRead } = useNotificationStore();
@@ -206,7 +233,9 @@ export function NotificationPanel(): JSX.Element {
                   onClick={() => markAsRead(notification.id)}
                   type="button"
                 >
-                  <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-lg">
+                  <div
+                    className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lg ${notificationAccent(notification.action)}`}
+                  >
                     <NotificationIcon action={notification.action} />
                   </div>
                   <div className="flex-1 space-y-1">
@@ -221,8 +250,11 @@ export function NotificationPanel(): JSX.Element {
                           </Badge>
                         )}
                       </div>
-                      <span className="text-[0.625rem] text-muted-foreground whitespace-nowrap">
-                        {new Date(notification.createdAt).toLocaleString()}
+                      <span
+                        className="text-[0.625rem] text-muted-foreground whitespace-nowrap"
+                        title={new Date(notification.createdAt).toLocaleString()}
+                      >
+                        {formatRelativeTime(notification.createdAt, locale)}
                       </span>
                     </div>
                     <p

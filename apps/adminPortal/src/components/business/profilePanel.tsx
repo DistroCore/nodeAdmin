@@ -50,7 +50,7 @@ function LinkedAccountsSection(): JSX.Element {
           <div key={provider} className="flex items-center justify-between rounded-md border border-border px-3 py-2">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-foreground">{t({ id: `profile.provider.${provider}` })}</span>
-              <Badge variant={isLinked ? 'default' : 'secondary'}>
+              <Badge variant={isLinked ? 'success' : 'secondary'}>
                 {isLinked ? t({ id: 'profile.linked' }) : t({ id: 'profile.notLinked' })}
               </Badge>
             </div>

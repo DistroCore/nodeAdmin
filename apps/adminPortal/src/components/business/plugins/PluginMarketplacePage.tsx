@@ -138,7 +138,7 @@ export function PluginMarketplacePage() {
                       <NavIcon name="rocket" />
                     </div>
                     {isInstalled(plugin.id) && (
-                      <Badge variant="secondary">
+                      <Badge variant="success">
                         {t({ id: 'plugins.status.installed', defaultMessage: 'Installed' })}
                       </Badge>
                     )}

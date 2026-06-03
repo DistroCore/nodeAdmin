@@ -151,7 +151,7 @@ export function InstalledPluginsPage() {
                           onChange={() => toggleEnabled.mutate(plugin.name)}
                           disabled={!canManage || toggleEnabled.isPending}
                         />
-                        <Badge variant={plugin.enabled ? 'default' : 'secondary'} className="capitalize">
+                        <Badge variant={plugin.enabled ? 'success' : 'secondary'} className="capitalize">
                           {plugin.enabled
                             ? t({ id: 'common.enabled', defaultMessage: 'Enabled' })
                             : t({ id: 'common.disabled', defaultMessage: 'Disabled' })}
