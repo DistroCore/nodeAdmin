@@ -418,5 +418,5 @@
   "common.enabled": "Enabled",
   "common.disabled": "Disabled",
   "common.settings": "Settings",
-  "common.processing": "..."
+  "common.processing": "Processing…"
 }

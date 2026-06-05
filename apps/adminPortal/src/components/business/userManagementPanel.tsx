@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { DataTable } from '@/components/ui/dataTable';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast';
 import { useApiClient } from '@/hooks/useApiClient';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { usePermissionStore } from '@/stores/usePermissionStore';
 import { type UserItem, type PaginatedResponse } from '@nodeadmin/shared-types';
 import { UserFormDialog } from './userFormDialog';
@@ -22,6 +23,12 @@ export function UserManagementPanel(): JSX.Element {
   const canManage = usePermissionStore((s) => s.hasPermission('users:manage'));
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
+  // Server-side search: debounce so each keystroke doesn't fire a request; reset to the first page
+  // whenever the effective term changes.
+  const debouncedSearch = useDebouncedValue(search);
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<UserItem | undefined>(undefined);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -30,9 +37,9 @@ export function UserManagementPanel(): JSX.Element {
   const usersQuery = useQuery({
     queryFn: () =>
       apiClient.get<PaginatedResponse<UserItem>>(
-        `/api/v1/users?pageSize=${PAGE_SIZE}&page=${page + 1}&search=${encodeURIComponent(search)}`,
+        `/api/v1/users?pageSize=${PAGE_SIZE}&page=${page + 1}&search=${encodeURIComponent(debouncedSearch)}`,
       ),
-    queryKey: ['users', page, search],
+    queryKey: ['users', page, debouncedSearch],
   });
 
   const deleteMutation = useMutation({

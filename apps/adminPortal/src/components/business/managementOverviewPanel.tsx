@@ -82,6 +82,7 @@ export function ManagementOverviewPanel(): JSX.Element {
             onClick={handleRefresh}
             disabled={isOverviewFetching}
             className="h-8 w-8 p-0"
+            aria-label={t({ id: 'common.retry' })}
             title={t({ id: 'common.retry' })}
           >
             {isOverviewFetching ? (

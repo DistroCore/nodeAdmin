@@ -873,6 +873,7 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
               </svg>
             </Button>
             <Button
+              aria-label={t({ id: 'common.retry' })}
               variant="ghost"
               size="sm"
               className="h-6 w-6 p-0 hover:bg-muted"
