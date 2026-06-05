@@ -193,20 +193,19 @@ describe('RoleFormDialog', () => {
       expect(screen.getByText('View Users')).toBeInTheDocument();
     });
 
-    // Clear and type new name
+    // Set the name atomically — per-character user.type() races with re-renders under full-suite load.
     const nameInput = screen.getByLabelText('roles.fieldName');
-    await user.clear(nameInput);
-    await user.type(nameInput, 'UpdatedRole');
+    fireEvent.change(nameInput, { target: { value: 'UpdatedRole' } });
 
     const saveButton = screen.getByText('common.save');
     await user.click(saveButton);
 
     await waitFor(() => {
+      // tenantId travels in the query string (asserted in the URL); the PATCH body carries the fields.
       expect(mockPatch).toHaveBeenCalledWith(
         '/api/v1/roles/role-1?tenantId=tenant-1',
         expect.objectContaining({
           name: 'UpdatedRole',
-          tenantId: 'tenant-1',
         }),
       );
     });

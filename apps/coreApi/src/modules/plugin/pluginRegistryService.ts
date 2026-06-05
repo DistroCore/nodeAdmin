@@ -32,6 +32,13 @@ export class PluginRegistryService {
   private nodeModulesScopePath = join(process.cwd(), 'node_modules', '@nodeadmin');
 
   async scanInstalledPlugins(): Promise<RegisteredPlugin[]> {
+    // Escape hatch for deterministic boots (e.g. the OpenAPI core-contract snapshot): when set, no
+    // installed plugins are discovered, so the surface reflects core only regardless of what is built.
+    if (process.env.NODEADMIN_DISABLE_PLUGINS === '1') {
+      this.registry.clear();
+      return [];
+    }
+
     const directoryEntries = await this.readPluginDirectories();
     const registrations: RegisteredPlugin[] = [];
     this.registry.clear();

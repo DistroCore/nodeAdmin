@@ -3,16 +3,18 @@ import { randomUUID } from 'node:crypto';
 import { Pool, PoolClient } from 'pg';
 import { DatabaseService } from '../../infrastructure/database/databaseService';
 
+// Mirrors the snake_case JSON the API actually returns (and the frontend consumes); the row mapper
+// and the @nodeadmin/shared-types MenuItem contract are both snake_case.
 export interface MenuItem {
   id: string;
-  parentId: string | null;
+  parent_id: string | null;
   name: string;
   path: string | null;
   icon: string | null;
-  sortOrder: number;
-  permissionCode: string | null;
-  isVisible: boolean;
-  createdAt: Date;
+  sort_order: number;
+  permission_code: string | null;
+  is_visible: boolean;
+  created_at: Date;
   children?: MenuItem[];
 }
 

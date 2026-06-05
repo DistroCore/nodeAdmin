@@ -5,6 +5,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RoleManagementPanel } from '../roleManagementPanel';
 import type { RoleItem } from '@nodeadmin/shared-types';
 
+// Grant manage permission so create/edit/delete controls render (gated by hasPermission).
+vi.mock('@/stores/usePermissionStore', () => ({
+  usePermissionStore: (selector: (state: { hasPermission: () => boolean }) => unknown) =>
+    selector({ hasPermission: () => true }),
+}));
+
 // Mock react-intl
 vi.mock('react-intl', () => ({
   useIntl: () => ({

@@ -15,6 +15,8 @@ describe('OpenAPI snapshot contract', () => {
     process.env.SWAGGER_ENABLED = 'true';
     process.env.DATABASE_URL = '';
     process.env.REDIS_URL = '';
+    // Pin the snapshot to the core API surface — installed/built plugins must not leak in.
+    process.env.NODEADMIN_DISABLE_PLUGINS = '1';
 
     const { createApp } = await import('../../app/createApp');
 
@@ -27,6 +29,7 @@ describe('OpenAPI snapshot contract', () => {
     if (app) {
       await app.close();
     }
+    delete process.env.NODEADMIN_DISABLE_PLUGINS;
   }, bootstrapTimeoutMs);
 
   it('matches the checked-in /api/docs-json snapshot', async () => {
