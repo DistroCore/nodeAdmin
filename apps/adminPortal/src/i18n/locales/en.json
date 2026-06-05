@@ -27,6 +27,8 @@
   "auth.email": "Email",
   "auth.password": "Password",
   "auth.confirmPassword": "Confirm Password",
+  "auth.showPassword": "Show password",
+  "auth.hidePassword": "Hide password",
   "auth.name": "Name",
   "auth.tenantId": "Tenant ID",
   "auth.noAccount": "Don't have an account?",

@@ -14,7 +14,12 @@ function setMenusServicePool(service: MenusService, pool: MockPool): void {
 }
 
 function createTenantClient(results: Array<{ rows: Record<string, unknown>[]; rowCount: number }>): MockClient {
-  return createMockClient([{ rows: [], rowCount: 0 }, { rows: [], rowCount: 0 }, ...results, { rows: [], rowCount: 0 }]);
+  return createMockClient([
+    { rows: [], rowCount: 0 },
+    { rows: [], rowCount: 0 },
+    ...results,
+    { rows: [], rowCount: 0 },
+  ]);
 }
 
 describe('MenusService', () => {
@@ -198,7 +203,8 @@ describe('MenusService', () => {
       await service.create(TENANT_ID, { name: 'Defaults' });
 
       expect(txClient.calls[2]).toEqual({
-        params: [expect.any(String), null, 'Defaults', null, null, 0, null, true],
+        // is_visible is an integer column (1/0), so create binds 1 by default
+        params: [expect.any(String), null, 'Defaults', null, null, 0, null, 1],
         sql: 'INSERT INTO menus (id, parent_id, name, path, icon, sort_order, permission_code, is_visible) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
       });
     });
@@ -330,7 +336,7 @@ describe('MenusService', () => {
       await service.update(TENANT_ID, 'm-1', { isVisible: false });
 
       expect(txClient.calls[2]).toEqual({
-        params: [false, 'm-1'],
+        params: [0, 'm-1'],
         sql: 'UPDATE menus SET is_visible = $1 WHERE id = $2',
       });
     });

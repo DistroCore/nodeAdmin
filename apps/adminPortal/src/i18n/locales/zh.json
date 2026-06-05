@@ -27,6 +27,8 @@
   "auth.email": "邮箱",
   "auth.password": "密码",
   "auth.confirmPassword": "确认密码",
+  "auth.showPassword": "显示密码",
+  "auth.hidePassword": "隐藏密码",
   "auth.name": "姓名",
   "auth.tenantId": "租户 ID",
   "auth.noAccount": "没有账号？",
