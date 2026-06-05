@@ -5,18 +5,7 @@ test.describe('Permission Enforcement', () => {
   test('admin user can access all pages', async ({ page }) => {
     await login(page);
 
-    const pages = [
-      '/overview',
-      '/users',
-      '/roles',
-      '/audit',
-      '/menus',
-      '/tenants',
-      '/release',
-      '/settings',
-      '/modernizer',
-      '/backlog',
-    ];
+    const pages = ['/overview', '/users', '/roles', '/audit', '/menus', '/tenants', '/release', '/settings'];
 
     for (const p of pages) {
       await page.goto(p);

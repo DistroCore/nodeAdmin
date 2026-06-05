@@ -11,7 +11,6 @@ const defaultPermissions: PermissionMap = {
   'im:view': false,
   'menus:manage': false,
   'menus:view': false,
-  'modernizer:view': false,
   'overview:view': true,
   'plugins:manage': false,
   'plugins:view': false,
@@ -37,7 +36,6 @@ function buildPermissionMap(roles: string[]): PermissionMap {
     'im:view': isAdmin || roleSet.has('im:operator') || roleSet.has('viewer'),
     'menus:manage': isAdmin,
     'menus:view': isAdmin,
-    'modernizer:view': isAdmin,
     'overview:view': true,
     'plugins:manage': isAdmin,
     'plugins:view': isAdmin,
@@ -52,7 +50,7 @@ function buildPermissionMap(roles: string[]): PermissionMap {
   };
 }
 
-interface PermissionState {
+export interface PermissionState {
   hasPermission: (permission: AppPermission) => boolean;
   permissions: PermissionMap;
   roles: string[];

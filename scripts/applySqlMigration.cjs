@@ -5,6 +5,9 @@ const { Client } = require('pg');
 const defaultDatabaseUrl = 'postgres://nodeadmin:nodeadmin@localhost:55432/nodeadmin';
 const databaseUrl = (process.env.DATABASE_URL || defaultDatabaseUrl).trim();
 const migrationsDir = path.resolve(__dirname, '..', 'apps', 'coreApi', 'drizzle', 'migrations');
+// Installed plugins live under node_modules/@nodeadmin/plugin-*; each may carry its own
+// migrations/ directory so a plugin can own its tables + RLS policies (see pluginRegistryService).
+const pluginScopeDir = path.resolve(__dirname, '..', 'node_modules', '@nodeadmin');
 
 async function ensureMigrationTable(client) {
   await client.query(`
@@ -16,20 +19,62 @@ async function ensureMigrationTable(client) {
   `);
 }
 
-function readMigrationFiles() {
-  if (!fs.existsSync(migrationsDir)) {
+function listSqlFiles(dir) {
+  if (!fs.existsSync(dir)) {
     return [];
   }
 
   return fs
-    .readdirSync(migrationsDir, { withFileTypes: true })
+    .readdirSync(dir, { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith('.sql'))
     .map((entry) => entry.name)
-    .sort((left, right) => left.localeCompare(right))
-    .map((filename) => ({
-      filename,
-      sql: fs.readFileSync(path.join(migrationsDir, filename), 'utf8'),
-    }));
+    .sort((left, right) => left.localeCompare(right));
+}
+
+// Core migrations are keyed by bare filename to stay compatible with rows already
+// recorded in schema_migrations before plugin support existed.
+function discoverCoreMigrations(dir = migrationsDir) {
+  return listSqlFiles(dir).map((filename) => ({
+    key: filename,
+    source: 'core',
+    sql: fs.readFileSync(path.join(dir, filename), 'utf8'),
+  }));
+}
+
+// Each installed plugin may ship a migrations/ directory. We namespace the ledger key by
+// plugin id so two plugins (or a plugin and core) can reuse a filename without colliding.
+function discoverPluginMigrations(scopeDir = pluginScopeDir) {
+  if (!fs.existsSync(scopeDir)) {
+    return [];
+  }
+
+  const pluginNames = fs
+    .readdirSync(scopeDir, { withFileTypes: true })
+    // npm workspaces symlink local packages, installed packages are real dirs — accept both.
+    .filter((entry) => entry.name.startsWith('plugin-') && !entry.isFile())
+    .map((entry) => entry.name)
+    .sort((left, right) => left.localeCompare(right));
+
+  const migrations = [];
+  for (const pluginName of pluginNames) {
+    const pluginId = `@nodeadmin/${pluginName}`;
+    const pluginMigrationsDir = path.join(scopeDir, pluginName, 'migrations');
+    for (const filename of listSqlFiles(pluginMigrationsDir)) {
+      migrations.push({
+        key: `${pluginId}:${filename}`,
+        source: pluginId,
+        sql: fs.readFileSync(path.join(pluginMigrationsDir, filename), 'utf8'),
+      });
+    }
+  }
+
+  return migrations;
+}
+
+// Core first, then plugins: a plugin migration may depend on core tables, RLS helpers, or
+// the schema_migrations ledger itself.
+function discoverAllMigrations() {
+  return [...discoverCoreMigrations(), ...discoverPluginMigrations()];
 }
 
 async function wasApplied(client, filename) {
@@ -121,7 +166,7 @@ async function applyMigration(client, migration) {
     for (const stmt of statements) {
       await client.query(stmt);
     }
-    await client.query('INSERT INTO schema_migrations (filename) VALUES ($1);', [migration.filename]);
+    await client.query('INSERT INTO schema_migrations (filename) VALUES ($1);', [migration.key]);
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
@@ -160,7 +205,7 @@ async function run() {
   const client = await connectWithRetry();
   await ensureMigrationTable(client);
 
-  const migrations = readMigrationFiles();
+  const migrations = discoverAllMigrations();
   if (migrations.length === 0) {
     console.log('[db:migrate] no migration files found.');
     await client.end();
@@ -168,17 +213,17 @@ async function run() {
   }
 
   for (const migration of migrations) {
-    const alreadyApplied = await wasApplied(client, migration.filename);
+    const alreadyApplied = await wasApplied(client, migration.key);
     if (alreadyApplied) {
-      console.log(`[db:migrate] skip ${migration.filename}`);
+      console.log(`[db:migrate] skip ${migration.key}`);
       continue;
     }
 
     try {
       await applyMigration(client, migration);
-      console.log(`[db:migrate] applied ${migration.filename}`);
+      console.log(`[db:migrate] applied ${migration.key} (${migration.source})`);
     } catch (error) {
-      error.message = `${migration.filename}: ${error.message}`;
+      error.message = `${migration.key}: ${error.message}`;
       throw error;
     }
   }
@@ -186,7 +231,17 @@ async function run() {
   await client.end();
 }
 
-run().catch((error) => {
-  console.error('[db:migrate] failed:', error);
-  process.exit(1);
-});
+if (require.main === module) {
+  run().catch((error) => {
+    console.error('[db:migrate] failed:', error);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  splitStatements,
+  listSqlFiles,
+  discoverCoreMigrations,
+  discoverPluginMigrations,
+  discoverAllMigrations,
+};

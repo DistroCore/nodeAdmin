@@ -1,0 +1,21 @@
+{
+  "id": "@nodeadmin/plugin-backlog",
+  "version": "1.0.0",
+  "displayName": "Backlog",
+  "description": "Sprint and task backlog management",
+  "author": { "name": "NodeAdmin Team" },
+  "engines": { "nodeAdmin": ">=1.0.0" },
+  "permissions": ["backlog:view", "backlog:manage"],
+  "entrypoints": {
+    "server": "./dist/server/index.js",
+    "ui": "./dist/ui/index.js"
+  },
+  "contributes": {
+    "menus": [{ "name": "需求管理", "icon": "list", "route": "/plugins/backlog" }],
+    "routes": ["/api/v1/plugins/backlog"],
+    "permissions": [
+      { "code": "backlog:view", "name": "View Backlog", "description": "View tasks and sprints" },
+      { "code": "backlog:manage", "name": "Manage Backlog", "description": "Create, edit and delete tasks and sprints" }
+    ]
+  }
+}

@@ -376,50 +376,5 @@ export const tenantPlugins = pgTable(
   }),
 );
 
-// ─── Backlog Tables ────────────────────────────────────────────────
-
-export const backlogTasks = pgTable(
-  'backlog_tasks',
-  {
-    id: varchar('id', { length: 128 })
-      .primaryKey()
-      .$defaultFn(() => randomUUID()),
-    tenantId: varchar('tenant_id', { length: 128 }).notNull(),
-    title: varchar('title', { length: 200 }).notNull(),
-    description: text('description'),
-    status: varchar('status', { length: 20 }).notNull().default('todo'),
-    priority: varchar('priority', { length: 10 }).notNull().default('medium'),
-    assigneeId: varchar('assignee_id', { length: 128 }),
-    sprintId: varchar('sprint_id', { length: 128 }),
-    sortOrder: integer('sort_order').default(0).notNull(),
-    createdBy: varchar('created_by', { length: 128 }),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => ({
-    backlogTasksTenantIdx: index('backlog_tasks_tenant_idx').on(table.tenantId),
-    backlogTasksTenantStatusIdx: index('backlog_tasks_tenant_status_idx').on(table.tenantId, table.status),
-    backlogTasksTenantSprintIdx: index('backlog_tasks_tenant_sprint_idx').on(table.tenantId, table.sprintId),
-  }),
-);
-
-export const backlogSprints = pgTable(
-  'backlog_sprints',
-  {
-    id: varchar('id', { length: 128 })
-      .primaryKey()
-      .$defaultFn(() => randomUUID()),
-    tenantId: varchar('tenant_id', { length: 128 }).notNull(),
-    name: varchar('name', { length: 200 }).notNull(),
-    goal: text('goal'),
-    status: varchar('status', { length: 20 }).notNull().default('planning'),
-    startDate: varchar('start_date', { length: 10 }),
-    endDate: varchar('end_date', { length: 10 }),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => ({
-    backlogSprintsTenantIdx: index('backlog_sprints_tenant_idx').on(table.tenantId),
-    backlogSprintsTenantStatusIdx: index('backlog_sprints_tenant_status_idx').on(table.tenantId, table.status),
-  }),
-);
+// Backlog tables (backlog_tasks / backlog_sprints) moved to @nodeadmin/plugin-backlog, which owns
+// their schema + RLS via its own migrations. Core no longer models them in Drizzle.

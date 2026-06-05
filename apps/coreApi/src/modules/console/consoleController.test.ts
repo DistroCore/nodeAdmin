@@ -262,7 +262,6 @@ describe('ConsoleController', () => {
         'tenants:view': true,
         'release:view': false,
         'settings:view': false,
-        'modernizer:view': false,
         'backlog:view': true,
         'backlog:manage': false,
       },

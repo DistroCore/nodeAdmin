@@ -13,8 +13,6 @@ import { MenusModule } from '../modules/menus/menusModule';
 import { PermissionsModule } from '../modules/permissions/permissionsModule';
 import { RolesModule } from '../modules/roles/rolesModule';
 import { TenantsModule } from '../modules/tenants/tenantsModule';
-import { BacklogModule } from '../modules/backlog/backlogModule';
-import { ModernizerModule } from '../modules/modernizer/modernizerModule';
 import { PluginGuard } from '../modules/plugin/pluginGuard';
 import { PluginLoaderModule } from '../modules/plugin/pluginLoaderModule';
 import { PluginModule } from '../modules/plugin/pluginModule';
@@ -33,8 +31,6 @@ const APP_IMPORTS = [
   PermissionsModule,
   MenusModule,
   TenantsModule,
-  ModernizerModule,
-  BacklogModule,
   PluginModule,
 ];
 

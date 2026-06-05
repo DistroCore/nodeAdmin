@@ -1,14 +1,20 @@
-import { Inject, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
-import { DatabaseService } from '../../infrastructure/database/databaseService';
+import { DEFAULT_DATABASE_URL } from './constants';
 
+/**
+ * Backlog data access. As a plugin we own our pg Pool (built from DATABASE_URL) rather than sharing
+ * coreApi's DatabaseService — this keeps the plugin decoupled from core internals. Tenant isolation
+ * is enforced by RLS: every connection sets app.current_tenant before touching backlog_* tables.
+ */
 @Injectable()
 export class BacklogService {
-  private readonly pool: Pool | null;
+  private readonly pool: Pool;
 
-  constructor(@Inject(DatabaseService) databaseService: DatabaseService = new DatabaseService()) {
-    this.pool = (databaseService.drizzle?.$client as Pool | undefined) ?? null;
+  // @Optional() so NestJS injects nothing in production (we build our own Pool); tests pass a mock.
+  constructor(@Optional() pool?: Pool) {
+    this.pool = pool ?? new Pool({ connectionString: (process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL).trim() });
   }
 
   // ─── Tasks ────────────────────────────────────────────────────────
@@ -19,7 +25,6 @@ export class BacklogService {
     pageSize = 20,
     filters?: { status?: string; sprintId?: string; search?: string },
   ) {
-    if (!this.pool) return { items: [], total: 0, page, pageSize };
     const offset = (page - 1) * pageSize;
 
     const conditions: string[] = ['t.tenant_id = $1'];
@@ -60,7 +65,6 @@ export class BacklogService {
   }
 
   async findTaskById(tenantId: string, taskId: string) {
-    if (!this.pool) throw new NotFoundException('Task not found');
     const client = await this.pool.connect();
     try {
       await client.query(`SELECT set_config('app.current_tenant', $1, false)`, [tenantId]);
@@ -87,7 +91,6 @@ export class BacklogService {
       createdBy?: string;
     },
   ) {
-    if (!this.pool) throw new ServiceUnavailableException('Database not available');
     const taskId = randomUUID();
     const client = await this.pool.connect();
     try {
@@ -130,7 +133,6 @@ export class BacklogService {
       sprintId?: string;
     },
   ) {
-    if (!this.pool) throw new ServiceUnavailableException('Database not available');
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
@@ -185,7 +187,6 @@ export class BacklogService {
   }
 
   async removeTask(tenantId: string, taskId: string) {
-    if (!this.pool) throw new ServiceUnavailableException('Database not available');
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
@@ -207,7 +208,6 @@ export class BacklogService {
   // ─── Sprints ──────────────────────────────────────────────────────
 
   async listSprints(tenantId: string, page = 1, pageSize = 20, filters?: { status?: string; search?: string }) {
-    if (!this.pool) return { items: [], total: 0, page, pageSize };
     const offset = (page - 1) * pageSize;
 
     const conditions: string[] = ['s.tenant_id = $1'];
@@ -244,7 +244,6 @@ export class BacklogService {
   }
 
   async findSprintById(tenantId: string, sprintId: string) {
-    if (!this.pool) throw new NotFoundException('Sprint not found');
     const client = await this.pool.connect();
     try {
       await client.query(`SELECT set_config('app.current_tenant', $1, false)`, [tenantId]);
@@ -269,7 +268,6 @@ export class BacklogService {
       endDate?: string;
     },
   ) {
-    if (!this.pool) throw new ServiceUnavailableException('Database not available');
     const sprintId = randomUUID();
     const client = await this.pool.connect();
     try {
@@ -309,7 +307,6 @@ export class BacklogService {
       endDate?: string;
     },
   ) {
-    if (!this.pool) throw new ServiceUnavailableException('Database not available');
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
@@ -360,7 +357,6 @@ export class BacklogService {
   }
 
   async removeSprint(tenantId: string, sprintId: string) {
-    if (!this.pool) throw new ServiceUnavailableException('Database not available');
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
@@ -382,7 +378,6 @@ export class BacklogService {
   // ─── Sprint → Task Assignment ─────────────────────────────────────
 
   async assignTasksToSprint(tenantId: string, sprintId: string, taskIds: string[]) {
-    if (!this.pool) throw new ServiceUnavailableException('Database not available');
     await this.findSprintById(tenantId, sprintId);
 
     const client = await this.pool.connect();

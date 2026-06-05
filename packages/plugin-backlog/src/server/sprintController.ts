@@ -1,14 +1,15 @@
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
-import { DEFAULT_TENANT_ID } from '../../app/constants';
+import { DEFAULT_TENANT_ID } from './constants';
 import { BacklogService } from './backlogService';
 import { CreateSprintDto } from './dto/createSprintDto';
 import { UpdateSprintDto } from './dto/updateSprintDto';
 import { ListBacklogQueryDto } from './dto/listBacklogQueryDto';
 
+// Mounted under the plugin route prefix, so the effective path is /api/v1/plugins/backlog/sprints.
 @ApiTags('backlog')
 @ApiBearerAuth()
-@Controller('backlog/sprints')
+@Controller('sprints')
 export class SprintController {
   constructor(private readonly backlogService: BacklogService) {}
 

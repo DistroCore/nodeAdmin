@@ -72,7 +72,6 @@ export const navItems: NavItem[] = [
     labelId: 'nav.tenants',
     path: '/tenants',
     permission: 'tenants:view',
-    pluginCode: 'tenant-management',
   },
   {
     icon: 'rocket',
@@ -87,22 +86,6 @@ export const navItems: NavItem[] = [
     labelId: 'nav.settings',
     path: '/settings',
     permission: 'settings:view',
-  },
-  {
-    icon: 'scan',
-    key: 'modernizer',
-    labelId: 'nav.modernizer',
-    path: '/modernizer',
-    permission: 'modernizer:view',
-    pluginCode: 'modernizer',
-  },
-  {
-    icon: 'list',
-    key: 'backlog',
-    labelId: 'nav.backlog',
-    path: '/backlog',
-    permission: 'backlog:view',
-    pluginCode: 'backlog',
   },
 ];
 

@@ -7,7 +7,10 @@ import { ManifestValidationError, validatePluginManifest } from './manifestValid
 
 interface FileSystemLike {
   readFile(path: string, encoding: BufferEncoding): Promise<string>;
-  readdir(path: string, options: { withFileTypes: true }): Promise<Array<Pick<Dirent, 'isDirectory' | 'name'>>>;
+  readdir(
+    path: string,
+    options: { withFileTypes: true },
+  ): Promise<Array<Pick<Dirent, 'isDirectory' | 'isSymbolicLink' | 'name'>>>;
 }
 
 type ModuleLoader = (modulePath: string) => unknown;
@@ -52,9 +55,7 @@ export class PluginRegistryService {
         registrations.push(registration);
         this.registry.set(registration.id, registration);
       } catch (error) {
-        this.logger.warn(
-          `Skipping plugin ${entry.name}: ${error instanceof Error ? error.message : String(error)}`,
-        );
+        this.logger.warn(`Skipping plugin ${entry.name}: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
 
@@ -83,13 +84,16 @@ export class PluginRegistryService {
     return [...this.registry.values()].sort((left, right) => left.id.localeCompare(right.id));
   }
 
-  private async readPluginDirectories(): Promise<Array<Pick<Dirent, 'isDirectory' | 'name'>>> {
+  private async readPluginDirectories(): Promise<Array<Pick<Dirent, 'isDirectory' | 'isSymbolicLink' | 'name'>>> {
     try {
       const entries = await this.fs.readdir(this.nodeModulesScopePath, {
         withFileTypes: true,
       });
 
-      return entries.filter((entry) => entry.isDirectory() && entry.name.startsWith('plugin-'));
+      // npm workspaces install local plugin packages as symlinks, not real directories — accept both.
+      return entries.filter(
+        (entry) => (entry.isDirectory() || entry.isSymbolicLink()) && entry.name.startsWith('plugin-'),
+      );
     } catch (error) {
       if (isRecord(error) && error.code === 'ENOENT') {
         return [];

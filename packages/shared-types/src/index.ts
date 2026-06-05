@@ -37,7 +37,6 @@ export type AppPermission =
   | 'im:view'
   | 'menus:manage'
   | 'menus:view'
-  | 'modernizer:view'
   | 'overview:view'
   | 'plugins:manage'
   | 'plugins:view'
@@ -165,57 +164,12 @@ export interface CreateConversationRequest {
   memberUserIds: string[];
 }
 
-// ─── Modernizer Types ──────────────────────────────────────────────
+// Modernizer analysis types moved into the modernizer dev CLI (apps/coreApi/tools/modernizer),
+// which defines them locally — the runtime module + its frontend panel were removed.
 
-export type AnalysisCategory = 'console-log' | 'todo' | 'missing-validation' | 'unused-import';
-
-export type AnalysisSeverity = 'info' | 'warning' | 'error';
-
-export interface AnalysisIssue {
-  file: string;
-  line: number;
-  category: AnalysisCategory;
-  message: string;
-  severity: AnalysisSeverity;
-}
-
-export interface AnalysisSummary {
-  total: number;
-  byCategory: Record<AnalysisCategory, number>;
-}
-
-export interface AnalysisResult {
-  issues: AnalysisIssue[];
-  summary: AnalysisSummary;
-}
-
-// ─── Backlog Types ──────────────────────────────────────────────────
-
-export interface BacklogTask {
-  id: string;
-  tenant_id: string;
-  title: string;
-  description: string | null;
-  status: string;
-  priority: string;
-  assignee_id: string | null;
-  sprint_id: string | null;
-  sort_order: number;
-  created_by: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface BacklogSprint {
-  id: string;
-  tenant_id: string;
-  name: string;
-  goal: string | null;
-  status: string;
-  start_date: string | null;
-  end_date: string | null;
-  created_at: string;
-  updated_at: string;
-}
+// Backlog domain types (BacklogTask / BacklogSprint) now live inside @nodeadmin/plugin-backlog,
+// which owns the backlog domain end to end. The backlog:view / backlog:manage permission codes are
+// intentionally retained in AppPermission above: the core permission map still delivers them to the
+// frontend so the plugin's UI can gate on them.
 
 export * from './plugin';

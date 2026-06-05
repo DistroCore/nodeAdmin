@@ -16,7 +16,8 @@ describe('PluginSandboxModule', () => {
     };
 
     const dynamicModule = PluginSandboxModule.forPlugin({
-      permissions: ['backlog:view'],
+      permissions: ['kanban:view'],
+      definedPermissions: ['kanban:view'],
       pluginId: '@nodeadmin/plugin-kanban',
       tenantContext,
     });
@@ -34,20 +35,27 @@ describe('PluginSandboxModule', () => {
     expect(dynamicModule.exports).toEqual([DatabaseService, PLUGIN_TENANT_CONTEXT]);
   });
 
-  it('allows permission declarations that are in the whitelist', () => {
+  it('allows shareable core permissions', () => {
     expect(() =>
-      PluginSandboxModule.validatePermissions(['backlog:view', 'backlog:manage', 'task:read', 'task:write']),
+      PluginSandboxModule.validatePermissions(['overview:view', 'audit:view', 'settings:view']),
     ).not.toThrow();
   });
 
-  it('rejects permission declarations outside the whitelist', () => {
-    expect(() => PluginSandboxModule.validatePermissions(['backlog:view', 'root:shell'])).toThrow(
+  it('allows permissions the plugin defines itself', () => {
+    expect(() =>
+      PluginSandboxModule.validatePermissions(['kanban:view', 'kanban:manage'], ['kanban:view', 'kanban:manage']),
+    ).not.toThrow();
+  });
+
+  it('rejects permissions that are neither shareable core nor self-defined', () => {
+    expect(() => PluginSandboxModule.validatePermissions(['kanban:view', 'root:shell'], ['kanban:view'])).toThrow(
       "Plugin permission 'root:shell' is not allowed",
     );
   });
 
-  it('exposes the current whitelist for registry and loader checks', () => {
-    expect(PLUGIN_PERMISSION_WHITELIST).toContain('backlog:view');
-    expect(PLUGIN_PERMISSION_WHITELIST).toContain('task:read');
+  it('no longer whitelists module-specific core permissions (those move to plugin manifests)', () => {
+    expect(PLUGIN_PERMISSION_WHITELIST).toContain('overview:view');
+    expect(PLUGIN_PERMISSION_WHITELIST).not.toContain('backlog:view');
+    expect(PLUGIN_PERMISSION_WHITELIST).not.toContain('task:read');
   });
 });

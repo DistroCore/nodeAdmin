@@ -1,0 +1,23 @@
+{
+  "name": "@nodeadmin/plugin-backlog",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Sprint & task backlog management, delivered as a nodeAdmin plugin",
+  "main": "./dist/server/index.js",
+  "types": "./dist/server/index.d.ts",
+  "scripts": {
+    "build": "npm run build:server && npm run build:ui",
+    "build:server": "tsc -p tsconfig.server.json",
+    "build:ui": "esbuild src/ui/index.tsx --bundle --format=esm --outfile=dist/ui/index.js --external:react --external:react-dom"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/swagger": "^11.0.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "react": "^18.0.0"
+  }
+}

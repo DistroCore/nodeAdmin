@@ -16,8 +16,6 @@ import { TenantControlPanel } from '@/components/business/tenantControlPanel';
 import { UserManagementPanel } from '@/components/business/userManagementPanel';
 import { AuditLogPanel } from '@/components/business/auditLogPanel';
 import { SystemMetricsPanel } from '@/components/business/systemMetricsPanel';
-import { ModernizerPanel } from '@/components/business/modernizerPanel';
-import { BacklogPanel } from '@/components/business/backlogPanel';
 import { NotificationPanel } from '@/components/business/notificationPanel';
 import { PluginMarketplacePage } from '@/components/business/plugins/PluginMarketplacePage';
 import { PluginDetailPage } from '@/components/business/plugins/PluginDetailPage';
@@ -250,26 +248,6 @@ export function AppRoot(): JSX.Element {
                     </RouteModule>
                   }
                   path="/profile"
-                />
-                <Route
-                  element={
-                    <RouteModule>
-                      <RequirePermission permission="modernizer:view">
-                        <ModernizerPanel />
-                      </RequirePermission>
-                    </RouteModule>
-                  }
-                  path="/modernizer"
-                />
-                <Route
-                  element={
-                    <RouteModule>
-                      <RequirePermission permission="backlog:view">
-                        <BacklogPanel />
-                      </RequirePermission>
-                    </RouteModule>
-                  }
-                  path="/backlog"
                 />
                 <Route element={<NotFoundPage />} path="*" />
               </Routes>
