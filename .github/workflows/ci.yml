@@ -153,10 +153,13 @@ jobs:
       - run: npm ci
 
       - name: Download build artifacts
+        # The build-dist artifact's root is the least-common-ancestor of the uploaded paths
+        # (apps/coreApi/dist + apps/adminPortal/dist) = "apps", so its entries are coreApi/dist and
+        # adminPortal/dist. Extract under apps/ so the server path `apps/coreApi/dist/main.js` resolves.
         uses: actions/download-artifact@v8
         with:
           name: build-dist
-          path: .
+          path: apps
 
       - run: npx playwright install --with-deps chromium
 
