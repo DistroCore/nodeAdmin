@@ -302,10 +302,15 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
   }, [imConfig?.conversationId, conversationQuery.data, t]);
 
   useEffect(() => {
-    if (!imConfig) {
+    // A missing imConfig is only a real error when there's no session at all. Logged-in-but-no-
+    // conversation-selected is a normal empty state already covered by the "select a conversation"
+    // prompt, so don't surface the scary "missing runtime config" banner in that case.
+    if (!imConfig && (!authTenantId || !authUserId)) {
       setBootError(t({ id: 'im.bootError.missingConfig' }));
+    } else {
+      setBootError(null);
     }
-  }, [imConfig, t]);
+  }, [imConfig, authTenantId, authUserId, t]);
 
   const offlineQueueStorageKey = useMemo(() => {
     if (!imConfig) {
