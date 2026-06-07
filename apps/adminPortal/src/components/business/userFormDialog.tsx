@@ -11,6 +11,15 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { className } from '@/lib/className';
 import type { UserItem, RoleItem } from '@nodeadmin/shared-types';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PASSWORD_MIN = 8;
+
+interface FieldErrors {
+  email?: string;
+  password?: string;
+  name?: string;
+}
+
 interface UserFormDialogProps {
   onClose: () => void;
   onSaved: () => void;
@@ -47,6 +56,26 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
   const [name, setName] = useState(user?.name ?? '');
   const [isActive, setIsActive] = useState(Boolean(user?.is_active ?? true));
   const [selectedRoleIds, setSelectedRoleIds] = useState<Set<string>>(new Set(user?.roles.map((r) => r.id) ?? []));
+  const [errors, setErrors] = useState<FieldErrors>({});
+
+  const validate = (): FieldErrors => {
+    const next: FieldErrors = {};
+    if (!email.trim()) {
+      next.email = t({ id: 'validation.required' });
+    } else if (!EMAIL_REGEX.test(email.trim())) {
+      next.email = t({ id: 'validation.emailInvalid' });
+    }
+    if (!name.trim()) {
+      next.name = t({ id: 'validation.required' });
+    }
+    // Password is required on create and, when provided on edit, must meet the minimum length.
+    if (!isEdit && !password) {
+      next.password = t({ id: 'validation.required' });
+    } else if (password && password.length < PASSWORD_MIN) {
+      next.password = t({ id: 'validation.passwordMin' }, { min: PASSWORD_MIN });
+    }
+    return next;
+  };
 
   const rolesQuery = useQuery({
     queryFn: () => apiClient.get<RoleItem[]>(`/api/v1/roles?tenantId=${tenantId ?? 'default'}`),
@@ -61,6 +90,7 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
     setPassword('');
     setIsActive(Boolean(user?.is_active ?? true));
     setSelectedRoleIds(new Set(user?.roles.map((r) => r.id) ?? []));
+    setErrors({});
   };
 
   const handleDialogClose = () => {
@@ -102,6 +132,12 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const validationErrors = validate();
+    setErrors(validationErrors);
+    if (Object.keys(validationErrors).length > 0) {
+      return;
+    }
 
     const roleIds = Array.from(selectedRoleIds);
 
@@ -147,8 +183,18 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
     <Dialog onClose={handleDialogClose} open={open} title={title}>
       <form onSubmit={handleSubmit}>
         <div className="space-y-4">
-          <FormField label={t({ id: 'auth.email' })} htmlFor="user-email">
-            <Input id="user-email" required type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <FormField label={t({ id: 'auth.email' })} htmlFor="user-email" error={errors.email}>
+            <Input
+              id="user-email"
+              required
+              type="email"
+              aria-invalid={errors.email ? true : undefined}
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+              }}
+            />
           </FormField>
 
           <FormField
@@ -159,19 +205,34 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
               </>
             }
             htmlFor="user-password"
+            error={errors.password}
           >
             <Input
               id="user-password"
               placeholder={isEdit ? t({ id: 'users.passwordOptional' }) : undefined}
               required={!isEdit}
               type="password"
+              aria-invalid={errors.password ? true : undefined}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+              }}
             />
           </FormField>
 
-          <FormField label={t({ id: 'auth.name' })} htmlFor="user-name">
-            <Input id="user-name" required type="text" value={name} onChange={(e) => setName(e.target.value)} />
+          <FormField label={t({ id: 'auth.name' })} htmlFor="user-name" error={errors.name}>
+            <Input
+              id="user-name"
+              required
+              type="text"
+              aria-invalid={errors.name ? true : undefined}
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+              }}
+            />
           </FormField>
 
           {isEdit && (
