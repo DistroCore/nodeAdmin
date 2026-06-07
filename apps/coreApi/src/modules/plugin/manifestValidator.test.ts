@@ -103,6 +103,18 @@ describe('validatePluginManifest', () => {
     expect(() => validatePluginManifest(manifest)).toThrow('contributes.permissions[1].name is required');
   });
 
+  it('accepts snake_case tenantTables and rejects unsafe table identifiers', () => {
+    const ok = createValidManifest();
+    ok.contributes = { tenantTables: ['backlog_tasks', 'backlog_sprints'] };
+    expect(() => validatePluginManifest(ok)).not.toThrow();
+
+    const bad = createValidManifest();
+    bad.contributes = { tenantTables: ['backlog_tasks; DROP TABLE users'] };
+    expect(() => validatePluginManifest(bad)).toThrow(
+      'contributes.tenantTables[0] must be a snake_case table identifier',
+    );
+  });
+
   it('rejects empty permissions and invalid dependency values', () => {
     const manifest = createValidManifest();
     manifest.permissions = [''];

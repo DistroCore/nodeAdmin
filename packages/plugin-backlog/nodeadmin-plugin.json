@@ -13,6 +13,7 @@
   "contributes": {
     "menus": [{ "name": "需求管理", "icon": "list", "route": "/plugins/backlog" }],
     "routes": ["/api/v1/plugins/backlog"],
+    "tenantTables": ["backlog_tasks", "backlog_sprints"],
     "permissions": [
       { "code": "backlog:view", "name": "View Backlog", "description": "View tasks and sprints" },
       { "code": "backlog:manage", "name": "Manage Backlog", "description": "Create, edit and delete tasks and sprints" }

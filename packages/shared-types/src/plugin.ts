@@ -41,6 +41,12 @@ export interface PluginManifestContributes {
   menus?: PluginManifestMenuContribution[];
   routes?: string[];
   permissions?: PluginManifestPermissionDefinition[];
+  /**
+   * Tenant-scoped tables the plugin owns (each must have a `tenant_id` column). Declaring them lets
+   * core purge a deleted tenant's plugin data generically, instead of hard-coding plugin table names
+   * in tenantsService. Names must be plain snake_case SQL identifiers (validated on load).
+   */
+  tenantTables?: string[];
 }
 
 export interface PluginManifestLifecycle {

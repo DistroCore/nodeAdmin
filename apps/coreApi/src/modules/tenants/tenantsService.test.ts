@@ -249,6 +249,12 @@ describe('TenantsService', () => {
       await service.remove('t-1');
       expect(mockClient.calls.some((call) => call.sql === 'DELETE FROM users WHERE tenant_id = $1')).toBe(true);
       expect(mockClient.calls.some((call) => call.sql === 'DELETE FROM roles WHERE tenant_id = $1')).toBe(true);
+      // Plugin-owned tenant tables are purged from the installed backlog plugin's manifest
+      // (contributes.tenantTables) — core no longer hard-codes these table names.
+      expect(mockClient.calls.some((call) => call.sql === 'DELETE FROM backlog_tasks WHERE tenant_id = $1')).toBe(true);
+      expect(mockClient.calls.some((call) => call.sql === 'DELETE FROM backlog_sprints WHERE tenant_id = $1')).toBe(
+        true,
+      );
       expect(mockClient.calls.some((call) => call.sql === 'DELETE FROM tenants WHERE id = $1 RETURNING id')).toBe(true);
       expect(mockClient.calls.some((call) => call.sql === 'COMMIT')).toBe(true);
     });

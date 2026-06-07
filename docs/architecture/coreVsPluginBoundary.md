@@ -105,7 +105,9 @@
 ### 遗留的后续项（非本轮边界目标）
 
 - 插件权限到前端的下发仍是硬编码（console 权限 map + usePermissionStore）。真正的解耦应改为**从 DB 动态下发**已注册权限，届时 core 才能完全不认识 `backlog:*`。
-- `tenantsService` 删租户时仍级联删 `backlog_*` 表（数据安全保留）——理想由插件的 onUninstall/onTenantDelete 生命周期接管。
+  - 现状补记（2026-06-08）：评估发现这是真正的大改——DB 的 `role_permissions` 是细粒度码（`users:create/update/delete`），前端用粗粒度 gating 码（`users:manage`），两套模型需先调和；且 `backlog:*` 已 seed 进 `permissions` 但未 grant 给任何角色。涉及鉴权，单列后续专项处理。
+- ~~`tenantsService` 删租户时仍级联删 `backlog_*` 表~~ **（已解决 2026-06-08）**：插件在 manifest 声明 `contributes.tenantTables`（标识符校验防注入），`tenantsService` 删租户时通过 `collectPluginTenantTables()` 通用清理，core 不再硬编码插件表名。
+- ~~插件菜单仅由 seed 迁移装入、卸载留孤儿~~ **（已解决 2026-06-08）**：菜单改由安装/卸载生命周期接管（`provisionPluginMenus` 从 `contributes.menus` 建、`removePluginMenus` 删），并新增 `menus.plugin_code` 列让 sidebar 按租户启用状态过滤；同时清理了 modernizer 下线残留的死菜单/权限。
 - 可选 UI 整理：release→overview 卡片、notifications→audit feed tab。
 
 ---

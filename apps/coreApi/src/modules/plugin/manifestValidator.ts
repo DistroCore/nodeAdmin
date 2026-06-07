@@ -127,6 +127,29 @@ function validateContributes(value: unknown, issues: string[]): void {
   validateMenuContributions(value.menus, issues);
   validateRouteContributions(value.routes, issues);
   validatePermissionContributions(value.permissions, issues);
+  validateTenantTableContributions(value.tenantTables, issues);
+}
+
+// Plain snake_case identifiers only: these names are interpolated into DELETE statements during
+// tenant teardown (table names can't be bound as parameters), so reject anything that isn't a safe
+// identifier to keep that path injection-proof.
+const TENANT_TABLE_PATTERN = /^[a-z_][a-z0-9_]*$/;
+
+function validateTenantTableContributions(value: unknown, issues: string[]): void {
+  if (value === undefined) {
+    return;
+  }
+
+  if (!Array.isArray(value)) {
+    issues.push('contributes.tenantTables must be an array when provided');
+    return;
+  }
+
+  value.forEach((item, index) => {
+    if (!isNonEmptyString(item) || !TENANT_TABLE_PATTERN.test(item)) {
+      issues.push(`contributes.tenantTables[${index}] must be a snake_case table identifier`);
+    }
+  });
 }
 
 function validatePermissionContributions(
