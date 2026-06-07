@@ -183,8 +183,8 @@ export function RoleManagementPanel(): JSX.Element {
           setEditRole(undefined);
         }}
         onSaved={() => {
+          // The success toast is shown by RoleFormDialog's mutation onSuccess; don't duplicate it here.
           rolesQuery.refetch();
-          toast.success(t({ id: 'roles.saveSuccess' }));
         }}
         open={createFormOpen || !!editRole}
         role={editRole}

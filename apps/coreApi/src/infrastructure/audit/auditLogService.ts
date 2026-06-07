@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy, Optional } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import type { AuditLogRepository, StoredAuditLog } from '../database/auditLogRepository';
+import { AuditLogRepository, type StoredAuditLog } from '../database/auditLogRepository';
+import { DatabaseService } from '../database/databaseService';
 
 export interface AuditLogRecord {
   action: string;
@@ -17,11 +18,33 @@ export class AuditLogService implements OnModuleDestroy {
   private readonly logger = new Logger(AuditLogService.name);
   private readonly fallbackRows: StoredAuditLog[] = [];
   private hasWarnedAboutActiveFallback = false;
+  private lazyRepository: AuditLogRepository | null = null;
 
-  constructor(@Optional() private readonly repository?: AuditLogRepository) {
-    if (!this.repository) {
-      this.logger.warn('AuditLogRepository not available. Audit logs will use in-memory fallback.');
+  // `repository` is only passed directly by unit tests. In production we inject the *exported*
+  // DatabaseService and build the repository lazily — `AuditLogRepository` itself is not exported
+  // from InfrastructureModule, so resolving it from the global APP_INTERCEPTOR scope yields
+  // undefined and would silently force the in-memory fallback (logs lost on restart).
+  constructor(
+    @Optional() private readonly explicitRepository?: AuditLogRepository,
+    @Optional() private readonly databaseService?: DatabaseService,
+  ) {}
+
+  /**
+   * Resolve a repository at call time so we pick up the live drizzle client even if it became
+   * available after this provider was constructed.
+   */
+  private resolveRepository(): AuditLogRepository | null {
+    if (this.explicitRepository) {
+      return this.explicitRepository;
     }
+    const drizzle = this.databaseService?.drizzle;
+    if (!drizzle) {
+      return null;
+    }
+    if (!this.lazyRepository) {
+      this.lazyRepository = new AuditLogRepository(drizzle);
+    }
+    return this.lazyRepository;
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -29,7 +52,8 @@ export class AuditLogService implements OnModuleDestroy {
   }
 
   async record(input: AuditLogRecord): Promise<void> {
-    if (!this.repository) {
+    const repository = this.resolveRepository();
+    if (!repository) {
       this.warnAboutActiveFallback();
       const row: StoredAuditLog = {
         action: input.action,
@@ -49,7 +73,7 @@ export class AuditLogService implements OnModuleDestroy {
       return;
     }
 
-    await this.repository.record(input);
+    await repository.record(input);
   }
 
   async listByFilter(
@@ -64,7 +88,8 @@ export class AuditLogService implements OnModuleDestroy {
     page: number,
     pageSize: number,
   ): Promise<{ items: StoredAuditLog[]; total: number }> {
-    if (!this.repository) {
+    const repository = this.resolveRepository();
+    if (!repository) {
       this.warnAboutActiveFallback();
       const filtered = this.fallbackRows.filter((row) => {
         if (row.tenantId !== filter.tenantId) return false;
@@ -82,8 +107,8 @@ export class AuditLogService implements OnModuleDestroy {
     }
 
     const [items, total] = await Promise.all([
-      this.repository.findByFilter(filter, page, pageSize),
-      this.repository.countByFilter(filter),
+      repository.findByFilter(filter, page, pageSize),
+      repository.countByFilter(filter),
     ]);
 
     return { items, total };

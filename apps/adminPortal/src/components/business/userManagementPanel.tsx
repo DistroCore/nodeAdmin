@@ -187,7 +187,7 @@ export function UserManagementPanel(): JSX.Element {
                   page,
                   totalPages,
                   onPageChange: setPage,
-                  pageInfo: t({ id: 'users.pageInfo' }, { page: page + 1, total: totalPages }),
+                  pageInfo: t({ id: 'users.pageInfo' }, { page: page + 1, total }),
                   prevLabel: t({ id: 'users.prev' }),
                   nextLabel: t({ id: 'users.next' }),
                 }
@@ -208,9 +208,9 @@ export function UserManagementPanel(): JSX.Element {
         key={editingUser?.id ?? 'create'}
         onClose={closeDialog}
         onSaved={() => {
+          // The success toast is shown by UserFormDialog's mutation onSuccess; don't duplicate it here.
           closeDialog();
           usersQuery.refetch();
-          toast.success(t({ id: 'users.saveSuccess' }));
         }}
         open={showCreateDialog}
         user={editingUser}

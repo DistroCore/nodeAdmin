@@ -209,9 +209,9 @@ export function MenuManagementPanel(): JSX.Element {
         menus={menus}
         onClose={closeDialog}
         onSaved={() => {
+          // The success toast is shown by MenuFormDialog's mutation onSuccess; don't duplicate it here.
           closeDialog();
           menusQuery.refetch();
-          toast.success(t({ id: 'menus.saveSuccess' }));
         }}
         parentId={childParentId}
         open={showCreateDialog}
