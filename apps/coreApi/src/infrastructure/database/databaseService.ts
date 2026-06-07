@@ -4,6 +4,7 @@ import { createDbClient } from './dbClient';
 @Injectable()
 export class DatabaseService implements OnModuleDestroy {
   private readonly logger = new Logger(DatabaseService.name);
+  private isClosed = false;
   readonly drizzle: ReturnType<typeof createDbClient> | null;
 
   constructor() {
@@ -21,10 +22,13 @@ export class DatabaseService implements OnModuleDestroy {
   async onModuleDestroy(): Promise<void> {
     const databaseClient = this.drizzle?.$client;
 
-    if (!databaseClient || typeof databaseClient.end !== 'function') {
+    // Guard against a double shutdown (Nest can invoke the hook more than once across module scopes),
+    // which would throw "Called end on pool more than once".
+    if (this.isClosed || !databaseClient || typeof databaseClient.end !== 'function') {
       return;
     }
 
+    this.isClosed = true;
     await databaseClient.end();
   }
 }

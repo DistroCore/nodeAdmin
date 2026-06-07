@@ -112,7 +112,9 @@ export function useImSocket(options: UseImSocketOptions): {
       reconnectionDelayMax: 5000,
       randomizationFactor: 0.5,
       timeout: 20000,
-      transports: ['polling', 'websocket'],
+      // The IM gateway only accepts the websocket transport; offering polling first just produces
+      // failed 400 handshakes before the upgrade.
+      transports: ['websocket'],
     });
     socketRef.current = socket;
 
