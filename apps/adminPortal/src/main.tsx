@@ -29,7 +29,19 @@ function LocalizedApp(): JSX.Element {
   const messages = getMessages(locale);
 
   return (
-    <IntlProvider defaultLocale="zh" locale={locale} messages={messages}>
+    <IntlProvider
+      defaultLocale="zh"
+      locale={locale}
+      messages={messages}
+      // Plugin/dynamic labels (e.g. DB-stored menu names) are intentionally rendered via t() with a
+      // defaultMessage fallback. Under a non-source locale these raise MISSING_TRANSLATION, which is
+      // expected and already handled by the fallback — silence just that code so it doesn't spam the
+      // console as an error; surface any other intl error through the logger.
+      onError={(error) => {
+        if (error.code === 'MISSING_TRANSLATION') return;
+        logger.error('[i18n]', error);
+      }}
+    >
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AppRoot />
