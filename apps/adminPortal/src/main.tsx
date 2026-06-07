@@ -52,7 +52,15 @@ function LocalizedApp(): JSX.Element {
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+// Cache the root on the container so Vite HMR (which re-executes this module) reuses the existing
+// React root instead of calling createRoot() twice on the same node — the latter logs a console
+// warning. In production this branch runs exactly once.
+const container = document.getElementById('root')! as HTMLElement & {
+  __reactRoot__?: ReturnType<typeof ReactDOM.createRoot>;
+};
+const root = container.__reactRoot__ ?? ReactDOM.createRoot(container);
+container.__reactRoot__ = root;
+root.render(
   <React.StrictMode>
     <LocalizedApp />
   </React.StrictMode>,

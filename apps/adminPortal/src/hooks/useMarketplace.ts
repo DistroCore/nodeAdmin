@@ -132,11 +132,12 @@ export function usePluginManagement() {
       ),
     onSuccess: (data) => {
       if (data.success) {
+        // Use two fully-translated messages instead of interpolating a raw English status word,
+        // otherwise the toast reads "Plugin enabled successfully" even under the Chinese locale.
         toast.success(
-          t(
-            { id: 'plugins.toggle.success', defaultMessage: 'Plugin {status} successfully' },
-            { status: data.enabled ? 'enabled' : 'disabled' },
-          ),
+          data.enabled
+            ? t({ id: 'plugins.toggle.enabled', defaultMessage: 'Plugin enabled successfully' })
+            : t({ id: 'plugins.toggle.disabled', defaultMessage: 'Plugin disabled successfully' }),
         );
       }
       queryClient.invalidateQueries({ queryKey: ['tenantPlugins'] });
