@@ -224,6 +224,10 @@ describe('AuthController', () => {
 
       expect(authService.changePassword).toHaveBeenCalledWith('user-1', 't-1', 'oldPass', 'newPass');
       expect(result).toEqual({ success: true });
+      // Security-sensitive action must be audited (never logging the password itself).
+      expect(auditLogService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'auth.change_password', userId: 'user-1', tenantId: 't-1' }),
+      );
     });
 
     it('should propagate error from authService', async () => {

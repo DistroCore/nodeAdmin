@@ -315,7 +315,7 @@ export class AuthService {
     return normalizedValue.length > 0 ? normalizedValue : null;
   }
 
-  async resetPassword(email: string, newPassword: string, tenantId: string): Promise<void> {
+  async resetPassword(email: string, newPassword: string, tenantId: string): Promise<string> {
     if (!this.pool) throw new UnauthorizedException('Database not available.');
 
     const result = await this.pool.query<{ id: string; is_active: boolean }>(
@@ -349,6 +349,8 @@ export class AuthService {
     } finally {
       client.release();
     }
+
+    return user.id;
   }
 
   // ─── SMS Login ────────────────────────────────────────────────
