@@ -682,6 +682,26 @@
         ]
       }
     },
+    "/api/v1/permissions/me/plugins": {
+      "get": {
+        "operationId": "PermissionsController_getMyPluginPermissions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List the current user's granted plugin permission codes",
+        "tags": [
+          "permissions"
+        ]
+      }
+    },
     "/api/v1/permissions/{module}": {
       "get": {
         "operationId": "PermissionsController_findByModule",

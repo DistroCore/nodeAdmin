@@ -104,8 +104,9 @@
 
 ### 遗留的后续项（非本轮边界目标）
 
-- 插件权限到前端的下发仍是硬编码（console 权限 map + usePermissionStore）。真正的解耦应改为**从 DB 动态下发**已注册权限，届时 core 才能完全不认识 `backlog:*`。
-  - 现状补记（2026-06-08）：评估发现这是真正的大改——DB 的 `role_permissions` 是细粒度码（`users:create/update/delete`），前端用粗粒度 gating 码（`users:manage`），两套模型需先调和；且 `backlog:*` 已 seed 进 `permissions` 但未 grant 给任何角色。涉及鉴权，单列后续专项处理。
+- ~~插件权限到前端的下发仍是硬编码（console 权限 map + usePermissionStore）~~ **（已解决 2026-06-08）**：插件权限改为**从 DB 动态下发**。
+  - 方案（最小风险，不碰 core 自己的粗粒度 gating 模型）：① backlog 插件 migration 0004 自注册权限授权（补 seed 缺口）；② 新端点 `GET /api/v1/permissions/me/plugins` 按 user_id 查 role_permissions、与已装插件 manifest 声明的码取交集，返回用户已授予的插件权限码；③ 前端从 `AppPermission` 移除 `backlog:*`，权限 store 新增动态 `pluginPermissions` 集，`hasPermission` 对非 core 码走该集，appLayout 拉取、sidebar 菜单 gating 走 `hasPermission`。
+  - 结果：core（类型 / console map / 前端 store）**完全不认识 `backlog:*`**，插件权限纯由 DB 授权 + manifest 声明驱动。注：core 自己的细粒度 RBAC（`users:create` 等）↔ 粗粒度 gating（`users:manage`）调和不在本次范围，core 权限维持原 role 派生逻辑。
 - ~~`tenantsService` 删租户时仍级联删 `backlog_*` 表~~ **（已解决 2026-06-08）**：插件在 manifest 声明 `contributes.tenantTables`（标识符校验防注入），`tenantsService` 删租户时通过 `collectPluginTenantTables()` 通用清理，core 不再硬编码插件表名。
 - ~~插件菜单仅由 seed 迁移装入、卸载留孤儿~~ **（已解决 2026-06-08）**：菜单改由安装/卸载生命周期接管（`provisionPluginMenus` 从 `contributes.menus` 建、`removePluginMenus` 删），并新增 `menus.plugin_code` 列让 sidebar 按租户启用状态过滤；同时清理了 modernizer 下线残留的死菜单/权限。
 - 可选 UI 整理：release→overview 卡片、notifications→audit feed tab。

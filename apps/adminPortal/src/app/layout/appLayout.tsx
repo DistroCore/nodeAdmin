@@ -13,6 +13,7 @@ import { Sidebar } from './sidebar';
 export function AppLayout({ children }: { children: ReactNode }): JSX.Element {
   const theme = useUiStore((s) => s.theme);
   const setPermissionsFromRoles = usePermissionStore((s) => s.setPermissionsFromRoles);
+  const setPluginPermissions = usePermissionStore((s) => s.setPluginPermissions);
   const apiClient = useApiClient();
   const userId = useAuthStore((s) => s.userId);
   const tenantId = useAuthStore((s) => s.tenantId);
@@ -54,6 +55,18 @@ export function AppLayout({ children }: { children: ReactNode }): JSX.Element {
         });
     }
   }, [userId, tenantId, apiClient, setMenus]);
+
+  // Plugin permission codes (e.g. backlog:*) are delivered from DB grants, not hard-coded in core.
+  // The sidebar and plugin UIs gate on these via usePermissionStore.hasPermission.
+  useEffect(() => {
+    if (!userId || !tenantId) return;
+    apiClient
+      .get<{ permissions: string[] }>('/api/v1/permissions/me/plugins')
+      .then((res) => setPluginPermissions(res.permissions ?? []))
+      .catch((err) => {
+        logger.error('AppLayout', 'Failed to fetch plugin permissions', err);
+      });
+  }, [userId, tenantId, apiClient, setPluginPermissions]);
 
   // Guard against a stale/invalid tenantId lingering in persisted auth (e.g. a tenant
   // that was removed, or a leftover dev value). If the stored tenant isn't among the

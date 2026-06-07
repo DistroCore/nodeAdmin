@@ -29,10 +29,12 @@ export interface AuthIdentitySnapshot {
   userId: string;
 }
 
+// Core (first-party) permission codes only. Plugin permission codes (e.g. backlog:*) are NOT listed
+// here — they are declared by plugin manifests, granted via DB role_permissions, and delivered to the
+// frontend dynamically (GET /api/v1/permissions/me/plugins). Keeping core ignorant of plugin codes is
+// the point of the core/plugin boundary.
 export type AppPermission =
   | 'audit:view'
-  | 'backlog:manage'
-  | 'backlog:view'
   | 'im:send'
   | 'im:view'
   | 'menus:manage'
@@ -170,8 +172,8 @@ export interface CreateConversationRequest {
 // which defines them locally — the runtime module + its frontend panel were removed.
 
 // Backlog domain types (BacklogTask / BacklogSprint) now live inside @nodeadmin/plugin-backlog,
-// which owns the backlog domain end to end. The backlog:view / backlog:manage permission codes are
-// intentionally retained in AppPermission above: the core permission map still delivers them to the
-// frontend so the plugin's UI can gate on them.
+// which owns the backlog domain end to end. backlog:view / backlog:manage are NOT in AppPermission:
+// they are delivered dynamically from DB grants (see GET /api/v1/permissions/me/plugins), so core
+// has no compile-time knowledge of plugin permission codes.
 
 export * from './plugin';

@@ -216,8 +216,8 @@ export class ConsoleController {
         'tenants:view': isAdmin || roles.includes('viewer'),
         'release:view': isAdmin || roles.includes('release:viewer'),
         'settings:view': isAdmin,
-        'backlog:view': isAdmin || roles.includes('viewer'),
-        'backlog:manage': isAdmin,
+        // Plugin permission codes (e.g. backlog:*) are intentionally NOT listed here. They are
+        // delivered dynamically from DB grants via GET /api/v1/permissions/me/plugins.
       },
       roles,
     };

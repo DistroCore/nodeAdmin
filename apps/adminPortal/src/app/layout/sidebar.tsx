@@ -19,6 +19,8 @@ export function Sidebar(): JSX.Element {
   const mobileMenuOpen = useUiStore((s) => s.mobileMenuOpen);
   const setMobileMenuOpen = useUiStore((s) => s.setMobileMenuOpen);
   const permissions = usePermissionStore((s) => s.permissions);
+  // Subscribed for reactivity: plugin menus gate on dynamically-delivered plugin permission codes.
+  const pluginPermissions = usePermissionStore((s) => s.pluginPermissions);
   const menus = useMenuStore((s) => s.menus);
   const menusLoaded = useMenuStore((s) => s.loaded);
   const enabledPlugins = usePluginStore((s) => s.enabledPlugins);
@@ -85,7 +87,10 @@ export function Sidebar(): JSX.Element {
     'flex shrink-0 flex-col border-r bg-[hsl(var(--sidebar))] text-[hsl(var(--sidebar-foreground))] transition-all duration-200';
 
   function renderMenuItem(menu: MenuItem, depth = 0): JSX.Element | null {
-    if (menu.permission_code && !permissions[menu.permission_code as AppPermission]) {
+    // Core codes resolve against the role-derived map; plugin codes (e.g. backlog:view) resolve
+    // against the dynamically-delivered plugin permission set.
+    const code = menu.permission_code;
+    if (code && !permissions[code as AppPermission] && !pluginPermissions.has(code)) {
       return null;
     }
 

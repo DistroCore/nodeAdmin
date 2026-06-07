@@ -5,8 +5,6 @@ type PermissionMap = Record<AppPermission, boolean>;
 
 const defaultPermissions: PermissionMap = {
   'audit:view': false,
-  'backlog:manage': false,
-  'backlog:view': false,
   'im:send': false,
   'im:view': false,
   'menus:manage': false,
@@ -30,8 +28,6 @@ function buildPermissionMap(roles: string[]): PermissionMap {
 
   return {
     'audit:view': isAdmin || roleSet.has('viewer'),
-    'backlog:manage': isAdmin,
-    'backlog:view': isAdmin || roleSet.has('viewer'),
     'im:send': isAdmin || roleSet.has('im:operator'),
     'im:view': isAdmin || roleSet.has('im:operator') || roleSet.has('viewer'),
     'menus:manage': isAdmin,
@@ -51,18 +47,28 @@ function buildPermissionMap(roles: string[]): PermissionMap {
 }
 
 export interface PermissionState {
-  hasPermission: (permission: AppPermission) => boolean;
+  // Accepts core AppPermission codes and dynamic plugin codes (e.g. 'backlog:manage') alike.
+  hasPermission: (permission: AppPermission | string) => boolean;
   permissions: PermissionMap;
+  // Plugin-contributed permission codes the user has been granted, delivered from the DB
+  // (GET /api/v1/permissions/me/plugins). Core has no compile-time knowledge of these codes.
+  pluginPermissions: Set<string>;
   roles: string[];
   setPermissionsFromRoles: (roles: string[]) => void;
   setPermissionSnapshot: (permissions: Partial<PermissionMap>) => void;
+  setPluginPermissions: (codes: string[]) => void;
 }
 
 export const usePermissionStore = create<PermissionState>((set, get) => ({
   hasPermission: (permission) => {
-    return Boolean(get().permissions[permission]);
+    const map = get().permissions;
+    if (permission in map) {
+      return Boolean(map[permission as AppPermission]);
+    }
+    return get().pluginPermissions.has(permission);
   },
   permissions: defaultPermissions,
+  pluginPermissions: new Set<string>(),
   roles: [],
   setPermissionsFromRoles: (roles) => {
     const normalizedRoles = roles.map((role) => role.trim()).filter((role) => role.length > 0);
@@ -79,5 +85,8 @@ export const usePermissionStore = create<PermissionState>((set, get) => ({
         ...permissions,
       },
     }));
+  },
+  setPluginPermissions: (codes) => {
+    set({ pluginPermissions: new Set(codes) });
   },
 }));

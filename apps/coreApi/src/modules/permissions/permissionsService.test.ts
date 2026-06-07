@@ -162,4 +162,26 @@ describe('PermissionsService', () => {
     await expect(service.findByModule('tenant-1', 'users')).rejects.toThrow('query failed');
     expect(client.calls.at(-1)).toEqual({ params: [], sql: 'ROLLBACK' });
   });
+
+  it('returns the subset of codes granted to the user via role_permissions', async () => {
+    const client = createMockClient([
+      { rows: [], rowCount: 0 }, // BEGIN
+      { rows: [], rowCount: 0 }, // set_config
+      { rows: [{ code: 'backlog:view' }], rowCount: 1 }, // granted-codes query
+      { rows: [], rowCount: 0 }, // COMMIT
+    ]);
+    const pool = createMockPool();
+    pool.connect = vi.fn(async () => client);
+    setPermissionsServicePool(service, pool);
+
+    const result = await service.getGrantedCodesForUser('tenant-1', 'user-1', ['backlog:view', 'backlog:manage']);
+
+    expect(result).toEqual(['backlog:view']);
+    const grantQuery = client.calls.find((call) => call.sql.includes('FROM role_permissions'));
+    expect(grantQuery?.params).toEqual(['user-1', ['backlog:view', 'backlog:manage']]);
+  });
+
+  it('short-circuits getGrantedCodesForUser when no codes are requested', async () => {
+    await expect(service.getGrantedCodesForUser('tenant-1', 'user-1', [])).resolves.toEqual([]);
+  });
 });

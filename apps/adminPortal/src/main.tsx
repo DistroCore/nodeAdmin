@@ -39,7 +39,7 @@ function LocalizedApp(): JSX.Element {
       // console as an error; surface any other intl error through the logger.
       onError={(error) => {
         if (error.code === 'MISSING_TRANSLATION') return;
-        logger.error('[i18n]', error);
+        logger.error('IntlProvider', error.message, error);
       }}
     >
       <QueryClientProvider client={queryClient}>
