@@ -249,10 +249,14 @@ export const menus = pgTable(
     sortOrder: integer('sort_order').default(0).notNull(),
     permissionCode: varchar('permission_code', { length: 100 }),
     isVisible: boolean('is_visible').default(true).notNull(),
+    // Non-null for menus contributed by a plugin (value = plugin id). Used to hide the entry when the
+    // tenant has the plugin disabled and to remove it on uninstall. Null for core menus.
+    pluginCode: varchar('plugin_code', { length: 128 }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => ({
     menusParentIdx: index('menus_parent_idx').on(table.parentId),
+    menusPluginCodeIdx: index('menus_plugin_code_idx').on(table.pluginCode),
   }),
 );
 
