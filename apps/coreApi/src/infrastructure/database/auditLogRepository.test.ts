@@ -13,6 +13,7 @@ function createSelectChain(rows: unknown[]) {
   chain.limit = vi.fn().mockReturnValue(chain);
   chain.orderBy = vi.fn().mockReturnValue(chain);
   chain.where = vi.fn().mockReturnValue(chain);
+  chain.leftJoin = vi.fn().mockReturnValue(chain);
   chain.from = vi.fn().mockReturnValue(chain);
 
   return chain;
@@ -155,9 +156,11 @@ describe('AuditLogRepository', () => {
         id: 'log-1',
         tenantId: 'tenant-1',
         userId: 'user-1',
+        actorName: null,
         action: 'user.create',
         targetType: 'user',
         targetId: 'user-123',
+        targetName: null,
         traceId: 'trace-1',
         context: { email: 'a@b.com' },
         createdAt: now.toISOString(),

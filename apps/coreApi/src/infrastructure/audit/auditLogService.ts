@@ -57,10 +57,12 @@ export class AuditLogService implements OnModuleDestroy {
       this.warnAboutActiveFallback();
       const row: StoredAuditLog = {
         action: input.action,
+        actorName: null,
         context: input.context ?? null,
         createdAt: new Date().toISOString(),
         id: randomUUID(),
         targetId: input.targetId ?? null,
+        targetName: null,
         targetType: input.targetType ?? null,
         tenantId: input.tenantId,
         traceId: input.traceId,

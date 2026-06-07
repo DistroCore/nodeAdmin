@@ -79,6 +79,7 @@ export function AuditLogPanel(): JSX.Element {
       ? rawItems.filter(
           (item) =>
             item.userId.toLowerCase().includes(search.toLowerCase()) ||
+            (item.actorName?.toLowerCase().includes(search.toLowerCase()) ?? false) ||
             item.action.toLowerCase().includes(search.toLowerCase()),
         )
       : rawItems;
@@ -100,8 +101,9 @@ export function AuditLogPanel(): JSX.Element {
       ),
       title: (
         <span>
-          <span className="font-medium">{item.userId}</span> {t({ id: `audit.action.${getActionVerb(item.action)}` })}{' '}
-          <span className="font-medium">{item.targetType ?? ''}</span>
+          <span className="font-medium">{item.actorName ?? item.userId}</span>{' '}
+          {t({ id: `audit.action.${getActionVerb(item.action)}` })}{' '}
+          <span className="font-medium">{item.targetName ?? item.targetType ?? ''}</span>
         </span>
       ),
       subtitle: item.targetId ? `${item.targetType}/${item.targetId}` : undefined,

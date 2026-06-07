@@ -261,8 +261,9 @@ export function NotificationPanel(): JSX.Element {
                       className={`text-sm leading-snug ${isUnread ? 'font-medium text-foreground' : 'text-muted-foreground'}`}
                     >
                       <span className="font-mono text-xs opacity-70 mr-1">[{notification.action}]</span>
-                      {notification.targetType} {notification.targetId ? `(${notification.targetId})` : ''}
-                      {notification.userId && ` by ${notification.userId}`}
+                      {notification.targetName ?? notification.targetType}
+                      {!notification.targetName && notification.targetId ? ` (${notification.targetId})` : ''}
+                      {` by ${notification.actorName ?? notification.userId}`}
                     </p>
                   </div>
                 </button>

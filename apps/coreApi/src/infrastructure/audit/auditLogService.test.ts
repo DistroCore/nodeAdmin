@@ -5,10 +5,12 @@ import { AuditLogService } from './auditLogService';
 function createStoredAuditLog(overrides?: Partial<StoredAuditLog>): StoredAuditLog {
   return {
     action: 'user.create',
+    actorName: null,
     context: null,
     createdAt: '2026-04-08T00:00:00.000Z',
     id: 'audit-1',
     targetId: null,
+    targetName: null,
     targetType: 'user',
     tenantId: 'tenant-1',
     traceId: 'trace-1',

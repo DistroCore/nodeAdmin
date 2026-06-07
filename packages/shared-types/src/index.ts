@@ -126,9 +126,11 @@ export interface AuditLogItem {
   id: string;
   tenantId: string;
   userId: string;
+  actorName?: string | null;
   action: string;
   targetType: string | null;
   targetId: string | null;
+  targetName?: string | null;
   traceId: string;
   context: Record<string, unknown> | null;
   createdAt: string;
