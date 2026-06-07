@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useIntl } from 'react-intl';
 import { Link } from 'react-router-dom';
 import { usePluginManagement } from '@/hooks/useMarketplace';
@@ -9,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
+import { ConfirmDialog } from '@/components/ui/dialog';
 import { NavIcon } from '@/app/layout/navIcon';
 import { className } from '@/lib/className';
 
@@ -18,6 +20,9 @@ export function InstalledPluginsPage() {
   const pluginsQuery = usePlugins();
   const { uninstall, toggleEnabled } = usePluginManagement();
   const canManage = usePermissionStore((s) => s.hasPermission('plugins:manage'));
+  // Use the in-app ConfirmDialog (consistent with user/menu deletion) rather than a native
+  // window.confirm(), which is unstyled, inconsistent, and blocks the whole renderer.
+  const [uninstallTarget, setUninstallTarget] = useState<string | null>(null);
 
   return (
     <div className="space-y-6">
@@ -173,18 +178,7 @@ export function InstalledPluginsPage() {
                               variant="ghost"
                               size="sm"
                               className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                              onClick={() => {
-                                if (
-                                  window.confirm(
-                                    t({
-                                      id: 'plugins.uninstall.confirm',
-                                      defaultMessage: 'Are you sure you want to uninstall this plugin?',
-                                    }),
-                                  )
-                                ) {
-                                  uninstall.mutate(plugin.name);
-                                }
-                              }}
+                              onClick={() => setUninstallTarget(plugin.name)}
                               disabled={uninstall.isPending}
                             >
                               {uninstall.isPending
@@ -202,6 +196,22 @@ export function InstalledPluginsPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={uninstallTarget !== null}
+        title={t({ id: 'plugins.uninstall', defaultMessage: 'Uninstall' })}
+        message={t({
+          id: 'plugins.uninstall.confirm',
+          defaultMessage: 'Are you sure you want to uninstall this plugin?',
+        })}
+        onClose={() => setUninstallTarget(null)}
+        onConfirm={() => {
+          if (uninstallTarget) {
+            uninstall.mutate(uninstallTarget);
+          }
+          setUninstallTarget(null);
+        }}
+      />
     </div>
   );
 }
