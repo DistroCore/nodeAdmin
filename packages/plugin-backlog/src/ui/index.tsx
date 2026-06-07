@@ -43,7 +43,7 @@ export default function BacklogPlugin({ host }: PluginComponentProps) {
       setTasks(taskPage.items);
       setSprints(sprintPage.items);
     } catch {
-      setError(host.translate('backlog.load_failed'));
+      setError("加载失败");
     } finally {
       setLoading(false);
     }
@@ -58,11 +58,11 @@ export default function BacklogPlugin({ host }: PluginComponentProps) {
     if (!title) return;
     try {
       await host.apiClient.post(TASKS_PATH, { title, tenantId: host.tenantId });
-      host.toast.success(host.translate('backlog.task_created'));
+      host.toast.success("任务已创建");
       setNewTitle('');
       await reload();
     } catch {
-      host.toast.error(host.translate('backlog.task_create_failed'));
+      host.toast.error("创建任务失败");
     }
   }, [host, newTitle, reload]);
 
@@ -70,23 +70,23 @@ export default function BacklogPlugin({ host }: PluginComponentProps) {
     async (id: string) => {
       try {
         await host.apiClient.del(`${TASKS_PATH}/${id}`);
-        host.toast.success(host.translate('backlog.task_deleted'));
+        host.toast.success("任务已删除");
         await reload();
       } catch {
-        host.toast.error(host.translate('backlog.task_delete_failed'));
+        host.toast.error("删除任务失败");
       }
     },
     [host, reload],
   );
 
   if (loading) {
-    return <div style={{ padding: '2rem' }}>{host.translate('backlog.loading')}</div>;
+    return <div style={{ padding: '2rem' }}>{"加载中…"}</div>;
   }
 
   if (error) {
     return (
       <div style={{ padding: '2rem', color: '#b91c1c' }}>
-        {error} <button onClick={() => void reload()}>{host.translate('backlog.retry')}</button>
+        {error} <button onClick={() => void reload()}>{"重试"}</button>
       </div>
     );
   }
@@ -105,14 +105,14 @@ export default function BacklogPlugin({ host }: PluginComponentProps) {
           <input
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
-            placeholder={host.translate('backlog.new_task_placeholder')}
+            placeholder={"新任务标题…"}
             style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
           />
           <button
             onClick={() => void createTask()}
             style={{ padding: '0.5rem 1rem', background: '#2563eb', color: '#fff', borderRadius: '0.375rem' }}
           >
-            {host.translate('backlog.add_task')}
+            {"添加任务"}
           </button>
         </div>
       )}
@@ -138,17 +138,17 @@ function TaskTable({
   const sprintName = (id: string | null) => (id ? (sprints.find((s) => s.id === id)?.name ?? id) : '—');
 
   if (tasks.length === 0) {
-    return <p style={{ color: '#6b7280' }}>{host.translate('backlog.no_tasks')}</p>;
+    return <p style={{ color: '#6b7280' }}>{"暂无任务"}</p>;
   }
 
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
       <thead>
         <tr style={{ textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>
-          <th style={{ padding: '0.5rem' }}>{host.translate('backlog.col_title')}</th>
-          <th style={{ padding: '0.5rem' }}>{host.translate('backlog.col_status')}</th>
-          <th style={{ padding: '0.5rem' }}>{host.translate('backlog.col_priority')}</th>
-          <th style={{ padding: '0.5rem' }}>{host.translate('backlog.col_sprint')}</th>
+          <th style={{ padding: '0.5rem' }}>{"标题"}</th>
+          <th style={{ padding: '0.5rem' }}>{"状态"}</th>
+          <th style={{ padding: '0.5rem' }}>{"优先级"}</th>
+          <th style={{ padding: '0.5rem' }}>{"Sprint"}</th>
           {canManage && <th style={{ padding: '0.5rem' }} />}
         </tr>
       </thead>
@@ -162,7 +162,7 @@ function TaskTable({
             {canManage && (
               <td style={{ padding: '0.5rem', textAlign: 'right' }}>
                 <button onClick={() => onDelete(task.id)} style={{ color: '#b91c1c' }}>
-                  {host.translate('backlog.delete')}
+                  {"删除"}
                 </button>
               </td>
             )}

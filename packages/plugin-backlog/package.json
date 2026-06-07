@@ -8,7 +8,7 @@
   "scripts": {
     "build": "npm run build:server && npm run build:ui",
     "build:server": "tsc -p tsconfig.server.json",
-    "build:ui": "esbuild src/ui/index.tsx --bundle --format=esm --outfile=dist/ui/index.js --external:react --external:react-dom"
+    "build:ui": "esbuild src/ui/index.tsx --bundle --format=esm --outfile=dist/ui/index.js --jsx=transform --alias:react=./src/ui/reactShim.ts"
   },
   "dependencies": {
     "pg": "^8.13.1"

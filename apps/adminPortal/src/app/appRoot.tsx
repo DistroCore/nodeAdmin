@@ -106,20 +106,24 @@ export function AppRoot(): JSX.Element {
                   path="/plugins/settings/:id"
                 />
 
-                {/* Plugin routes */}
+                {/* Plugin routes — mounted at the plugin's short name (/plugins/backlog), matching the
+                    server route prefix and the manifest menu. */}
                 {plugins
                   .filter((p) => p.enabled && p.uiUrl)
-                  .map((plugin) => (
-                    <Route
-                      element={
-                        <RouteModule>
-                          <PluginView pluginName={plugin.name} uiUrl={plugin.uiUrl!} />
-                        </RouteModule>
-                      }
-                      key={plugin.name}
-                      path={`/plugins/${plugin.name}/*`}
-                    />
-                  ))}
+                  .map((plugin) => {
+                    const shortName = plugin.name.replace('@nodeadmin/plugin-', '');
+                    return (
+                      <Route
+                        element={
+                          <RouteModule>
+                            <PluginView pluginName={shortName} uiUrl={plugin.uiUrl!} />
+                          </RouteModule>
+                        }
+                        key={plugin.name}
+                        path={`/plugins/${shortName}/*`}
+                      />
+                    );
+                  })}
 
                 <Route
                   element={

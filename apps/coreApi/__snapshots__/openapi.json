@@ -1125,6 +1125,21 @@
           "admin-plugins"
         ]
       }
+    },
+    "/api/v1/plugin-assets/{name}/ui.js": {
+      "get": {
+        "operationId": "PluginAssetController_getUiBundle",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Serve a plugin UI bundle (public)",
+        "tags": [
+          "plugins"
+        ]
+      }
     }
   },
   "info": {

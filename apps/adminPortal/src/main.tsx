@@ -10,6 +10,10 @@ import { logger } from './lib/logger';
 import { AppRoot } from './app/appRoot';
 import './styles/globals.css';
 
+// Expose the shell's React instance so runtime-loaded plugin UI bundles share it (a separate React
+// instance would break hooks/context). Plugin bundles resolve `react` to this global.
+(window as unknown as { __NODEADMIN_REACT__?: typeof React }).__NODEADMIN_REACT__ = React;
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch((err) => {

@@ -16,6 +16,7 @@ const EXCLUDED_PATHS = [
   '/api/v1/auth/sms/send',
   '/api/v1/auth/login/sms',
   '/api/v1/tenants',
+  '/api/v1/plugin-assets',
 ];
 
 @Injectable()
