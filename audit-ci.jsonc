@@ -57,5 +57,30 @@
     // Same reassessment and revisit schedule as the lodash entry above.
     // Expiry: 2027-01-07 (extended +6 months from 2026-07-07 per D-020).
     "GHSA-j3q9-mxjg-w52f", // path-to-regexp: DoS via sequential optional groups
+
+    // ─── v0.2.0 release audit triage (2026-06-08) ───
+    // Batch of transitive high+ advisories newly surfaced by the GitHub advisory DB.
+    // All are pulled in by framework deps and have NO non-breaking fix:
+    // `npm audit fix` (non-force) does not resolve any of them; only `--force` does,
+    // which proposes major/breaking downgrades of @nestjs/platform-fastify,
+    // react-router-dom and @opentelemetry/* — not acceptable for a patch release.
+    // Tracked-debt: file a dep-upgrade ticket to re-evaluate after the next NestJS /
+    // react-router / opentelemetry minor bumps. Exploitability in this codebase is low
+    // (fast-uri/fastify paths take framework-validated routes; protobufjs is only reached
+    // via the otel prometheus exporter on the internal metrics port; react-router runs
+    // client-side behind auth). Expiry: 2026-09-08 (90-day review per policy).
+    "GHSA-247c-9743-5963", // fastify (via @nestjs/platform-fastify)
+    "GHSA-q3j6-qgpj-74h6", // fast-uri: ReDoS
+    "GHSA-v39h-62p7-jpjc", // fast-uri
+    "GHSA-49rj-9fvp-4h2h", // react-router (via react-router-dom)
+    "GHSA-8646-j5j9-6r62", // react-router
+    "GHSA-8x6r-g9mw-2r78", // react-router
+    "GHSA-rxv8-25v2-qmq8", // react-router
+    "GHSA-66ff-xgx4-vchm", // protobufjs (via @opentelemetry/exporter-prometheus)
+    "GHSA-685m-2w69-288q", // protobufjs
+    "GHSA-75px-5xx7-5xc7", // protobufjs
+    "GHSA-jvwf-75h9-cwgg", // protobufjs
+    "GHSA-xq3m-2v4x-88gg", // protobufjs
+    "GHSA-q7rr-3cgh-j5r3", // @opentelemetry/* (auto-instrumentations-node / sdk-node / exporter-prometheus)
   ],
 }
