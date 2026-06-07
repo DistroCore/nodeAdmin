@@ -93,8 +93,21 @@ export function isNavItemActive(pathname: string, navPath: string): boolean {
   return pathname === navPath || pathname.startsWith(`${navPath}/`);
 }
 
+// Routes that aren't in the sidebar navItems but still need a header title (plugin management +
+// profile). Dynamic plugin UI routes (/plugins/<name>) are resolved from the DB menu tree by the
+// header instead.
+const STATIC_PAGE_TITLES: Array<[string, string]> = [
+  ['/plugins/marketplace', 'nav.marketplace'],
+  ['/plugins/installed', 'nav.installed'],
+  ['/plugins/settings', 'nav.installed'],
+  ['/profile', 'profile.title'],
+];
+
 export function resolveCurrentPageTitle(pathname: string): string {
   if (pathname === '/') return 'nav.overview';
+  for (const [prefix, id] of STATIC_PAGE_TITLES) {
+    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) return id;
+  }
   const matched = navItems.find((item) => isNavItemActive(pathname, item.path));
   return matched?.labelId ?? 'brand';
 }

@@ -1,13 +1,27 @@
+import { useMemo } from 'react';
 import { useIntl } from 'react-intl';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import type { MenuItem } from '@nodeadmin/shared-types';
 import type { AppLocale } from '@/i18n';
 import { clearAuthStore, useAuthStore } from '@/stores/useAuthStore';
 import { useUiStore } from '@/stores/useUiStore';
+import { useMenuStore } from '@/stores/useMenuStore';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { useApiClient } from '@/hooks/useApiClient';
 import { resolveCurrentPageTitle } from './navConfig';
 import { POLL_INTERVALS } from '@/lib/pollingIntervals';
+
+function findMenuByPath(items: MenuItem[], pathname: string): MenuItem | undefined {
+  for (const item of items) {
+    if (item.path && (pathname === item.path || pathname.startsWith(`${item.path}/`))) {
+      return item;
+    }
+    const child = item.children ? findMenuByPath(item.children, pathname) : undefined;
+    if (child) return child;
+  }
+  return undefined;
+}
 
 export function Header(): JSX.Element {
   const location = useLocation();
@@ -18,7 +32,16 @@ export function Header(): JSX.Element {
   const setTheme = useUiStore((s) => s.setTheme);
   const setLocale = useUiStore((s) => s.setLocale);
   const setMobileMenuOpen = useUiStore((s) => s.setMobileMenuOpen);
-  const pageTitleId = resolveCurrentPageTitle(location.pathname);
+  const menus = useMenuStore((s) => s.menus);
+  // Prefer the matching DB menu's name (covers plugin UI routes like /plugins/backlog); fall back to
+  // the static nav config for core pages and plugin-management routes.
+  const pageTitle = useMemo(() => {
+    const matched = findMenuByPath(menus, location.pathname);
+    if (matched?.path && matched.path !== '/') {
+      return t({ id: matched.name, defaultMessage: matched.name });
+    }
+    return t({ id: resolveCurrentPageTitle(location.pathname) });
+  }, [menus, location.pathname, t]);
   const userName = useAuthStore((s) => s.userName);
   const { isRead } = useNotificationStore();
 
@@ -58,7 +81,7 @@ export function Header(): JSX.Element {
             <path d="M3 12h18M3 6h18M3 18h18" strokeLinecap="round" />
           </svg>
         </button>
-        <h1 className="text-base font-semibold">{t({ id: pageTitleId })}</h1>
+        <h1 className="text-base font-semibold">{pageTitle}</h1>
       </div>
 
       <div className="flex items-center gap-3">

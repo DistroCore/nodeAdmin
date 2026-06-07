@@ -125,7 +125,8 @@ export function MenuManagementPanel(): JSX.Element {
               cell: (node) => (
                 <div className="flex items-center gap-2" style={{ paddingLeft: `${node.level * 20}px` }}>
                   <NavIcon name={node.menu.icon} />
-                  <span className="font-medium">{node.menu.name}</span>
+                  {/* Menu names are stored as i18n keys (nav.*); fall back to the raw value for plugin menus. */}
+                  <span className="font-medium">{t({ id: node.menu.name, defaultMessage: node.menu.name })}</span>
                 </div>
               ),
             },
