@@ -44,7 +44,5 @@
 ## Superpowers
 
 - `docs/superpowers/plans/2026-03-19-product-management-plan.md`
-- `docs/superpowers/specs/2026-03-19-antd-pro-frontend-design.md`
-- `docs/superpowers/specs/2026-03-19-product-management-design.md`
 
-Last updated: 2026-06-03
+Last updated: 2026-06-08

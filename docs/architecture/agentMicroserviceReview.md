@@ -78,3 +78,7 @@ nodeAdmin 的 `docker-compose.yml` 已有多 profile 编排（core、kafka、mon
 ## 下一步
 
 将此评审纳入决策日志（`docs/governance/decisionLog.md`），并在实际启动 Agent 开发时以修正方案为基准。
+
+---
+
+最近更新时间：2026-06-08
