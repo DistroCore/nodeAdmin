@@ -9,6 +9,16 @@ import { ConsoleController, MetricsController } from './consoleController';
 @Module({
   imports: [InfrastructureModule, TenantsModule],
   controllers: [ConsoleController, MetricsController],
-  providers: [DatabaseService, ConversationRepository, ConnectionRegistry],
+  providers: [
+    DatabaseService,
+    ConnectionRegistry,
+    // ConversationRepository takes the drizzle client directly (not DatabaseService) to satisfy the
+    // repository layering rule, so it must be provided via a factory here too — not as a plain class.
+    {
+      provide: ConversationRepository,
+      useFactory: (databaseService: DatabaseService) => new ConversationRepository(databaseService.drizzle),
+      inject: [DatabaseService],
+    },
+  ],
 })
 export class ConsoleModule {}
