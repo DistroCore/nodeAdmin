@@ -142,7 +142,7 @@ export function MenuManagementPanel(): JSX.Element {
             {
               header: t({ id: 'menus.colVisible' }),
               cell: (node) => (
-                <Badge variant={node.menu.is_visible ? 'default' : 'secondary'}>
+                <Badge variant={node.menu.is_visible ? 'success' : 'secondary'}>
                   {node.menu.is_visible ? t({ id: 'menus.visible' }) : t({ id: 'menus.hidden' })}
                 </Badge>
               ),

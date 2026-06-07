@@ -16,20 +16,34 @@ export class RolesService {
     }
   }
 
-  async list(tenantId: string) {
-    if (!this.pool) return [];
+  async list(tenantId: string, page = 1, pageSize = 20, search?: string) {
+    if (!this.pool) return { items: [], total: 0, page, pageSize };
+    const offset = (page - 1) * pageSize;
+    let whereClause = 'WHERE r.tenant_id = $1';
+    const params: unknown[] = [tenantId];
+
+    if (search) {
+      params.push(`%${search}%`);
+      whereClause += ` AND (r.name ILIKE $${params.length} OR r.description ILIKE $${params.length})`;
+    }
+
+    const countResult = await this.pool.query(`SELECT COUNT(*)::int as count FROM roles r ${whereClause}`, params);
+    const total = countResult.rows[0].count;
+
     const result = await this.pool.query(
       `SELECT r.id, r.name, r.description, r.is_system, r.created_at, r.updated_at,
         COALESCE(json_agg(json_build_object('id', p.id, 'code', p.code, 'name', p.name)) FILTER (WHERE p.id IS NOT NULL), '[]') as permissions
       FROM roles r
       LEFT JOIN role_permissions rp ON rp.role_id = r.id
       LEFT JOIN permissions p ON p.id = rp.permission_id
-      WHERE r.tenant_id = $1
+      ${whereClause}
       GROUP BY r.id
-      ORDER BY r.created_at`,
-      [tenantId],
+      ORDER BY r.created_at
+      LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      [...params, pageSize, offset],
     );
-    return result.rows;
+
+    return { items: result.rows, total, page, pageSize };
   }
 
   async findById(tenantId: string, roleId: string) {

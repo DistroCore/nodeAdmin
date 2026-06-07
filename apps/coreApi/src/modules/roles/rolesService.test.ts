@@ -21,13 +21,14 @@ describe('RolesService', () => {
   // ─── list ───────────────────────────────────────────────────
 
   describe('list', () => {
-    it('should return empty array when pool is null', async () => {
+    it('should return an empty paginated result when pool is null', async () => {
       const result = await service.list('t-1');
-      expect(result).toEqual([]);
+      expect(result).toEqual({ items: [], total: 0, page: 1, pageSize: 20 });
     });
 
-    it('should return roles with permissions', async () => {
+    it('should return paginated roles with permissions', async () => {
       const mockPool = createMockPool([
+        { rows: [{ count: 1 }], rowCount: 1 },
         {
           rows: [{ id: 'r-1', name: 'admin', description: 'Admin', is_system: false, permissions: [] }],
           rowCount: 1,
@@ -36,8 +37,9 @@ describe('RolesService', () => {
       setRolesServicePool(service, mockPool);
 
       const result = await service.list('t-1');
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe('admin');
+      expect(result.total).toBe(1);
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].name).toBe('admin');
     });
   });
 

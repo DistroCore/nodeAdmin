@@ -59,7 +59,7 @@ describe('AuthService — resetPassword', () => {
 
       // 1st call: find user by email + tenantId
       mockQuery.mockResolvedValueOnce({
-        rows: [{ id: 'user-1', is_active: 1 }],
+        rows: [{ id: 'user-1', is_active: true }],
       });
 
       const service = new AuthService() as AuthServiceWithPool;
@@ -97,7 +97,7 @@ describe('AuthService — resetPassword', () => {
   it('should throw if user account is disabled', async () => {
     const { pool, mockQuery } = createMockPool();
     mockQuery.mockResolvedValueOnce({
-      rows: [{ id: 'user-1', is_active: 0 }],
+      rows: [{ id: 'user-1', is_active: false }],
     });
 
     const service = new AuthService() as AuthServiceWithPool;
@@ -124,7 +124,7 @@ describe('AuthService — resetPassword', () => {
 
       // User found
       mockQuery.mockResolvedValueOnce({
-        rows: [{ id: 'user-1', is_active: 1 }],
+        rows: [{ id: 'user-1', is_active: true }],
       });
 
       // Make UPDATE fail

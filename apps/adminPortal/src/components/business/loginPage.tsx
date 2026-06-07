@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { FormField } from '@/components/ui/formField';
@@ -10,6 +10,7 @@ import { type AppLocale } from '@/i18n';
 import { ApiClient } from '@/lib/apiClient';
 import { setAuthFromLogin } from '@/stores/useAuthStore';
 import { useUiStore } from '@/stores/useUiStore';
+import { logger } from '@/lib/logger';
 
 interface TenantItem {
   id: string;
@@ -35,7 +36,8 @@ export function LoginPage(): JSX.Element {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [smsSending, setSmsSending] = useState(false);
-  const [smsSent, setSmsSent] = useState(false);
+  const [smsCountdown, setSmsCountdown] = useState(0);
+  const [searchParams] = useSearchParams();
 
   const theme = useUiStore((s) => s.theme);
   const setTheme = useUiStore((s) => s.setTheme);
@@ -48,17 +50,39 @@ export function LoginPage(): JSX.Element {
 
     new ApiClient({ baseUrl: resolveApiBaseUrl() })
       .get<TenantItem[]>('/api/v1/tenants')
-      .then(setTenants)
+      .then((list) => {
+        setTenants(list);
+        // Keep the controlled <select> in sync with its default-selected option
+        // (the browser shows the first option, but tenantId state would otherwise stay empty).
+        if (list.length > 0) {
+          setTenantId((prev) => prev || list[0].id);
+        }
+      })
       .catch(() => {
         /* ignore — tenant list is optional */
       });
   }, []);
 
+  // Surface OAuth callback failures (oauthCallbackPage redirects back here with ?error=...)
+  useEffect(() => {
+    const oauthError = searchParams.get('error');
+    if (oauthError) {
+      setError(t({ id: 'auth.oauthFailed', defaultMessage: 'Login failed: {reason}' }, { reason: oauthError }));
+    }
+  }, [searchParams, t]);
+
+  // SMS resend cooldown countdown
+  useEffect(() => {
+    if (smsCountdown <= 0) return;
+    const timer = setTimeout(() => setSmsCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [smsCountdown]);
+
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!isSingleTenant && !tenantId.trim()) {
-      setError('Tenant ID is required.');
+      setError(t({ id: 'auth.tenantRequired', defaultMessage: 'Tenant ID is required.' }));
       return;
     }
     setLoading(true);
@@ -72,7 +96,8 @@ export function LoginPage(): JSX.Element {
       }>('/api/v1/auth/login', { email, password, tenantId });
       setAuthFromLogin(data);
       navigate('/overview', { replace: true });
-    } catch {
+    } catch (err) {
+      logger.error('LoginPage', 'Login request failed', err);
       setError(t({ id: 'auth.loginFailed' }));
     } finally {
       setLoading(false);
@@ -83,7 +108,7 @@ export function LoginPage(): JSX.Element {
     e.preventDefault();
     setError('');
     if (!isSingleTenant && !tenantId.trim()) {
-      setError('Tenant ID is required.');
+      setError(t({ id: 'auth.tenantRequired', defaultMessage: 'Tenant ID is required.' }));
       return;
     }
     setLoading(true);
@@ -97,7 +122,8 @@ export function LoginPage(): JSX.Element {
       }>('/api/v1/auth/sms/login', { phone, code, tenantId });
       setAuthFromLogin(data);
       navigate('/overview', { replace: true });
-    } catch {
+    } catch (err) {
+      logger.error('LoginPage', 'Login request failed', err);
       setError(t({ id: 'auth.loginFailed' }));
     } finally {
       setLoading(false);
@@ -111,8 +137,7 @@ export function LoginPage(): JSX.Element {
     try {
       const client = new ApiClient({ baseUrl: resolveApiBaseUrl() });
       await client.post('/api/v1/auth/sms/send', { phone });
-      setSmsSent(true);
-      setTimeout(() => setSmsSent(false), 3000);
+      setSmsCountdown(60);
     } catch {
       setError(t({ id: 'auth.smsSendFailed' }));
     } finally {
@@ -303,12 +328,14 @@ export function LoginPage(): JSX.Element {
                 />
                 <Button
                   className="shrink-0"
-                  disabled={smsSending || !phone}
+                  disabled={smsSending || !phone || smsCountdown > 0}
                   onClick={handleSendSms}
                   type="button"
                   variant="outline"
                 >
-                  {smsSent ? t({ id: 'auth.sms.sendCodeSuccess' }) : t({ id: 'auth.sms.sendCode' })}
+                  {smsCountdown > 0
+                    ? t({ id: 'auth.sms.resendIn', defaultMessage: 'Resend in {seconds}s' }, { seconds: smsCountdown })
+                    : t({ id: 'auth.sms.sendCode' })}
                 </Button>
               </div>
             </FormField>

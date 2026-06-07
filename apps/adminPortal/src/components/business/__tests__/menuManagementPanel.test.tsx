@@ -9,9 +9,8 @@ const mockDel = vi.fn();
 const mockSuccess = vi.fn();
 const mockError = vi.fn();
 
-// Grant manage permission so create/edit/delete controls render (gated by hasPermission).
 vi.mock('@/stores/usePermissionStore', () => ({
-  usePermissionStore: (selector: (state: { hasPermission: () => boolean }) => unknown) =>
+  usePermissionStore: (selector: (state: { hasPermission: (permission: string) => boolean }) => unknown) =>
     selector({ hasPermission: () => true }),
 }));
 

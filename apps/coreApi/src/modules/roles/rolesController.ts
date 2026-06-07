@@ -4,6 +4,7 @@ import { DEFAULT_TENANT_ID } from '../../app/constants';
 import { RolesService } from './rolesService';
 import { CreateRoleDto } from './dto/createRoleDto';
 import { UpdateRoleDto } from './dto/updateRoleDto';
+import { ListRolesQueryDto } from './dto/listRolesQueryDto';
 
 @ApiTags('roles')
 @ApiBearerAuth()
@@ -12,9 +13,10 @@ export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List roles for a tenant' })
-  async list(@Query('tenantId') tenantId?: string) {
-    return this.rolesService.list(tenantId ?? DEFAULT_TENANT_ID);
+  @ApiOperation({ summary: 'List roles with pagination and search' })
+  async list(@Query() query: ListRolesQueryDto) {
+    const tenantId = query.tenantId ?? DEFAULT_TENANT_ID;
+    return this.rolesService.list(tenantId, query.page, query.pageSize, query.search);
   }
 
   @Get(':id')

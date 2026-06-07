@@ -9,7 +9,7 @@ import { useToast } from '@/components/ui/toast';
 import { useApiClient } from '@/hooks/useApiClient';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { className } from '@/lib/className';
-import type { UserItem, RoleItem } from '@nodeadmin/shared-types';
+import type { UserItem, RoleItem, PaginatedResponse } from '@nodeadmin/shared-types';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_MIN = 8;
@@ -78,11 +78,12 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
   };
 
   const rolesQuery = useQuery({
-    queryFn: () => apiClient.get<RoleItem[]>(`/api/v1/roles?tenantId=${tenantId ?? 'default'}`),
+    queryFn: () =>
+      apiClient.get<PaginatedResponse<RoleItem>>(`/api/v1/roles?pageSize=100&tenantId=${tenantId ?? 'default'}`),
     queryKey: ['roles', tenantId],
   });
 
-  const roles = Array.isArray(rolesQuery.data) ? rolesQuery.data : [];
+  const roles = rolesQuery.data?.items ?? [];
 
   const resetForm = () => {
     setEmail(user?.email ?? '');
@@ -267,6 +268,17 @@ export function UserFormDialog({ onClose, onSaved, open, user }: UserFormDialogP
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
                   {t({ id: 'users.loadingRoles' })}
+                </div>
+              ) : rolesQuery.isError ? (
+                <div className="flex items-center gap-3 py-2 text-sm text-destructive">
+                  <span>{t({ id: 'users.loadRolesFailed', defaultMessage: 'Failed to load roles.' })}</span>
+                  <button
+                    type="button"
+                    onClick={() => rolesQuery.refetch()}
+                    className="font-medium underline hover:no-underline"
+                  >
+                    {t({ id: 'common.retry' })}
+                  </button>
                 </div>
               ) : roles.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-2 italic">{t({ id: 'users.noRoles' })}</p>

@@ -116,7 +116,7 @@ export class UsersService {
       }
       if (data.isActive !== undefined) {
         sets.push(`is_active = $${++paramIdx}`);
-        params.push(data.isActive ? 1 : 0);
+        params.push(data.isActive);
       }
 
       if (sets.length > 0) {

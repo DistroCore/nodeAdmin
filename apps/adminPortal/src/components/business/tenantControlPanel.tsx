@@ -81,9 +81,9 @@ export function TenantControlPanel(): JSX.Element {
               className: 'hidden sm:table-cell',
               cell: (tenant) =>
                 tenant.is_active ? (
-                  <Badge variant="default">{t({ id: 'tenant.active' })}</Badge>
+                  <Badge variant="success">{t({ id: 'tenant.active' })}</Badge>
                 ) : (
-                  <Badge variant="outline">{t({ id: 'tenant.inactive' })}</Badge>
+                  <Badge variant="secondary">{t({ id: 'tenant.inactive' })}</Badge>
                 ),
             },
             {

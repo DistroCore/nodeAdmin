@@ -52,7 +52,7 @@ describe('AuthService tenant isolation', () => {
             email: 'shared@example.com',
             password_hash: passwordHash,
             name: 'Tenant B User',
-            is_active: 1,
+            is_active: true,
           },
         ],
         rowCount: 1,

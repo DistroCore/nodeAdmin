@@ -259,7 +259,7 @@ describe.sequential('CoreApi integration', () => {
       });
 
     expect(disableResponse.status).toBe(200);
-    expect(disableResponse.body.is_active).toBe(0);
+    expect(disableResponse.body.is_active).toBe(false);
 
     const disabledLogin = await context.http.post('/api/v1/auth/login').send({
       email,

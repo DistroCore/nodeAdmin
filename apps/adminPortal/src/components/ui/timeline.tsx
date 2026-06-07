@@ -20,6 +20,7 @@ export interface TimelineProps {
   hasMore?: boolean;
   onLoadMore?: () => void;
   loadMoreLabel?: string;
+  isLoadingMore?: boolean;
 }
 
 export function Timeline({
@@ -32,6 +33,7 @@ export function Timeline({
   hasMore,
   onLoadMore,
   loadMoreLabel = 'Load more',
+  isLoadingMore,
 }: TimelineProps): JSX.Element {
   return (
     <div className="space-y-0">
@@ -87,7 +89,7 @@ export function Timeline({
 
       {hasMore && onLoadMore ? (
         <div className="flex justify-center pt-4">
-          <Button onClick={onLoadMore} size="sm" type="button" variant="secondary">
+          <Button disabled={isLoadingMore} onClick={onLoadMore} size="sm" type="button" variant="secondary">
             {loadMoreLabel}
           </Button>
         </div>

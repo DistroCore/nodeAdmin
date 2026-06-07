@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useIntl } from 'react-intl';
 import { Link } from 'react-router-dom';
 import { useMarketplace, usePluginManagement } from '@/hooks/useMarketplace';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { usePluginStore } from '@/stores/usePluginStore';
-import { usePermissionStore, type PermissionState } from '@/stores/usePermissionStore';
+import { usePermissionStore } from '@/stores/usePermissionStore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -35,16 +36,34 @@ function PluginCardSkeleton() {
   );
 }
 
+const ICON_ACCENTS = [
+  'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400',
+  'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400',
+  'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400',
+  'bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400',
+  'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400',
+  'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/40 dark:text-cyan-400',
+];
+
+// Stable per-plugin accent so each card icon gets a distinct color instead of a
+// uniform primary tint — derived from the plugin id so it stays consistent.
+function accentFor(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i += 1) hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  return ICON_ACCENTS[Math.abs(hash) % ICON_ACCENTS.length];
+}
+
 export function PluginMarketplacePage() {
   const { formatMessage: t } = useIntl();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const pageSize = 20;
+  const debouncedSearch = useDebouncedValue(search);
 
-  const { data, isLoading, error, refetch } = useMarketplace(page, pageSize, search);
+  const { data, isLoading, error, refetch } = useMarketplace(page, pageSize, debouncedSearch);
   const { install } = usePluginManagement();
   const plugins = usePluginStore((s) => s.plugins);
-  const canManage = usePermissionStore((s: PermissionState) => s.hasPermission('plugins:manage'));
+  const canManage = usePermissionStore((s) => s.hasPermission('plugins:manage'));
 
   const isInstalled = (pluginId: string) => {
     return plugins.some((p) => p.name === pluginId || p.manifest?.id === pluginId);
@@ -129,14 +148,17 @@ export function PluginMarketplacePage() {
         <>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {data?.plugins?.map((plugin) => (
-              <Card key={plugin.id} className="flex flex-col transition-all hover:shadow-md">
+              <Card
+                key={plugin.id}
+                className="flex flex-col transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+              >
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <div className="rounded-md bg-primary/10 p-2 text-primary">
+                    <div className={className('rounded-md p-2', accentFor(plugin.id))}>
                       <NavIcon name="rocket" />
                     </div>
                     {isInstalled(plugin.id) && (
-                      <Badge variant="secondary">
+                      <Badge variant="success">
                         {t({ id: 'plugins.status.installed', defaultMessage: 'Installed' })}
                       </Badge>
                     )}
@@ -152,11 +174,11 @@ export function PluginMarketplacePage() {
                         defaultMessage: 'No description provided.',
                       })}
                   </p>
-                  <div className="mt-4 flex items-center space-x-4 text-[0.625rem] text-muted-foreground">
+                  <div className="mt-4 flex items-center gap-3 text-[0.625rem] text-muted-foreground">
                     <span className="flex items-center gap-1">
-                      <NavIcon name="bar" /> {plugin.downloadCount}
+                      <NavIcon name="bar" /> {plugin.downloadCount.toLocaleString()}
                     </span>
-                    <span>v{plugin.latestVersion}</span>
+                    <span className="rounded border px-1.5 py-0.5 font-mono">v{plugin.latestVersion}</span>
                   </div>
                 </CardContent>
                 <CardFooter className="gap-2">

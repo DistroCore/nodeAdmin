@@ -2,6 +2,7 @@ import { useIntl } from 'react-intl';
 import { Link } from 'react-router-dom';
 import { usePluginManagement } from '@/hooks/useMarketplace';
 import { usePluginStore } from '@/stores/usePluginStore';
+import { usePlugins } from '@/hooks/usePlugins';
 import { usePermissionStore } from '@/stores/usePermissionStore';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -14,6 +15,7 @@ import { className } from '@/lib/className';
 export function InstalledPluginsPage() {
   const { formatMessage: t } = useIntl();
   const plugins = usePluginStore((s) => s.plugins);
+  const pluginsQuery = usePlugins();
   const { uninstall, toggleEnabled } = usePluginManagement();
   const canManage = usePermissionStore((s) => s.hasPermission('plugins:manage'));
 
@@ -61,7 +63,21 @@ export function InstalledPluginsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {plugins.length === 0 ? (
+              {pluginsQuery.isLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <TableRow key={`plugin-skeleton-${i}`}>
+                    <TableCell colSpan={4} className="py-4">
+                      <div className="h-10 animate-pulse rounded-md bg-muted/50" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : pluginsQuery.isError ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-32 text-center text-destructive">
+                    {t({ id: 'plugins.installed.loadFailed', defaultMessage: 'Failed to load plugins.' })}
+                  </TableCell>
+                </TableRow>
+              ) : plugins.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="h-48 text-center">
                     <div className="flex flex-col items-center justify-center space-y-3">
@@ -135,7 +151,7 @@ export function InstalledPluginsPage() {
                           onChange={() => toggleEnabled.mutate(plugin.name)}
                           disabled={!canManage || toggleEnabled.isPending}
                         />
-                        <Badge variant={plugin.enabled ? 'default' : 'secondary'} className="capitalize">
+                        <Badge variant={plugin.enabled ? 'success' : 'secondary'} className="capitalize">
                           {plugin.enabled
                             ? t({ id: 'common.enabled', defaultMessage: 'Enabled' })
                             : t({ id: 'common.disabled', defaultMessage: 'Disabled' })}

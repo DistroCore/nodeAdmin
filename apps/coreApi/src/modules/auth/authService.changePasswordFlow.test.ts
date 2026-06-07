@@ -30,7 +30,7 @@ describe('AuthService changePassword flow', () => {
 
     const mockPool = createMockPool([
       {
-        rows: [{ id: 'user-1', password_hash: currentPasswordHash, is_active: 1 }],
+        rows: [{ id: 'user-1', password_hash: currentPasswordHash, is_active: true }],
         rowCount: 1,
       },
     ]);
@@ -69,7 +69,7 @@ describe('AuthService changePassword flow', () => {
     const currentPasswordHash = await hash('OldP@ssword1', 4);
     const mockPool = createMockPool([
       {
-        rows: [{ id: 'user-1', password_hash: currentPasswordHash, is_active: 0 }],
+        rows: [{ id: 'user-1', password_hash: currentPasswordHash, is_active: false }],
         rowCount: 1,
       },
     ]);

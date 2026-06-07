@@ -3,8 +3,6 @@ import { randomUUID } from 'node:crypto';
 import { Pool, PoolClient } from 'pg';
 import { DatabaseService } from '../../infrastructure/database/databaseService';
 
-// Mirrors the snake_case JSON the API actually returns (and the frontend consumes); the row mapper
-// and the @nodeadmin/shared-types MenuItem contract are both snake_case.
 export interface MenuItem {
   id: string;
   parent_id: string | null;
@@ -86,8 +84,7 @@ export class MenusService {
           data.icon ?? null,
           data.sortOrder ?? 0,
           data.permissionCode ?? null,
-          // is_visible is an integer column (1/0), not boolean
-          data.isVisible !== false ? 1 : 0,
+          data.isVisible !== false,
         ],
       );
     });
@@ -136,7 +133,7 @@ export class MenusService {
       sets.push(`permission_code = $${params.length}`);
     }
     if (data.isVisible !== undefined) {
-      params.push(data.isVisible ? 1 : 0); // is_visible is an integer column (1/0)
+      params.push(data.isVisible);
       sets.push(`is_visible = $${params.length}`);
     }
 
@@ -191,14 +188,14 @@ export class MenusService {
            INNER JOIN role_menus rm ON rm.menu_id = m.id
            INNER JOIN user_roles ur ON ur.role_id = rm.role_id
            INNER JOIN roles r ON r.id = ur.role_id
-           WHERE r.tenant_id = $1 AND ur.user_id = $2 AND m.is_visible = 1
+           WHERE r.tenant_id = $1 AND ur.user_id = $2 AND m.is_visible = true
 
            UNION
 
            SELECT parent.id, parent.parent_id, parent.name, parent.path, parent.icon, parent.sort_order, parent.permission_code, parent.is_visible, parent.created_at
            FROM menus parent
            INNER JOIN accessible_menus child ON child.parent_id = parent.id
-           WHERE parent.is_visible = 1
+           WHERE parent.is_visible = true
          )
          SELECT id, parent_id, name, path, icon, sort_order, permission_code, is_visible, created_at
          FROM accessible_menus

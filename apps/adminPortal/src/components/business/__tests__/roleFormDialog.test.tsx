@@ -64,7 +64,7 @@ const mockRole: RoleItem = {
   id: 'role-1',
   name: 'Admin',
   description: 'Admin role',
-  is_system: 0,
+  is_system: false,
   permissions: [{ id: 'perm-1', code: 'users:view', name: 'View Users' }],
   created_at: '2025-01-01T00:00:00Z',
   updated_at: '2025-01-01T00:00:00Z',
@@ -193,7 +193,7 @@ describe('RoleFormDialog', () => {
       expect(screen.getByText('View Users')).toBeInTheDocument();
     });
 
-    // Set the name atomically — per-character user.type() races with re-renders under full-suite load.
+    // Set value directly (avoids Dialog focus-trap stealing focus mid-keystroke)
     const nameInput = screen.getByLabelText('roles.fieldName');
     fireEvent.change(nameInput, { target: { value: 'UpdatedRole' } });
 
@@ -201,11 +201,11 @@ describe('RoleFormDialog', () => {
     await user.click(saveButton);
 
     await waitFor(() => {
-      // tenantId travels in the query string (asserted in the URL); the PATCH body carries the fields.
       expect(mockPatch).toHaveBeenCalledWith(
         '/api/v1/roles/role-1?tenantId=tenant-1',
         expect.objectContaining({
           name: 'UpdatedRole',
+          permissionIds: expect.any(Array),
         }),
       );
     });
@@ -238,8 +238,9 @@ describe('RoleFormDialog', () => {
       expect(screen.getByText('View Users')).toBeInTheDocument();
     });
 
-    await user.type(screen.getByLabelText('roles.fieldName'), 'Test');
-    await user.type(screen.getByLabelText('roles.fieldDescription'), 'Desc');
+    // Set values directly (avoids Dialog focus-trap stealing focus mid-keystroke)
+    fireEvent.change(screen.getByLabelText('roles.fieldName'), { target: { value: 'Test' } });
+    fireEvent.change(screen.getByLabelText('roles.fieldDescription'), { target: { value: 'Desc' } });
 
     const saveButton = screen.getByText('common.save');
     await user.click(saveButton);

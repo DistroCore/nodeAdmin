@@ -1026,8 +1026,19 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
                 <h2 className="text-sm font-bold md:text-base leading-none mb-1">{activeConversationLabel}</h2>
                 <div className="flex items-center gap-1.5 text-[0.625rem] md:text-xs">
                   <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    {connectionState === 'connected' && (
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    )}
+                    <span
+                      className={className(
+                        'relative inline-flex rounded-full h-2 w-2',
+                        connectionState === 'connected'
+                          ? 'bg-green-500'
+                          : connectionState === 'reconnecting'
+                            ? 'bg-yellow-500'
+                            : 'bg-muted-foreground',
+                      )}
+                    ></span>
                   </span>
                   <span className="text-muted-foreground font-medium">
                     {t({ id: 'im.online' }, { count: presenceMembers.size })}
@@ -1082,201 +1093,232 @@ export function MessagePanel({ conversationIdOverride }: MessagePanelProps): JSX
           </div>
         </header>
 
-        <div
-          className={className(
-            'min-h-0 flex-1 overflow-y-auto p-4 transition-colors relative scroll-smooth',
-            dragOver && 'ring-2 ring-primary/50 bg-primary/5',
-          )}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          onScroll={(event) => {
-            const node = event.currentTarget;
-            const remainingDistance = node.scrollHeight - (node.scrollTop + node.clientHeight);
-            setStickToBottom(remainingDistance < virtualRowHeightPx * 2);
-            setScrollTop(node.scrollTop);
-          }}
-          ref={messageViewportRef}
-        >
-          <div style={{ height: topSpacerHeight }} />
-          <ul className="flex flex-col gap-5">
-            {virtualItems.map((message) => {
-              const isMe = message.userId === imConfig?.userId;
-              const isSystem = message.messageType === 'system';
-
-              if (isSystem) {
-                return <MessageBody key={message.messageId} message={message} isMe={false} />;
-              }
-
-              return (
-                <li
-                  className={className(
-                    'flex flex-col max-w-[90%] md:max-w-[80%]',
-                    isMe ? 'ml-auto items-end' : 'mr-auto items-start',
-                  )}
-                  key={message.messageId}
-                >
-                  <div className="mb-1.5 flex items-center gap-2 px-1">
-                    {!isMe && <span className="text-[0.625rem] font-bold text-primary">{message.userId}</span>}
-                    <span className="text-[0.625rem] text-muted-foreground opacity-70">
-                      {new Date(message.createdAt).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <div
+            className={className(
+              'min-h-0 flex-1 overflow-y-auto p-4 transition-colors relative scroll-smooth',
+              dragOver && 'ring-2 ring-primary/50 bg-primary/5',
+            )}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onScroll={(event) => {
+              const node = event.currentTarget;
+              const remainingDistance = node.scrollHeight - (node.scrollTop + node.clientHeight);
+              setStickToBottom(remainingDistance < virtualRowHeightPx * 2);
+              setScrollTop(node.scrollTop);
+            }}
+            ref={messageViewportRef}
+          >
+            {messages.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground">
+                <div className="rounded-full bg-muted p-4">
+                  <svg className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"
+                    />
+                  </svg>
+                </div>
+                <p className="max-w-xs text-sm font-medium">
+                  {imConfig
+                    ? t({ id: 'im.empty.noMessages', defaultMessage: 'No messages yet. Say hello!' })
+                    : t({
+                        id: 'im.empty.selectConversation',
+                        defaultMessage: 'Select a conversation to start chatting.',
                       })}
-                    </span>
-                    {isMe && (
-                      <div className="flex h-3 w-3 items-center justify-center">
-                        <svg className="h-2.5 w-2.5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
+                </p>
+              </div>
+            ) : null}
+            <div style={{ height: topSpacerHeight }} />
+            <ul className="flex flex-col gap-5">
+              {virtualItems.map((message) => {
+                const isMe = message.userId === imConfig?.userId;
+                const isSystem = message.messageType === 'system';
 
-                  <div
+                if (isSystem) {
+                  return <MessageBody key={message.messageId} message={message} isMe={false} />;
+                }
+
+                return (
+                  <li
                     className={className(
-                      'relative group rounded-2xl px-4 py-2.5 shadow-sm text-sm border transition-shadow hover:shadow-md',
-                      isMe
-                        ? 'bg-primary text-primary-foreground border-primary rounded-tr-none'
-                        : 'bg-card border-border text-card-foreground rounded-tl-none',
+                      'flex flex-col max-w-[90%] md:max-w-[80%]',
+                      isMe ? 'ml-auto items-end' : 'mr-auto items-start',
                     )}
+                    key={message.messageId}
                   >
-                    {editingMessageId === message.messageId ? (
-                      <div className="flex flex-col gap-3 min-w-52">
-                        <textarea
-                          autoFocus
-                          className="w-full bg-transparent border-none resize-none focus:outline-none text-sm font-medium leading-relaxed"
-                          rows={3}
-                          onChange={(e) => setEditContent(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                              e.preventDefault();
-                              if (editContent.trim()) {
-                                emitEdit({
-                                  conversationId: message.conversationId,
-                                  content: editContent.trim(),
-                                  messageId: message.messageId,
-                                });
-                              }
-                              setEditingMessageId(null);
-                            }
-                            if (e.key === 'Escape') {
-                              setEditingMessageId(null);
-                            }
-                          }}
-                          value={editContent}
-                        />
-                        <div className="flex justify-end gap-2 border-t border-white/10 dark:border-white/5 pt-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-[0.625rem] font-bold uppercase tracking-widest text-inherit hover:bg-white/10"
-                            onClick={() => setEditingMessageId(null)}
+                    <div className="mb-1.5 flex items-center gap-2 px-1">
+                      {!isMe && <span className="text-[0.625rem] font-bold text-primary">{message.userId}</span>}
+                      <span className="text-[0.625rem] text-muted-foreground opacity-70">
+                        {new Date(message.createdAt).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                      {isMe && (
+                        <div
+                          className="flex h-3 w-3 items-center justify-center"
+                          title={t({ id: 'im.messageSent', defaultMessage: 'Sent' })}
+                        >
+                          <svg
+                            className="h-2.5 w-2.5 text-muted-foreground"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
                           >
-                            {t({ id: 'common.cancel' })}
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            className="h-7 text-[0.625rem] font-bold uppercase tracking-widest"
-                            onClick={() => {
-                              if (editContent.trim()) {
-                                emitEdit({
-                                  conversationId: message.conversationId,
-                                  content: editContent.trim(),
-                                  messageId: message.messageId,
-                                });
-                              }
-                              setEditingMessageId(null);
-                            }}
-                          >
-                            {t({ id: 'common.save' })}
-                          </Button>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                          </svg>
                         </div>
-                      </div>
-                    ) : (
-                      <MessageBody message={message} isMe={isMe} />
-                    )}
+                      )}
+                    </div>
 
-                    {/* Actions on hover */}
-                    {!message.deletedAt && isMe && canSendMessage && (
-                      <div
-                        className={className(
-                          'absolute top-0 flex gap-1 opacity-0 transition-all group-hover:opacity-100 scale-90 group-hover:scale-100',
-                          isMe ? '-left-14 pr-2' : '-right-14 pl-2',
-                        )}
-                      >
-                        <button
-                          aria-label={t({ id: 'im.editMessage' })}
-                          className="rounded-lg bg-card border border-border p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground shadow-sm transition-colors"
-                          onClick={() => {
-                            setEditingMessageId(message.messageId);
-                            setEditContent(message.content);
-                          }}
-                          title={t({ id: 'im.editMessage' })}
-                          type="button"
+                    <div
+                      className={className(
+                        'relative group rounded-2xl px-4 py-2.5 shadow-sm text-sm border transition-shadow hover:shadow-md',
+                        isMe
+                          ? 'bg-primary text-primary-foreground border-primary rounded-tr-none'
+                          : 'bg-card border-border text-card-foreground rounded-tl-none',
+                      )}
+                    >
+                      {editingMessageId === message.messageId ? (
+                        <div className="flex flex-col gap-3 min-w-52">
+                          <textarea
+                            autoFocus
+                            className="w-full bg-transparent border-none resize-none focus:outline-none text-sm font-medium leading-relaxed"
+                            rows={3}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                if (editContent.trim()) {
+                                  emitEdit({
+                                    conversationId: message.conversationId,
+                                    content: editContent.trim(),
+                                    messageId: message.messageId,
+                                  });
+                                }
+                                setEditingMessageId(null);
+                              }
+                              if (e.key === 'Escape') {
+                                setEditingMessageId(null);
+                              }
+                            }}
+                            value={editContent}
+                          />
+                          <div className="flex justify-end gap-2 border-t border-white/10 dark:border-white/5 pt-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-[0.625rem] font-bold uppercase tracking-widest text-inherit hover:bg-white/10"
+                              onClick={() => setEditingMessageId(null)}
+                            >
+                              {t({ id: 'common.cancel' })}
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="h-7 text-[0.625rem] font-bold uppercase tracking-widest"
+                              onClick={() => {
+                                if (editContent.trim()) {
+                                  emitEdit({
+                                    conversationId: message.conversationId,
+                                    content: editContent.trim(),
+                                    messageId: message.messageId,
+                                  });
+                                }
+                                setEditingMessageId(null);
+                              }}
+                            >
+                              {t({ id: 'common.save' })}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <MessageBody message={message} isMe={isMe} />
+                      )}
+
+                      {/* Actions on hover */}
+                      {!message.deletedAt && isMe && canSendMessage && (
+                        <div
+                          className={className(
+                            'absolute top-0 flex gap-1 opacity-0 transition-all group-hover:opacity-100 scale-90 group-hover:scale-100',
+                            isMe ? '-left-14 pr-2' : '-right-14 pl-2',
+                          )}
                         >
-                          <svg
-                            className="h-3.5 w-3.5"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            viewBox="0 0 24 24"
+                          <button
+                            aria-label={t({ id: 'im.editMessage' })}
+                            className="rounded-lg bg-card border border-border p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground shadow-sm transition-colors"
+                            onClick={() => {
+                              setEditingMessageId(message.messageId);
+                              setEditContent(message.content);
+                            }}
+                            title={t({ id: 'im.editMessage' })}
+                            type="button"
                           >
-                            <path
-                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </button>
-                        <button
-                          aria-label={t({ id: 'im.deleteMessage' })}
-                          className="rounded-lg bg-card border border-border p-1.5 text-destructive hover:bg-destructive/10 shadow-sm transition-colors"
-                          onClick={() => {
-                            if (window.confirm(t({ id: 'im.deleteConfirm' }))) {
-                              emitDelete({
-                                conversationId: message.conversationId,
-                                messageId: message.messageId,
-                              });
-                            }
-                          }}
-                          title={t({ id: 'im.deleteMessage' })}
-                          type="button"
-                        >
-                          <svg
-                            className="h-3.5 w-3.5"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            viewBox="0 0 24 24"
+                            <svg
+                              className="h-3.5 w-3.5"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                          <button
+                            aria-label={t({ id: 'im.deleteMessage' })}
+                            className="rounded-lg bg-card border border-border p-1.5 text-destructive hover:bg-destructive/10 shadow-sm transition-colors"
+                            onClick={() => {
+                              if (window.confirm(t({ id: 'im.deleteConfirm' }))) {
+                                emitDelete({
+                                  conversationId: message.conversationId,
+                                  messageId: message.messageId,
+                                });
+                              }
+                            }}
+                            title={t({ id: 'im.deleteMessage' })}
+                            type="button"
                           >
-                            <path
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </button>
-                      </div>
+                            <svg
+                              className="h-3.5 w-3.5"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {message.editedAt && !message.deletedAt && (
+                      <span className="mt-1 text-[0.5625rem] font-bold uppercase tracking-widest opacity-40 italic">
+                        {t({ id: 'im.edited' })}
+                      </span>
                     )}
-                  </div>
+                  </li>
+                );
+              })}
+            </ul>
+            <div style={{ height: bottomSpacerHeight }} />
+          </div>
 
-                  {message.editedAt && !message.deletedAt && (
-                    <span className="mt-1 text-[0.5625rem] font-bold uppercase tracking-widest opacity-40 italic">
-                      {t({ id: 'im.edited' })}
-                    </span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-          <div style={{ height: bottomSpacerHeight }} />
-
-          {/* Scroll to bottom button */}
+          {/* Scroll-to-bottom button — anchored to the non-scrolling wrapper so it stays pinned to the visible bottom-right while scrolled up (not to the scrolled content) */}
           {!stickToBottom && messages.length > 5 && (
             <Button
-              className="fixed bottom-32 right-8 h-10 w-10 rounded-full shadow-lg border border-border animate-bounce"
+              className="absolute bottom-6 right-6 z-10 h-10 w-10 rounded-full shadow-lg border border-border animate-bounce"
               onClick={() => {
                 setStickToBottom(true);
                 if (messageViewportRef.current) {

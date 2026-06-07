@@ -220,7 +220,7 @@ describe('AuthService', () => {
               email: 'test@example.com',
               password_hash: passwordHash,
               name: 'Test',
-              is_active: 0,
+              is_active: false,
             },
           ],
           rowCount: 1,
@@ -243,7 +243,7 @@ describe('AuthService', () => {
               email: 'test@example.com',
               password_hash: passwordHash,
               name: 'Test',
-              is_active: 1,
+              is_active: true,
             },
           ],
           rowCount: 1,
@@ -268,7 +268,7 @@ describe('AuthService', () => {
               email: 'test@example.com',
               password_hash: passwordHash,
               name: 'Test',
-              is_active: 1,
+              is_active: true,
             },
           ],
           rowCount: 1,
@@ -343,7 +343,7 @@ describe('AuthService', () => {
       const passwordHash = await hash('correct-password', 4);
       const mockPool = createMockPool([
         {
-          rows: [{ id: 'user-1', password_hash: passwordHash, is_active: 1 }],
+          rows: [{ id: 'user-1', password_hash: passwordHash, is_active: true }],
           rowCount: 1,
         },
       ]);
@@ -363,7 +363,7 @@ describe('AuthService', () => {
       ]);
       const mockPool = createMockPool([
         {
-          rows: [{ id: 'user-1', password_hash: passwordHash, is_active: 1 }],
+          rows: [{ id: 'user-1', password_hash: passwordHash, is_active: true }],
           rowCount: 1,
         },
       ]);
@@ -392,7 +392,7 @@ describe('AuthService', () => {
       });
       const mockPool = createMockPool([
         {
-          rows: [{ id: 'user-1', password_hash: passwordHash, is_active: 1 }],
+          rows: [{ id: 'user-1', password_hash: passwordHash, is_active: true }],
           rowCount: 1,
         },
       ]);

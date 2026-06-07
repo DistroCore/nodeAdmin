@@ -43,7 +43,7 @@ describe('AuthService SMS Login', () => {
     it('should authenticate user with valid SMS code and return tokens', async () => {
       // 1. Find valid SMS code (join users to get user_id)
       pool.query.mockResolvedValueOnce({
-        rows: [{ id: 'sms-1', phone: '13800138000', code: '123456', user_id: 'user-1', is_active: 1 }],
+        rows: [{ id: 'sms-1', phone: '13800138000', code: '123456', user_id: 'user-1', is_active: true }],
         rowCount: 1,
       });
       // 2. Get user roles
@@ -66,7 +66,7 @@ describe('AuthService SMS Login', () => {
 
     it('should reject if user associated with phone is disabled', async () => {
       pool.query.mockResolvedValueOnce({
-        rows: [{ id: 'sms-1', phone: '13800138000', code: '123456', user_id: 'user-1', is_active: 0 }],
+        rows: [{ id: 'sms-1', phone: '13800138000', code: '123456', user_id: 'user-1', is_active: false }],
         rowCount: 1,
       });
 
@@ -75,7 +75,7 @@ describe('AuthService SMS Login', () => {
 
     it('should mark SMS code as used after successful login', async () => {
       pool.query.mockResolvedValueOnce({
-        rows: [{ id: 'sms-1', phone: '13800138000', code: '123456', user_id: 'user-1', is_active: 1 }],
+        rows: [{ id: 'sms-1', phone: '13800138000', code: '123456', user_id: 'user-1', is_active: true }],
         rowCount: 1,
       });
       pool.query.mockResolvedValueOnce({ rows: [{ name: 'admin' }] });

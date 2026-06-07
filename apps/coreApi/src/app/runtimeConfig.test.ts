@@ -1,3 +1,4 @@
+import * as fs from 'node:fs';
 import { existsSync, writeFileSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -98,12 +99,53 @@ describe('runtimeConfig', () => {
       expect(runtimeConfig.auth.accessSecret).toBe('env-access-secret');
     });
 
-    it('throws when _FILE points to a non-existent file (no silent fallback)', async () => {
+    it('falls back to the env var when _FILE points to a non-existent file', async () => {
       process.env.JWT_ACCESS_SECRET_FILE = '/nonexistent/path/secret.txt';
       process.env.JWT_ACCESS_SECRET = 'env-access-secret';
       vi.resetModules();
 
-      await expect(import('./runtimeConfig')).rejects.toThrow('ENOENT');
+      const { runtimeConfig } = await import('./runtimeConfig');
+
+      expect(runtimeConfig.auth.accessSecret).toBe('env-access-secret');
+    });
+
+    it('falls back to the env var when _FILE points to a directory (does not throw EISDIR)', async () => {
+      // tmpdir() is a real path that exists but is not a regular file, so the
+      // stat.isFile() guard must skip the read and fall through to the env var.
+      process.env.JWT_ACCESS_SECRET_FILE = tmpdir();
+      process.env.JWT_ACCESS_SECRET = 'env-access-secret';
+      vi.resetModules();
+
+      const { runtimeConfig } = await import('./runtimeConfig');
+
+      expect(runtimeConfig.auth.accessSecret).toBe('env-access-secret');
+    });
+
+    it('rethrows when statSync fails with a non-ENOENT error (no silent fallback on EACCES)', async () => {
+      // A permission/IO error must surface, not be masked by the env-var fallback.
+      process.env.JWT_ACCESS_SECRET_FILE = '/protected/secret.txt';
+      process.env.JWT_ACCESS_SECRET = 'env-access-secret';
+
+      // statSync is non-configurable on the ESM module namespace, so spyOn fails;
+      // scope a doMock to this dynamic import only, preserving the other fs exports.
+      const eaccesError = Object.assign(new Error('permission denied'), { code: 'EACCES' });
+      vi.doMock('fs', async () => {
+        const actual = await vi.importActual<typeof fs>('fs');
+        return {
+          ...actual,
+          statSync: () => {
+            throw eaccesError;
+          },
+        };
+      });
+      vi.resetModules();
+
+      try {
+        await expect(import('./runtimeConfig')).rejects.toThrow('permission denied');
+      } finally {
+        vi.doUnmock('fs');
+        vi.resetModules();
+      }
     });
 
     it('throws when neither _FILE nor plain env var is set for a required secret', async () => {

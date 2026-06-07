@@ -76,7 +76,8 @@ export function PluginDetailPage() {
 
   const installedPlugin = plugins.find((p) => p.name === id || p.manifest?.id === id);
   const isInstalled = !!installedPlugin;
-  const hasUpdate = isInstalled && installedPlugin.installedVersion && data && data.latestVersion !== installedPlugin.installedVersion;
+  const hasUpdate =
+    isInstalled && installedPlugin.installedVersion && data && data.latestVersion !== installedPlugin.installedVersion;
 
   if (isLoading) return <DetailSkeleton />;
 
@@ -174,7 +175,11 @@ export function PluginDetailPage() {
                 </>
               ) : (
                 canManage && (
-                  <Button size="lg" onClick={() => install.mutate({ pluginId: data.id, version: data.latestVersion })} disabled={install.isPending}>
+                  <Button
+                    size="lg"
+                    onClick={() => install.mutate({ pluginId: data.id, version: data.latestVersion })}
+                    disabled={install.isPending}
+                  >
                     {install.isPending && (
                       <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                     )}
@@ -223,8 +228,8 @@ export function PluginDetailPage() {
                         {new Date(v.publishedAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell className="text-right pr-6">
-                        {canManage && (
-                          !isInstalled ? (
+                        {canManage &&
+                          (!isInstalled ? (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -245,13 +250,12 @@ export function PluginDetailPage() {
                                 disabled={update.isPending}
                               >
                                 {t(
-                                  { id: 'plugins.update_v', defaultMessage: 'Update to v{version}' },
+                                  { id: 'plugins.update_to', defaultMessage: 'Update to v{version}' },
                                   { version: v.version },
                                 )}
                               </Button>
                             )
-                          )
-                        )}
+                          ))}
                       </TableCell>
                     </TableRow>
                   ))}

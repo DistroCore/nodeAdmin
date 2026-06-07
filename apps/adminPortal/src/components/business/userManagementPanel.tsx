@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,12 +23,9 @@ export function UserManagementPanel(): JSX.Element {
   const canManage = usePermissionStore((s) => s.hasPermission('users:manage'));
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
-  // Server-side search: debounce so each keystroke doesn't fire a request; reset to the first page
-  // whenever the effective term changes.
+  // Server-side search debounced so each keystroke doesn't fire a request; the search input resets
+  // the page to 0 on change.
   const debouncedSearch = useDebouncedValue(search);
-  useEffect(() => {
-    setPage(0);
-  }, [debouncedSearch]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<UserItem | undefined>(undefined);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -105,7 +102,10 @@ export function UserManagementPanel(): JSX.Element {
             placeholder={t({ id: 'users.search' })}
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(0);
+            }}
           />
         </div>
 
@@ -140,7 +140,7 @@ export function UserManagementPanel(): JSX.Element {
               header: t({ id: 'users.colStatus' }),
               className: 'hidden sm:table-cell',
               cell: (user) => (
-                <Badge variant={user.is_active ? 'default' : 'secondary'}>
+                <Badge variant={user.is_active ? 'success' : 'secondary'}>
                   {user.is_active ? t({ id: 'users.active' }) : t({ id: 'users.inactive' })}
                 </Badge>
               ),

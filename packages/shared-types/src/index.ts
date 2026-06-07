@@ -64,7 +64,7 @@ export interface UserItem {
   created_at: string;
   email: string;
   id: string;
-  is_active: number;
+  is_active: boolean;
   name: string | null;
   phone: string | null;
   roles: { id: string; name: string }[];
@@ -76,7 +76,7 @@ export interface RoleItem {
   created_at: string;
   description: string | null;
   id: string;
-  is_system: number;
+  is_system: boolean;
   name: string;
   permissions: { code: string; id: string; name: string }[];
   updated_at: string;
@@ -95,7 +95,7 @@ export interface MenuItem {
   created_at: string;
   icon: string;
   id: string;
-  is_visible: number;
+  is_visible: boolean;
   name: string;
   parent_id: string | null;
   path: string;
@@ -108,7 +108,7 @@ export interface TenantItem {
   config_json: string | null;
   created_at: string;
   id: string;
-  is_active: number;
+  is_active: boolean;
   logo: string | null;
   name: string;
   slug: string;
