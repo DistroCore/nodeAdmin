@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { compare, hash } from 'bcryptjs';
 import { sign, verify } from 'jsonwebtoken';
@@ -267,7 +267,10 @@ export class AuthService {
 
     const passwordValid = await compare(currentPassword, user.password_hash);
     if (!passwordValid) {
-      throw new UnauthorizedException('Current password is incorrect.');
+      // A wrong *current* password is invalid request input, not an authentication failure: the
+      // caller IS authenticated. Returning 400 (not 401) also stops the apiClient from treating it
+      // as an expired session and triggering a token-refresh-and-retry dance.
+      throw new BadRequestException('Current password is incorrect.');
     }
 
     const newPasswordHash = await hash(newPassword, 12);
