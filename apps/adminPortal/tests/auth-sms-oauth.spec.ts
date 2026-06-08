@@ -38,7 +38,8 @@ test.describe('SMS and OAuth Login UI', () => {
     // Switch back to Email
     await page.getByRole('button', { name: /Email/i }).click();
     await expect(page.getByLabel(/Email/i)).toBeVisible();
-    await expect(page.getByLabel(/Password/i)).toBeVisible();
+    // Anchor so this matches only the password input, not the "Show password" toggle button.
+    await expect(page.getByLabel(/^Password$/i)).toBeVisible();
   });
 
   test('SMS tab has tenant selector', async ({ page }) => {
