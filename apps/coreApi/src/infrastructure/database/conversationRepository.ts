@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { and, desc, eq, exists, ilike, max, ne, notExists, or, sql } from 'drizzle-orm';
-import { DatabaseService } from './databaseService';
+import type { createDbClient } from './dbClient';
 import { conversationMembers, conversations, messages, users } from './schema';
+
+type DrizzleClient = ReturnType<typeof createDbClient>;
 
 export interface ConversationRow {
   conversationId: string;
@@ -24,7 +26,9 @@ export interface MemberRow {
 
 @Injectable()
 export class ConversationRepository {
-  constructor(private readonly db: DatabaseService) {}
+  // The drizzle client is injected directly (via an imModule factory) rather than DatabaseService,
+  // so this repository depends on no Service — keeping the controller→service→repository layering clean.
+  constructor(private readonly drizzle: DrizzleClient | null) {}
 
   async create(params: {
     id: string;
@@ -34,11 +38,11 @@ export class ConversationRepository {
     creatorId: string;
     memberUserIds: string[];
   }): Promise<ConversationRow> {
-    if (!this.db.drizzle) {
+    if (!this.drizzle) {
       throw new Error('Database not available');
     }
 
-    const createdConversation = await this.db.drizzle.transaction(async (tx) => {
+    const createdConversation = await this.drizzle.transaction(async (tx) => {
       await tx.execute(sql`SELECT set_config('app.current_tenant', ${params.tenantId}, true)`);
 
       const insertedConversations = await tx
@@ -95,11 +99,11 @@ export class ConversationRepository {
   }
 
   async findById(tenantId: string, conversationId: string, userId: string): Promise<ConversationRow | null> {
-    if (!this.db.drizzle) {
+    if (!this.drizzle) {
       return null;
     }
 
-    const rows = await this.db.drizzle.transaction(async (tx) => {
+    const rows = await this.drizzle.transaction(async (tx) => {
       await tx.execute(sql`SELECT set_config('app.current_tenant', ${tenantId}, true)`);
 
       const latestMessageByConversation = tx
@@ -153,12 +157,12 @@ export class ConversationRepository {
   }
 
   async listByMember(tenantId: string, userId: string, limit = 50): Promise<ConversationRow[]> {
-    if (!this.db.drizzle) {
+    if (!this.drizzle) {
       return [];
     }
 
     const boundedLimit = Math.min(Math.max(Math.trunc(limit), 1), 200);
-    const rows = await this.db.drizzle.transaction(async (tx) => {
+    const rows = await this.drizzle.transaction(async (tx) => {
       await tx.execute(sql`SELECT set_config('app.current_tenant', ${tenantId}, true)`);
 
       const latestMessageByConversation = tx
@@ -212,11 +216,11 @@ export class ConversationRepository {
   }
 
   async listMembers(tenantId: string, conversationId: string): Promise<MemberRow[]> {
-    if (!this.db.drizzle) {
+    if (!this.drizzle) {
       return [];
     }
 
-    const rows = await this.db.drizzle.transaction(async (tx) => {
+    const rows = await this.drizzle.transaction(async (tx) => {
       await tx.execute(sql`SELECT set_config('app.current_tenant', ${tenantId}, true)`);
 
       return tx
@@ -242,11 +246,11 @@ export class ConversationRepository {
   }
 
   async findDmBetweenUsers(tenantId: string, userIdA: string, userIdB: string): Promise<ConversationRow | null> {
-    if (!this.db.drizzle) {
+    if (!this.drizzle) {
       return null;
     }
 
-    const rows = await this.db.drizzle.transaction(async (tx) => {
+    const rows = await this.drizzle.transaction(async (tx) => {
       await tx.execute(sql`SELECT set_config('app.current_tenant', ${tenantId}, true)`);
 
       const latestMessageByConversation = tx
@@ -335,12 +339,12 @@ export class ConversationRepository {
   }
 
   async listByTenant(tenantId: string, limit = 50): Promise<ConversationRow[]> {
-    if (!this.db.drizzle) {
+    if (!this.drizzle) {
       return [];
     }
 
     const boundedLimit = Math.min(Math.max(Math.trunc(limit), 1), 200);
-    const rows = await this.db.drizzle.transaction(async (tx) => {
+    const rows = await this.drizzle.transaction(async (tx) => {
       await tx.execute(sql`SELECT set_config('app.current_tenant', ${tenantId}, true)`);
 
       const latestMessageByConversation = tx
@@ -386,7 +390,7 @@ export class ConversationRepository {
     query: string,
     limit = 20,
   ): Promise<Array<{ id: string; name: string | null; email: string; avatar: string | null }>> {
-    if (!this.db.drizzle) {
+    if (!this.drizzle) {
       return [];
     }
 
@@ -398,7 +402,7 @@ export class ConversationRepository {
     const boundedLimit = Math.min(Math.max(Math.trunc(limit), 1), 50);
     const likeQuery = `%${trimmedQuery}%`;
 
-    return this.db.drizzle.transaction(async (tx) => {
+    return this.drizzle.transaction(async (tx) => {
       await tx.execute(sql`SELECT set_config('app.current_tenant', ${tenantId}, true)`);
 
       return tx

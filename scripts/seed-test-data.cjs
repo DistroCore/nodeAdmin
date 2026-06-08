@@ -56,6 +56,19 @@ async function seedData() {
       console.log(`✓ Created conversation: ${conv.id}`);
     }
 
+    // Make the admin a member of every seeded conversation. Without this, listByMember returns an
+    // empty list, the IM sidebar shows no conversations, and the message viewport never mounts —
+    // which is exactly why the IM e2e couldn't render a conversation.
+    for (const conv of conversations) {
+      await client.query(
+        `INSERT INTO conversation_members (tenant_id, conversation_id, user_id, role)
+         VALUES ($1, $2, 'user-admin', 'admin')
+         ON CONFLICT (tenant_id, conversation_id, user_id) DO NOTHING`,
+        [conv.tenantId, conv.id],
+      );
+    }
+    console.log('✓ Ensured admin membership in seeded conversations');
+
     // Create test messages
     const messages = [
       {

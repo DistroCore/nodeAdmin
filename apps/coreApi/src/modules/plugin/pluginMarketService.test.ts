@@ -259,6 +259,49 @@ describe('PluginMarketService', () => {
       fetchSpy.mockRestore();
     });
 
+    it('provisions sidebar menus declared in the manifest contributes.menus', async () => {
+      const mockClient = createMockClient([
+        { rows: [], rowCount: 0 }, // BEGIN
+        { rows: [], rowCount: 0 }, // set_config
+        {
+          rows: [
+            {
+              manifest: {
+                author: { name: 'NodeAdmin Team' },
+                contributes: { menus: [{ name: 'Kanban', icon: 'board', route: '/plugins/kanban' }] },
+                description: 'Board view',
+                displayName: 'Kanban',
+                engines: { nodeAdmin: '>=0.1.0' },
+                entrypoints: { server: './dist/server/index.js' },
+                id: '@nodeadmin/plugin-kanban',
+                permissions: ['backlog:view'],
+                version: '1.2.0',
+              },
+              min_platform_version: '>=0.1.0',
+              server_package: '@nodeadmin/plugin-kanban@1.2.0',
+              version: '1.2.0',
+            },
+          ],
+          rowCount: 1,
+        },
+        { rows: [], rowCount: 1 }, // INSERT tenant_plugins
+        { rows: [], rowCount: 1 }, // INSERT INTO menus (provision)
+        { rows: [], rowCount: 0 }, // COMMIT
+      ]);
+      const mockPool = createMockPool([]);
+      mockPool.connect = vi.fn(async () => mockClient);
+      (service as unknown as { pool: typeof mockPool }).pool = mockPool;
+
+      await service.installPlugin('tenant-1', '@nodeadmin/plugin-kanban', '1.2.0');
+
+      const menuInsert = mockClient.calls.find((call) => call.sql.includes('INSERT INTO menus'));
+      expect(menuInsert).toBeDefined();
+      // Stamped with plugin_code + the manifest's route/name so it can later be hidden/removed.
+      expect(menuInsert?.params).toEqual(
+        expect.arrayContaining(['@nodeadmin/plugin-kanban', '/plugins/kanban', 'Kanban']),
+      );
+    });
+
     it('falls back to the remote registry when the requested version is not stored locally', async () => {
       vi.resetModules();
       const { PluginMarketService: FreshPluginMarketService } = await import('./pluginMarketService');
@@ -431,8 +474,8 @@ describe('PluginMarketService', () => {
   describe('uninstallPlugin', () => {
     it('removes the tenant plugin record inside a tenant-scoped transaction', async () => {
       const mockClient = createMockClient([
-        { rows: [], rowCount: 0 },
-        { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 }, // BEGIN
+        { rows: [], rowCount: 0 }, // set_config
         {
           rows: [
             {
@@ -442,9 +485,11 @@ describe('PluginMarketService', () => {
             },
           ],
           rowCount: 1,
-        },
-        { rows: [{ plugin_name: '@nodeadmin/plugin-kanban' }], rowCount: 1 },
-        { rows: [], rowCount: 0 },
+        }, // lifecycle SELECT
+        { rows: [], rowCount: 0 }, // SELECT id FROM menus WHERE plugin_code (no plugin menus)
+        { rows: [], rowCount: 0 }, // DELETE FROM menus WHERE plugin_code
+        { rows: [{ plugin_name: '@nodeadmin/plugin-kanban' }], rowCount: 1 }, // DELETE FROM tenant_plugins
+        { rows: [], rowCount: 0 }, // COMMIT
       ]);
       const mockPool = createMockPool([]);
       mockPool.connect = vi.fn(async () => mockClient);
@@ -456,8 +501,11 @@ describe('PluginMarketService', () => {
       });
 
       expect(mockClient.calls[2]?.sql).toContain('FROM tenant_plugins tp');
-      expect(mockClient.calls[3]?.sql).toContain('DELETE FROM tenant_plugins');
-      expect(mockClient.calls[3]?.params).toEqual(['tenant-1', '@nodeadmin/plugin-kanban']);
+      expect(mockClient.calls[3]?.sql).toContain('FROM menus WHERE plugin_code');
+      expect(mockClient.calls[4]?.sql).toContain('DELETE FROM menus WHERE plugin_code');
+      expect(mockClient.calls[4]?.params).toEqual(['@nodeadmin/plugin-kanban']);
+      expect(mockClient.calls[5]?.sql).toContain('DELETE FROM tenant_plugins');
+      expect(mockClient.calls[5]?.params).toEqual(['tenant-1', '@nodeadmin/plugin-kanban']);
     });
 
     it('runs lifecycle hooks before removing an installed plugin', async () => {
@@ -486,9 +534,11 @@ describe('PluginMarketService', () => {
             },
           ],
           rowCount: 1,
-        },
-        { rows: [{ plugin_name: '@nodeadmin/plugin-kanban' }], rowCount: 1 },
-        { rows: [], rowCount: 0 },
+        }, // lifecycle SELECT
+        { rows: [], rowCount: 0 }, // SELECT id FROM menus WHERE plugin_code
+        { rows: [], rowCount: 0 }, // DELETE FROM menus WHERE plugin_code
+        { rows: [{ plugin_name: '@nodeadmin/plugin-kanban' }], rowCount: 1 }, // DELETE FROM tenant_plugins
+        { rows: [], rowCount: 0 }, // COMMIT
       ]);
       const mockPool = createMockPool([]);
       mockPool.connect = vi.fn(async () => mockClient);
@@ -510,7 +560,7 @@ describe('PluginMarketService', () => {
           version: '1.2.0',
         }),
       );
-      expect(mockClient.calls[3]?.sql).toContain('DELETE FROM tenant_plugins');
+      expect(mockClient.calls[5]?.sql).toContain('DELETE FROM tenant_plugins');
     });
   });
 

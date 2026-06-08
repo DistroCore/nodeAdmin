@@ -12,6 +12,7 @@
   },
   "contributes": {
     "menus": [{ "name": "Example", "icon": "Puzzle", "route": "/plugins/example" }],
-    "routes": ["/api/v1/plugins/example"]
+    "routes": ["/api/v1/plugins/example"],
+    "permissions": [{ "code": "example:read", "name": "View Example", "description": "Read the example plugin page" }]
   }
 }

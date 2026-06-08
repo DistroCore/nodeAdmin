@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { compare, hash } from 'bcryptjs';
 import { sign, verify } from 'jsonwebtoken';
@@ -40,7 +40,7 @@ interface UserRow {
   email: string;
   password_hash: string;
   name: string | null;
-  is_active: number;
+  is_active: boolean;
 }
 
 interface RoleRow {
@@ -267,7 +267,10 @@ export class AuthService {
 
     const passwordValid = await compare(currentPassword, user.password_hash);
     if (!passwordValid) {
-      throw new UnauthorizedException('Current password is incorrect.');
+      // A wrong *current* password is invalid request input, not an authentication failure: the
+      // caller IS authenticated. Returning 400 (not 401) also stops the apiClient from treating it
+      // as an expired session and triggering a token-refresh-and-retry dance.
+      throw new BadRequestException('Current password is incorrect.');
     }
 
     const newPasswordHash = await hash(newPassword, 12);
@@ -315,10 +318,10 @@ export class AuthService {
     return normalizedValue.length > 0 ? normalizedValue : null;
   }
 
-  async resetPassword(email: string, newPassword: string, tenantId: string): Promise<void> {
+  async resetPassword(email: string, newPassword: string, tenantId: string): Promise<string> {
     if (!this.pool) throw new UnauthorizedException('Database not available.');
 
-    const result = await this.pool.query<{ id: string; is_active: number }>(
+    const result = await this.pool.query<{ id: string; is_active: boolean }>(
       'SELECT id, is_active FROM users WHERE tenant_id = $1 AND email = $2',
       [tenantId, email],
     );
@@ -349,6 +352,8 @@ export class AuthService {
     } finally {
       client.release();
     }
+
+    return user.id;
   }
 
   // ─── SMS Login ────────────────────────────────────────────────
@@ -393,7 +398,7 @@ export class AuthService {
       phone: string;
       code: string;
       user_id: string | null;
-      is_active: number;
+      is_active: boolean;
     }>(
       `SELECT sc.id, sc.phone, sc.code, u.id AS user_id, u.is_active
        FROM sms_codes sc
@@ -461,7 +466,7 @@ export class AuthService {
     const existingResult = await this.pool.query<{
       user_id: string;
       name: string | null;
-      is_active: number;
+      is_active: boolean;
     }>(
       `SELECT oa.user_id, u.name, u.is_active
        FROM oauth_accounts oa

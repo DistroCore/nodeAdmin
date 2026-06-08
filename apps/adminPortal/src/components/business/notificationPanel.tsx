@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useIntl } from 'react-intl';
 import { Card, CardDescription, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -97,18 +97,80 @@ interface AuditLogResponse {
 
 const loadingRows = ['row-1', 'row-2', 'row-3', 'row-4', 'row-5'];
 
-export function NotificationPanel(): JSX.Element {
-  const { formatMessage: t } = useIntl();
-  const apiClient = useApiClient();
-  const { markAsRead, markAllAsRead, readIds } = useNotificationStore();
+const PAGE_SIZE = 20;
 
-  const auditQuery = useQuery({
-    queryFn: () => apiClient.get<AuditLogResponse>('/api/v1/console/audit-logs?pageSize=50'),
+const MINUTE = 60_000;
+const HOUR = 3_600_000;
+const DAY = 86_400_000;
+
+// Locale-aware relative time ("5 minutes ago" / "5 分钟前") via the native Intl
+// API — no extra i18n keys, follows the active locale. Falls back to a date for
+// anything older than a week.
+function formatRelativeTime(iso: string, locale: string): string {
+  const diffMs = new Date(iso).getTime() - Date.now();
+  const abs = Math.abs(diffMs);
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+  if (abs < HOUR) return rtf.format(Math.round(diffMs / MINUTE), 'minute');
+  if (abs < DAY) return rtf.format(Math.round(diffMs / HOUR), 'hour');
+  if (abs < 7 * DAY) return rtf.format(Math.round(diffMs / DAY), 'day');
+  return new Date(iso).toLocaleDateString(locale);
+}
+
+// Type-based accent for the icon circle, matching the dashboard's stat palette.
+function notificationAccent(action: string): string {
+  if (action.includes('login') || action.includes('auth'))
+    return 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400';
+  if (action.includes('user')) return 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400';
+  if (action.includes('tenant')) return 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400';
+  if (action.includes('system')) return 'bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400';
+  return 'bg-muted text-muted-foreground';
+}
+
+export function NotificationPanel(): JSX.Element {
+  const { formatMessage: t, locale } = useIntl();
+  const apiClient = useApiClient();
+  const queryClient = useQueryClient();
+  const { markAsRead, markAllAsRead, isRead } = useNotificationStore();
+
+  // Infinite list — appends pages on "load more". No polling here: a background
+  // refetch would re-request every loaded page (request/memory amplification),
+  // so freshness is delegated to the lightweight head poll below.
+  const auditQuery = useInfiniteQuery({
     queryKey: ['notifications-logs'],
+    queryFn: ({ pageParam }) =>
+      apiClient.get<AuditLogResponse>(`/api/v1/console/audit-logs?page=${pageParam}&pageSize=${PAGE_SIZE}`),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, page) => sum + page.items.length, 0);
+      if (lastPage.items.length < PAGE_SIZE || loaded >= lastPage.total) return undefined;
+      return allPages.length + 1;
+    },
+  });
+
+  // Lightweight head poll — always one request per interval, independent of how
+  // many pages the infinite list has loaded. Used only to detect new entries.
+  const headQuery = useQuery({
+    queryKey: ['notifications-head'],
+    queryFn: () => apiClient.get<AuditLogResponse>(`/api/v1/console/audit-logs?page=1&pageSize=${PAGE_SIZE}`),
     refetchInterval: POLL_INTERVALS.notifications,
   });
 
-  const notifications = auditQuery.data?.items ?? [];
+  // Baseline is the total of the list's own first page (what the user is currently
+  // looking at). Comparing it to the freshly-polled head total yields how many new
+  // entries exist. Resetting the list (showLatest) refetches page 1, which moves the
+  // baseline forward automatically — no separate state to keep in sync.
+  const headTotal = headQuery.data?.total ?? 0;
+  const listTotal = auditQuery.data?.pages[0]?.total ?? 0;
+  const newCount = Math.max(0, headTotal - listTotal);
+
+  const showLatest = () => {
+    // Collapse the loaded pages back to a single fresh first page so the newest
+    // entries show at the top. The banner clears once the refetch settles (its new
+    // first-page total matches the head total).
+    void queryClient.resetQueries({ queryKey: ['notifications-logs'] });
+  };
+
+  const notifications = auditQuery.data?.pages.flatMap((page: AuditLogResponse) => page.items) ?? [];
 
   const getTypeLabel = (action: string) => {
     if (action.includes('login') || action.includes('auth')) return t({ id: 'notifications.type.auth' });
@@ -119,7 +181,7 @@ export function NotificationPanel(): JSX.Element {
   };
 
   const handleMarkAllRead = () => {
-    markAllAsRead(notifications.map((n) => n.id));
+    markAllAsRead();
   };
 
   return (
@@ -135,6 +197,15 @@ export function NotificationPanel(): JSX.Element {
           </Button>
         </CardHeader>
         <CardContent className="p-0">
+          {newCount > 0 && !auditQuery.isFetching ? (
+            <button
+              type="button"
+              onClick={showLatest}
+              className="flex w-full items-center justify-center gap-2 border-b bg-primary/10 p-2 text-sm font-medium text-primary transition-colors hover:bg-primary/15"
+            >
+              {t({ id: 'notifications.newCount' }, { count: newCount })}
+            </button>
+          ) : null}
           <div className="divide-y">
             {auditQuery.isLoading
               ? loadingRows.map((rowId) => (
@@ -154,7 +225,7 @@ export function NotificationPanel(): JSX.Element {
             ) : null}
 
             {notifications.map((notification) => {
-              const isUnread = !readIds.has(notification.id);
+              const isUnread = !isRead(notification.id, notification.createdAt);
               return (
                 <button
                   key={notification.id}
@@ -162,7 +233,9 @@ export function NotificationPanel(): JSX.Element {
                   onClick={() => markAsRead(notification.id)}
                   type="button"
                 >
-                  <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-lg">
+                  <div
+                    className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lg ${notificationAccent(notification.action)}`}
+                  >
                     <NotificationIcon action={notification.action} />
                   </div>
                   <div className="flex-1 space-y-1">
@@ -177,22 +250,40 @@ export function NotificationPanel(): JSX.Element {
                           </Badge>
                         )}
                       </div>
-                      <span className="text-[0.625rem] text-muted-foreground whitespace-nowrap">
-                        {new Date(notification.createdAt).toLocaleString()}
+                      <span
+                        className="text-[0.625rem] text-muted-foreground whitespace-nowrap"
+                        title={new Date(notification.createdAt).toLocaleString()}
+                      >
+                        {formatRelativeTime(notification.createdAt, locale)}
                       </span>
                     </div>
                     <p
                       className={`text-sm leading-snug ${isUnread ? 'font-medium text-foreground' : 'text-muted-foreground'}`}
                     >
                       <span className="font-mono text-xs opacity-70 mr-1">[{notification.action}]</span>
-                      {notification.targetType} {notification.targetId ? `(${notification.targetId})` : ''}
-                      {notification.userId && ` by ${notification.userId}`}
+                      {notification.targetName ?? notification.targetType}
+                      {!notification.targetName && notification.targetId ? ` (${notification.targetId})` : ''}
+                      {` by ${notification.actorName ?? notification.userId}`}
                     </p>
                   </div>
                 </button>
               );
             })}
           </div>
+          {auditQuery.hasNextPage ? (
+            <div className="flex justify-center border-t p-3">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={auditQuery.isFetchingNextPage}
+                onClick={() => {
+                  if (!auditQuery.isFetchingNextPage) void auditQuery.fetchNextPage();
+                }}
+              >
+                {auditQuery.isFetchingNextPage ? t({ id: 'common.loading' }) : t({ id: 'audit.loadMore' })}
+              </Button>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </section>

@@ -4,9 +4,11 @@ import type {
   PluginManifestEntrypoints,
   PluginManifestLifecycle,
   PluginManifestMenuContribution,
+  PluginManifestPermissionDefinition,
 } from '@nodeadmin/shared-types';
 
 const PLUGIN_ID_PATTERN = /^@nodeadmin\/plugin-[a-z0-9-]+$/;
+const PERMISSION_CODE_PATTERN = /^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/;
 const SEMVER_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z-.]+)?(?:\+[0-9A-Za-z-.]+)?$/;
 const SEMVER_RANGE_PATTERN = /^(?:\^|~|>=|<=|>|<)?\d+\.\d+\.\d+(?:\s+\|\|\s+(?:\^|~|>=|<=|>|<)?\d+\.\d+\.\d+)*$/;
 
@@ -124,6 +126,72 @@ function validateContributes(value: unknown, issues: string[]): void {
 
   validateMenuContributions(value.menus, issues);
   validateRouteContributions(value.routes, issues);
+  validatePermissionContributions(value.permissions, issues);
+  validateTenantTableContributions(value.tenantTables, issues);
+}
+
+// Plain snake_case identifiers only: these names are interpolated into DELETE statements during
+// tenant teardown (table names can't be bound as parameters), so reject anything that isn't a safe
+// identifier to keep that path injection-proof.
+const TENANT_TABLE_PATTERN = /^[a-z_][a-z0-9_]*$/;
+
+function validateTenantTableContributions(value: unknown, issues: string[]): void {
+  if (value === undefined) {
+    return;
+  }
+
+  if (!Array.isArray(value)) {
+    issues.push('contributes.tenantTables must be an array when provided');
+    return;
+  }
+
+  value.forEach((item, index) => {
+    if (!isNonEmptyString(item) || !TENANT_TABLE_PATTERN.test(item)) {
+      issues.push(`contributes.tenantTables[${index}] must be a snake_case table identifier`);
+    }
+  });
+}
+
+function validatePermissionContributions(
+  value: PluginManifestContributes['permissions'] | unknown,
+  issues: string[],
+): void {
+  if (value === undefined) {
+    return;
+  }
+
+  if (!Array.isArray(value)) {
+    issues.push('contributes.permissions must be an array when provided');
+    return;
+  }
+
+  value.forEach((item, index) => validatePermissionContribution(item, index, issues));
+}
+
+function validatePermissionContribution(
+  value: PluginManifestPermissionDefinition | unknown,
+  index: number,
+  issues: string[],
+): void {
+  if (!isRecord(value)) {
+    issues.push(`contributes.permissions[${index}] must be an object`);
+    return;
+  }
+
+  validateRequiredString(value, 'name', issues, `contributes.permissions[${index}].name`);
+
+  if (value.description !== undefined && !isNonEmptyString(value.description)) {
+    issues.push(`contributes.permissions[${index}].description must be a non-empty string when provided`);
+  }
+
+  if (!isNonEmptyString(value.code)) {
+    issues.push(`contributes.permissions[${index}].code is required`);
+    return;
+  }
+
+  if (!PERMISSION_CODE_PATTERN.test(value.code)) {
+    issues.push(`contributes.permissions[${index}].code must match 'module:action'`);
+  }
 }
 
 function validateMenuContributions(value: PluginManifestContributes['menus'] | unknown, issues: string[]): void {

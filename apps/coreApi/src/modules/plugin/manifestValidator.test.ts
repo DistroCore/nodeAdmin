@@ -31,6 +31,10 @@ function createValidManifest(): PluginManifest {
         },
       ],
       routes: ['/api/v1/plugins/kanban'],
+      permissions: [
+        { code: 'kanban:view', name: 'View Kanban', description: 'View boards' },
+        { code: 'kanban:manage', name: 'Manage Kanban' },
+      ],
     },
     lifecycle: {
       onInstall: './scripts/install.cjs',
@@ -82,6 +86,33 @@ describe('validatePluginManifest', () => {
       'entrypoints.server must be a relative path starting with ./',
     );
     expect(() => validatePluginManifest(manifest)).toThrow('contributes.menus[0].route must start with /');
+  });
+
+  it('rejects permission contributions with a malformed code or missing name', () => {
+    const manifest = createValidManifest();
+    manifest.contributes = {
+      permissions: [
+        { code: 'NotAValidCode', name: 'Bad code' },
+        { code: 'kanban:manage', name: '' },
+      ],
+    };
+
+    expect(() => validatePluginManifest(manifest)).toThrow(
+      "contributes.permissions[0].code must match 'module:action'",
+    );
+    expect(() => validatePluginManifest(manifest)).toThrow('contributes.permissions[1].name is required');
+  });
+
+  it('accepts snake_case tenantTables and rejects unsafe table identifiers', () => {
+    const ok = createValidManifest();
+    ok.contributes = { tenantTables: ['backlog_tasks', 'backlog_sprints'] };
+    expect(() => validatePluginManifest(ok)).not.toThrow();
+
+    const bad = createValidManifest();
+    bad.contributes = { tenantTables: ['backlog_tasks; DROP TABLE users'] };
+    expect(() => validatePluginManifest(bad)).toThrow(
+      'contributes.tenantTables[0] must be a snake_case table identifier',
+    );
   });
 
   it('rejects empty permissions and invalid dependency values', () => {

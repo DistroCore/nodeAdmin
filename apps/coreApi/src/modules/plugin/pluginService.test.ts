@@ -165,11 +165,7 @@ describe('PluginService', () => {
       });
       expect(mockClient.calls[2]?.sql).toContain('INSERT INTO tenant_plugins');
       expect(mockClient.calls[2]?.sql).toContain('DO UPDATE SET config = EXCLUDED.config');
-      expect(mockClient.calls[2]?.params).toEqual([
-        'tenant-1',
-        '@nodeadmin/plugin-kanban',
-        '{"boardLimit":10}',
-      ]);
+      expect(mockClient.calls[2]?.params).toEqual(['tenant-1', '@nodeadmin/plugin-kanban', '{"boardLimit":10}']);
     });
   });
 

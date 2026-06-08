@@ -185,3 +185,7 @@ Phase 0 + Phase 1 + Phase 2 已经全部落地，见 `e11a5d9`。插件市场现
 - [Agent 微服务架构规划](./agentMicroservicePlan.md)
 - [Agent 微服务评审意见](./agentMicroserviceReview.md)
 - [架构基线](./architectureBaseline.md)
+
+---
+
+最近更新时间：2026-06-08

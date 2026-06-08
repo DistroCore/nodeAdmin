@@ -582,7 +582,7 @@
             "bearer": []
           }
         ],
-        "summary": "List roles for a tenant",
+        "summary": "List roles with pagination and search",
         "tags": [
           "roles"
         ]
@@ -677,6 +677,26 @@
           }
         ],
         "summary": "List all permissions",
+        "tags": [
+          "permissions"
+        ]
+      }
+    },
+    "/api/v1/permissions/me/plugins": {
+      "get": {
+        "operationId": "PermissionsController_getMyPluginPermissions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List the current user's granted plugin permission codes",
         "tags": [
           "permissions"
         ]
@@ -948,254 +968,6 @@
         ]
       }
     },
-    "/api/v1/modernizer/analyze": {
-      "get": {
-        "operationId": "ModernizerController_analyze",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Run code quality analysis",
-        "tags": [
-          "modernizer"
-        ]
-      }
-    },
-    "/api/v1/modernizer/docs": {
-      "get": {
-        "operationId": "ModernizerController_docs",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Generate API endpoint documentation",
-        "tags": [
-          "modernizer"
-        ]
-      }
-    },
-    "/api/v1/backlog/tasks": {
-      "get": {
-        "operationId": "TaskController_list",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List tasks with pagination and filters",
-        "tags": [
-          "backlog"
-        ]
-      },
-      "post": {
-        "operationId": "TaskController_create",
-        "parameters": [],
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Create a new task",
-        "tags": [
-          "backlog"
-        ]
-      }
-    },
-    "/api/v1/backlog/tasks/{id}": {
-      "get": {
-        "operationId": "TaskController_findOne",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get task by ID",
-        "tags": [
-          "backlog"
-        ]
-      },
-      "patch": {
-        "operationId": "TaskController_update",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Update a task",
-        "tags": [
-          "backlog"
-        ]
-      },
-      "delete": {
-        "operationId": "TaskController_remove",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Delete a task",
-        "tags": [
-          "backlog"
-        ]
-      }
-    },
-    "/api/v1/backlog/sprints": {
-      "get": {
-        "operationId": "SprintController_list",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "List sprints with pagination and filters",
-        "tags": [
-          "backlog"
-        ]
-      },
-      "post": {
-        "operationId": "SprintController_create",
-        "parameters": [],
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Create a new sprint",
-        "tags": [
-          "backlog"
-        ]
-      }
-    },
-    "/api/v1/backlog/sprints/{id}": {
-      "get": {
-        "operationId": "SprintController_findOne",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get sprint by ID",
-        "tags": [
-          "backlog"
-        ]
-      },
-      "patch": {
-        "operationId": "SprintController_update",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Update a sprint",
-        "tags": [
-          "backlog"
-        ]
-      },
-      "delete": {
-        "operationId": "SprintController_remove",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Delete a sprint",
-        "tags": [
-          "backlog"
-        ]
-      }
-    },
-    "/api/v1/backlog/sprints/{id}/tasks": {
-      "post": {
-        "operationId": "SprintController_assignTasks",
-        "parameters": [],
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Assign tasks to a sprint",
-        "tags": [
-          "backlog"
-        ]
-      }
-    },
     "/api/v1/tenants/me/plugins": {
       "get": {
         "operationId": "PluginController_findMine",
@@ -1371,6 +1143,21 @@
         "summary": "Publish a marketplace plugin version",
         "tags": [
           "admin-plugins"
+        ]
+      }
+    },
+    "/api/v1/plugin-assets/{name}/ui.js": {
+      "get": {
+        "operationId": "PluginAssetController_getUiBundle",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Serve a plugin UI bundle (public)",
+        "tags": [
+          "plugins"
         ]
       }
     }

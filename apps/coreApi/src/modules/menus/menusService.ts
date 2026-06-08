@@ -5,14 +5,15 @@ import { DatabaseService } from '../../infrastructure/database/databaseService';
 
 export interface MenuItem {
   id: string;
-  parentId: string | null;
+  parent_id: string | null;
   name: string;
   path: string | null;
   icon: string | null;
-  sortOrder: number;
-  permissionCode: string | null;
-  isVisible: boolean;
-  createdAt: Date;
+  sort_order: number;
+  permission_code: string | null;
+  is_visible: boolean;
+  plugin_code: string | null;
+  created_at: Date;
   children?: MenuItem[];
 }
 
@@ -25,6 +26,7 @@ interface MenuRow {
   sort_order: number;
   permission_code: string | null;
   is_visible: boolean;
+  plugin_code: string | null;
   created_at: Date;
   menu_id?: string;
 }
@@ -41,7 +43,7 @@ export class MenusService {
     if (!this.pool) return [];
     return this.withTenantContext(tenantId, async (client) => {
       const result = await client.query(
-        'SELECT id, parent_id, name, path, icon, sort_order, permission_code, is_visible, created_at FROM menus ORDER BY sort_order, created_at',
+        'SELECT id, parent_id, name, path, icon, sort_order, permission_code, is_visible, plugin_code, created_at FROM menus ORDER BY sort_order, created_at',
       );
       return this.buildTree(result.rows as MenuRow[]);
     });
@@ -51,7 +53,7 @@ export class MenusService {
     if (!this.pool) throw new NotFoundException('Menu not found');
     return this.withTenantContext(tenantId, async (client) => {
       const result = await client.query(
-        'SELECT id, parent_id, name, path, icon, sort_order, permission_code, is_visible, created_at FROM menus WHERE id = $1',
+        'SELECT id, parent_id, name, path, icon, sort_order, permission_code, is_visible, plugin_code, created_at FROM menus WHERE id = $1',
         [id],
       );
       if (result.rows.length === 0) throw new NotFoundException('Menu not found');
@@ -183,7 +185,7 @@ export class MenusService {
     return this.withTenantContext(tenantId, async (client) => {
       const result = await client.query(
         `WITH RECURSIVE accessible_menus AS (
-           SELECT DISTINCT m.id, m.parent_id, m.name, m.path, m.icon, m.sort_order, m.permission_code, m.is_visible, m.created_at
+           SELECT DISTINCT m.id, m.parent_id, m.name, m.path, m.icon, m.sort_order, m.permission_code, m.is_visible, m.plugin_code, m.created_at
            FROM menus m
            INNER JOIN role_menus rm ON rm.menu_id = m.id
            INNER JOIN user_roles ur ON ur.role_id = rm.role_id
@@ -192,12 +194,12 @@ export class MenusService {
 
            UNION
 
-           SELECT parent.id, parent.parent_id, parent.name, parent.path, parent.icon, parent.sort_order, parent.permission_code, parent.is_visible, parent.created_at
+           SELECT parent.id, parent.parent_id, parent.name, parent.path, parent.icon, parent.sort_order, parent.permission_code, parent.is_visible, parent.plugin_code, parent.created_at
            FROM menus parent
            INNER JOIN accessible_menus child ON child.parent_id = parent.id
            WHERE parent.is_visible = true
          )
-         SELECT id, parent_id, name, path, icon, sort_order, permission_code, is_visible, created_at
+         SELECT id, parent_id, name, path, icon, sort_order, permission_code, is_visible, plugin_code, created_at
          FROM accessible_menus
          ORDER BY sort_order, created_at`,
         [tenantId, userId],
@@ -233,6 +235,7 @@ export class MenusService {
       sort_order: row.sort_order,
       permission_code: row.permission_code,
       is_visible: row.is_visible,
+      plugin_code: row.plugin_code,
       created_at: row.created_at,
       children: [],
     };

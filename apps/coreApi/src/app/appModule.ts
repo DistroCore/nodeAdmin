@@ -13,8 +13,6 @@ import { MenusModule } from '../modules/menus/menusModule';
 import { PermissionsModule } from '../modules/permissions/permissionsModule';
 import { RolesModule } from '../modules/roles/rolesModule';
 import { TenantsModule } from '../modules/tenants/tenantsModule';
-import { BacklogModule } from '../modules/backlog/backlogModule';
-import { ModernizerModule } from '../modules/modernizer/modernizerModule';
 import { PluginGuard } from '../modules/plugin/pluginGuard';
 import { PluginLoaderModule } from '../modules/plugin/pluginLoaderModule';
 import { PluginModule } from '../modules/plugin/pluginModule';
@@ -33,8 +31,6 @@ const APP_IMPORTS = [
   PermissionsModule,
   MenusModule,
   TenantsModule,
-  ModernizerModule,
-  BacklogModule,
   PluginModule,
 ];
 
@@ -45,10 +41,13 @@ const APP_PROVIDERS = [
   { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
 ];
 
-@Module({
-  imports: APP_IMPORTS,
-  providers: APP_PROVIDERS,
-})
+// IMPORTANT: the static @Module decorator is intentionally empty. The application is always
+// bootstrapped via forRootAsync() (see createApp.ts), and NestJS MERGES a module class's static
+// decorator metadata with the DynamicModule returned by forRootAsync. Declaring APP_IMPORTS /
+// APP_PROVIDERS here as well would register every global enhancer twice — most visibly the
+// APP_INTERCEPTOR (AuditInterceptor), causing every mutating request to write its audit log twice,
+// and the OutboxPublisherService to run twice. Keep all wiring in forRootAsync only.
+@Module({})
 export class AppModule {
   static async forRootAsync(registry: PluginRegistryService = new PluginRegistryService()): Promise<DynamicModule> {
     const pluginLoaderModule = await PluginLoaderModule.forRootAsync(registry);

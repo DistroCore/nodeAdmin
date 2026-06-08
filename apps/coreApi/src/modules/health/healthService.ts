@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { Kafka } from 'kafkajs';
 import { createClient } from 'redis';
@@ -28,6 +28,8 @@ export interface HealthResponse {
 
 @Injectable()
 export class HealthService {
+  private readonly logger = new Logger(HealthService.name);
+
   constructor(private readonly databaseService: DatabaseService) {}
 
   async getHealth(): Promise<HealthResponse> {
@@ -80,8 +82,9 @@ export class HealthService {
         status: 'ok',
       };
     } catch (error) {
+      this.logger.error('Database health check failed', error instanceof Error ? error.stack : String(error));
       return {
-        message: `Database check failed: ${error instanceof Error ? error.message : String(error)}`,
+        message: 'Database check failed.',
         status: 'error',
       };
     }
@@ -111,8 +114,9 @@ export class HealthService {
         status: 'ok',
       };
     } catch (error) {
+      this.logger.error('Redis health check failed', error instanceof Error ? error.stack : String(error));
       return {
-        message: `Redis check failed: ${error instanceof Error ? error.message : String(error)}`,
+        message: 'Redis check failed.',
         status: 'degraded',
       };
     } finally {
@@ -142,8 +146,9 @@ export class HealthService {
         status: 'ok',
       };
     } catch (error) {
+      this.logger.error('Kafka health check failed', error instanceof Error ? error.stack : String(error));
       return {
-        message: `Kafka check failed: ${error instanceof Error ? error.message : String(error)}`,
+        message: 'Kafka check failed.',
         status: 'degraded',
       };
     } finally {

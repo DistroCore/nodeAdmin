@@ -6,8 +6,18 @@ function createMockPermissionsService() {
   return {
     findAll: vi.fn(),
     findByModule: vi.fn(),
+    getGrantedCodesForUser: vi.fn(),
   };
 }
+
+const IDENTITY = {
+  jti: 'jti-1',
+  principalId: 'user-1',
+  principalType: 'user' as const,
+  roles: ['admin'],
+  tenantId: 'tenant-1',
+  userId: 'user-1',
+};
 
 describe('PermissionsController', () => {
   let controller: PermissionsController;
@@ -63,5 +73,19 @@ describe('PermissionsController', () => {
     permissionsService.findByModule.mockRejectedValue(new Error('module lookup failed'));
 
     await expect(controller.findByModule('users')).rejects.toThrow('module lookup failed');
+  });
+
+  it("returns the current user's granted plugin permission codes", async () => {
+    permissionsService.getGrantedCodesForUser.mockResolvedValue(['backlog:view']);
+
+    const result = await controller.getMyPluginPermissions(IDENTITY);
+
+    // Queries by the identity's tenant + user against plugin-declared codes (the installed backlog
+    // plugin contributes backlog:view / backlog:manage), and returns only the granted subset.
+    const [tenantId, userId, codes] = permissionsService.getGrantedCodesForUser.mock.calls[0];
+    expect(tenantId).toBe('tenant-1');
+    expect(userId).toBe('user-1');
+    expect(codes).toEqual(expect.arrayContaining(['backlog:view', 'backlog:manage']));
+    expect(result).toEqual({ permissions: ['backlog:view'] });
   });
 });

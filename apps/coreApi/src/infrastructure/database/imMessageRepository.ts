@@ -1,8 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { Pool, PoolClient } from 'pg';
-import { runtimeConfig } from '../../app/runtimeConfig';
-import { DatabaseService } from './databaseService';
 import {
   AppendResult,
   InMemoryMessageStore,
@@ -32,13 +30,14 @@ export class ImMessageRepository {
 
   private readonly pool: Pool | null;
 
+  // The pg Pool is injected directly (via an imModule factory) rather than DatabaseService, so this
+  // repository depends on no Service — keeping the controller→service→repository layering clean.
   constructor(
     @Inject(InMemoryMessageStore) private readonly inMemoryStore: InMemoryMessageStore,
-    @Inject(DatabaseService) databaseService: DatabaseService = new DatabaseService(),
+    pool: Pool | null = null,
   ) {
-    this.pool = (databaseService.drizzle?.$client as Pool | undefined) ?? null;
+    this.pool = pool;
     if (!this.pool) {
-      this.pool = null;
       this.logger.warn('DATABASE_URL is not set. IM repository will use in-memory storage.');
     }
   }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useIntl } from 'react-intl';
+import { Spinner } from '@/components/ui/spinner';
 
 interface DialogProps {
   children: ReactNode;
@@ -153,19 +154,28 @@ export function ConfirmDialog({ message, onClose, onConfirm, open, title }: Conf
       <p className="text-sm text-muted-foreground">{message}</p>
       <div className="mt-6 flex justify-end gap-3">
         <button
-          className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-accent"
+          className="rounded-md border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
+          disabled={loading}
           onClick={onClose}
           type="button"
         >
           {t({ id: 'common.cancel' })}
         </button>
         <button
-          className="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50"
+          aria-busy={loading}
+          className="inline-flex items-center gap-2 rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50"
           disabled={loading}
           onClick={handleConfirm}
           type="button"
         >
-          {loading ? '...' : t({ id: 'common.confirm' })}
+          {loading ? (
+            <>
+              <Spinner className="h-4 w-4" />
+              {t({ id: 'common.processing' })}
+            </>
+          ) : (
+            t({ id: 'common.confirm' })
+          )}
         </button>
       </div>
     </Dialog>

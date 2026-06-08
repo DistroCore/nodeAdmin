@@ -55,7 +55,9 @@ describe('plugin marketplace migration', () => {
     );
     const sql = await readFile(migrationPath, 'utf8');
 
-    expect(sql).toContain('ALTER POLICY plugin_registry_public_read ON plugin_registry RENAME TO plugin_registry_read;');
+    expect(sql).toContain(
+      'ALTER POLICY plugin_registry_public_read ON plugin_registry RENAME TO plugin_registry_read;',
+    );
     expect(sql).toContain('CREATE POLICY plugin_registry_write');
     expect(sql).toContain('ON plugin_registry');
     expect(sql).toContain('FOR INSERT');

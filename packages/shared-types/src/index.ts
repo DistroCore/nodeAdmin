@@ -29,15 +29,16 @@ export interface AuthIdentitySnapshot {
   userId: string;
 }
 
+// Core (first-party) permission codes only. Plugin permission codes (e.g. backlog:*) are NOT listed
+// here — they are declared by plugin manifests, granted via DB role_permissions, and delivered to the
+// frontend dynamically (GET /api/v1/permissions/me/plugins). Keeping core ignorant of plugin codes is
+// the point of the core/plugin boundary.
 export type AppPermission =
   | 'audit:view'
-  | 'backlog:manage'
-  | 'backlog:view'
   | 'im:send'
   | 'im:view'
   | 'menus:manage'
   | 'menus:view'
-  | 'modernizer:view'
   | 'overview:view'
   | 'plugins:manage'
   | 'plugins:view'
@@ -65,7 +66,7 @@ export interface UserItem {
   created_at: string;
   email: string;
   id: string;
-  is_active: number;
+  is_active: boolean;
   name: string | null;
   phone: string | null;
   roles: { id: string; name: string }[];
@@ -77,7 +78,7 @@ export interface RoleItem {
   created_at: string;
   description: string | null;
   id: string;
-  is_system: number;
+  is_system: boolean;
   name: string;
   permissions: { code: string; id: string; name: string }[];
   updated_at: string;
@@ -96,7 +97,7 @@ export interface MenuItem {
   created_at: string;
   icon: string;
   id: string;
-  is_visible: number;
+  is_visible: boolean;
   name: string;
   parent_id: string | null;
   path: string;
@@ -109,7 +110,7 @@ export interface TenantItem {
   config_json: string | null;
   created_at: string;
   id: string;
-  is_active: number;
+  is_active: boolean;
   logo: string | null;
   name: string;
   slug: string;
@@ -127,9 +128,11 @@ export interface AuditLogItem {
   id: string;
   tenantId: string;
   userId: string;
+  actorName?: string | null;
   action: string;
   targetType: string | null;
   targetId: string | null;
+  targetName?: string | null;
   traceId: string;
   context: Record<string, unknown> | null;
   createdAt: string;
@@ -165,57 +168,12 @@ export interface CreateConversationRequest {
   memberUserIds: string[];
 }
 
-// ─── Modernizer Types ──────────────────────────────────────────────
+// Modernizer analysis types moved into the modernizer dev CLI (apps/coreApi/tools/modernizer),
+// which defines them locally — the runtime module + its frontend panel were removed.
 
-export type AnalysisCategory = 'console-log' | 'todo' | 'missing-validation' | 'unused-import';
-
-export type AnalysisSeverity = 'info' | 'warning' | 'error';
-
-export interface AnalysisIssue {
-  file: string;
-  line: number;
-  category: AnalysisCategory;
-  message: string;
-  severity: AnalysisSeverity;
-}
-
-export interface AnalysisSummary {
-  total: number;
-  byCategory: Record<AnalysisCategory, number>;
-}
-
-export interface AnalysisResult {
-  issues: AnalysisIssue[];
-  summary: AnalysisSummary;
-}
-
-// ─── Backlog Types ──────────────────────────────────────────────────
-
-export interface BacklogTask {
-  id: string;
-  tenant_id: string;
-  title: string;
-  description: string | null;
-  status: string;
-  priority: string;
-  assignee_id: string | null;
-  sprint_id: string | null;
-  sort_order: number;
-  created_by: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface BacklogSprint {
-  id: string;
-  tenant_id: string;
-  name: string;
-  goal: string | null;
-  status: string;
-  start_date: string | null;
-  end_date: string | null;
-  created_at: string;
-  updated_at: string;
-}
+// Backlog domain types (BacklogTask / BacklogSprint) now live inside @nodeadmin/plugin-backlog,
+// which owns the backlog domain end to end. backlog:view / backlog:manage are NOT in AppPermission:
+// they are delivered dynamically from DB grants (see GET /api/v1/permissions/me/plugins), so core
+// has no compile-time knowledge of plugin permission codes.
 
 export * from './plugin';

@@ -24,7 +24,8 @@ describe('PluginLoaderModule', () => {
         {
           id: '@nodeadmin/plugin-kanban',
           manifest: {
-            permissions: ['backlog:view'],
+            permissions: ['kanban:view'],
+            contributes: { permissions: [{ code: 'kanban:view', name: 'View Kanban' }] },
           },
           packageRoot: '/plugins/kanban',
           routePrefix: '/plugins/kanban',
@@ -33,6 +34,7 @@ describe('PluginLoaderModule', () => {
           id: '@nodeadmin/plugin-im',
           manifest: {
             permissions: ['im:view'],
+            contributes: { permissions: [{ code: 'im:view', name: 'View IM' }] },
           },
           packageRoot: '/plugins/im',
           routePrefix: '/plugins/im',
@@ -48,7 +50,8 @@ describe('PluginLoaderModule', () => {
     expect(registry.getPluginModule).toHaveBeenNthCalledWith(1, '@nodeadmin/plugin-kanban');
     expect(registry.getPluginModule).toHaveBeenNthCalledWith(2, '@nodeadmin/plugin-im');
     expect(sandboxSpy).toHaveBeenNthCalledWith(1, {
-      permissions: ['backlog:view'],
+      permissions: ['kanban:view'],
+      definedPermissions: ['kanban:view'],
       pluginId: '@nodeadmin/plugin-kanban',
       tenantContext: {
         pluginId: '@nodeadmin/plugin-kanban',
@@ -58,6 +61,7 @@ describe('PluginLoaderModule', () => {
     });
     expect(sandboxSpy).toHaveBeenNthCalledWith(2, {
       permissions: ['im:view'],
+      definedPermissions: ['im:view'],
       pluginId: '@nodeadmin/plugin-im',
       tenantContext: {
         pluginId: '@nodeadmin/plugin-im',
@@ -65,7 +69,9 @@ describe('PluginLoaderModule', () => {
         userId: 'bootstrap',
       },
     });
-    expect(dynamicModule.imports).toEqual(expect.arrayContaining([{ module: RouterModule }, KanbanPluginModule, ImPluginModule]));
+    expect(dynamicModule.imports).toEqual(
+      expect.arrayContaining([{ module: RouterModule }, KanbanPluginModule, ImPluginModule]),
+    );
   });
 
   it('registers plugin route prefixes under /plugins/<name>', async () => {
@@ -75,7 +81,8 @@ describe('PluginLoaderModule', () => {
         {
           id: '@nodeadmin/plugin-kanban',
           manifest: {
-            permissions: ['backlog:view'],
+            permissions: ['kanban:view'],
+            contributes: { permissions: [{ code: 'kanban:view', name: 'View Kanban' }] },
           },
           packageRoot: '/plugins/kanban',
           routePrefix: '/plugins/kanban',

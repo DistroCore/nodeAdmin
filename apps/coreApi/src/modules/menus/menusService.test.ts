@@ -14,7 +14,12 @@ function setMenusServicePool(service: MenusService, pool: MockPool): void {
 }
 
 function createTenantClient(results: Array<{ rows: Record<string, unknown>[]; rowCount: number }>): MockClient {
-  return createMockClient([{ rows: [], rowCount: 0 }, { rows: [], rowCount: 0 }, ...results, { rows: [], rowCount: 0 }]);
+  return createMockClient([
+    { rows: [], rowCount: 0 },
+    { rows: [], rowCount: 0 },
+    ...results,
+    { rows: [], rowCount: 0 },
+  ]);
 }
 
 describe('MenusService', () => {

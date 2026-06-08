@@ -10,6 +10,10 @@ import { logger } from './lib/logger';
 import { AppRoot } from './app/appRoot';
 import './styles/globals.css';
 
+// Expose the shell's React instance so runtime-loaded plugin UI bundles share it (a separate React
+// instance would break hooks/context). Plugin bundles resolve `react` to this global.
+(window as unknown as { __NODEADMIN_REACT__?: typeof React }).__NODEADMIN_REACT__ = React;
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch((err) => {
@@ -25,7 +29,19 @@ function LocalizedApp(): JSX.Element {
   const messages = getMessages(locale);
 
   return (
-    <IntlProvider defaultLocale="zh" locale={locale} messages={messages}>
+    <IntlProvider
+      defaultLocale="zh"
+      locale={locale}
+      messages={messages}
+      // Plugin/dynamic labels (e.g. DB-stored menu names) are intentionally rendered via t() with a
+      // defaultMessage fallback. Under a non-source locale these raise MISSING_TRANSLATION, which is
+      // expected and already handled by the fallback — silence just that code so it doesn't spam the
+      // console as an error; surface any other intl error through the logger.
+      onError={(error) => {
+        if (error.code === 'MISSING_TRANSLATION') return;
+        logger.error('IntlProvider', error.message, error);
+      }}
+    >
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AppRoot />
@@ -36,7 +52,15 @@ function LocalizedApp(): JSX.Element {
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+// Cache the root on the container so Vite HMR (which re-executes this module) reuses the existing
+// React root instead of calling createRoot() twice on the same node — the latter logs a console
+// warning. In production this branch runs exactly once.
+const container = document.getElementById('root')! as HTMLElement & {
+  __reactRoot__?: ReturnType<typeof ReactDOM.createRoot>;
+};
+const root = container.__reactRoot__ ?? ReactDOM.createRoot(container);
+container.__reactRoot__ = root;
+root.render(
   <React.StrictMode>
     <LocalizedApp />
   </React.StrictMode>,

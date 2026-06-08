@@ -67,3 +67,7 @@ Agent 部署在云端独立的容器中，负责决策与逻辑处理。
 
 - 使用 `docker-compose.yml` 统一定义 Node.js 中台、Python Agent、数据库集群的网络和环境变量。
 - 后续加节点时，可通过 Docker Swarm 或平滑迁移至 Kubernetes (K8s) 实现多节点负载均衡。
+
+---
+
+最近更新时间：2026-06-08

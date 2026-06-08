@@ -11,7 +11,9 @@ test.describe('Sidebar Navigation and 404', () => {
     const sidebar = page.locator('aside.hidden.md\\:flex');
     await expect(sidebar).toBeVisible({ timeout: 10_000 });
 
-    // Check items from en.json
+    // Core navigation items only. Backlog moved to a plugin (sidebar label 需求管理, shown only when
+    // the plugin is enabled) and the modernizer ("Code Analysis") page was retired to a dev CLI, so
+    // neither is a guaranteed core nav item anymore.
     const expectedItems = [
       'Overview',
       'IM Operations',
@@ -22,8 +24,6 @@ test.describe('Sidebar Navigation and 404', () => {
       'Tenants',
       'Release',
       'Settings',
-      'Code Analysis',
-      'Backlog',
     ];
 
     for (const item of expectedItems) {
@@ -38,7 +38,6 @@ test.describe('Sidebar Navigation and 404', () => {
     const navs = [
       { name: 'Users', path: /\/users/ },
       { name: 'Roles', path: /\/roles/ },
-      { name: 'Backlog', path: /\/backlog/ },
       { name: 'Overview', path: /\/overview/ },
     ];
 

@@ -22,6 +22,18 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    # docker-compose mounts ./.secrets/* as Docker secrets, but .secrets/ is gitignored and never
+    # present on a fresh CI runner — so `docker compose up` failed with "bind source path does not
+    # exist". Generate ephemeral CI-only secret files here. postgres_password must equal "nodeadmin"
+    # to match the connection string the tests use (postgres://nodeadmin:nodeadmin@...).
+    - name: Generate ephemeral CI secrets
+      shell: bash
+      run: |
+        mkdir -p .secrets
+        printf '%s' 'nodeadmin' > .secrets/postgres_password
+        printf '%s' 'ci-access-secret-not-for-production' > .secrets/jwt_access_secret
+        printf '%s' 'ci-refresh-secret-not-for-production' > .secrets/jwt_refresh_secret
+
     - name: Start Infrastructure
       shell: bash
       run: docker compose up -d ${{ inputs.services }}

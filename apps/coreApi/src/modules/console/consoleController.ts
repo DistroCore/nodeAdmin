@@ -1,12 +1,12 @@
 import { Controller, Get, Logger, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { count, desc, eq, gte, ne } from 'drizzle-orm';
+import { count, desc, eq, gte } from 'drizzle-orm';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
 import { AuditLogService } from '../../infrastructure/audit/auditLogService';
 import { ConnectionRegistry } from '../../infrastructure/connectionRegistry';
 import { ConversationRepository } from '../../infrastructure/database/conversationRepository';
 import { DatabaseService } from '../../infrastructure/database/databaseService';
-import { backlogTasks, conversations, messages, roles } from '../../infrastructure/database/schema';
+import { conversations, messages, roles } from '../../infrastructure/database/schema';
 import { TenantsService, type TenantRecord } from '../tenants/tenantsService';
 import { CurrentUser } from '../auth/currentUser.decorator';
 import type { AuthIdentity } from '../auth/authIdentity';
@@ -216,9 +216,8 @@ export class ConsoleController {
         'tenants:view': isAdmin || roles.includes('viewer'),
         'release:view': isAdmin || roles.includes('release:viewer'),
         'settings:view': isAdmin,
-        'modernizer:view': isAdmin,
-        'backlog:view': isAdmin || roles.includes('viewer'),
-        'backlog:manage': isAdmin,
+        // Plugin permission codes (e.g. backlog:*) are intentionally NOT listed here. They are
+        // delivered dynamically from DB grants via GET /api/v1/permissions/me/plugins.
       },
       roles,
     };
@@ -373,31 +372,11 @@ export class ConsoleController {
   }
 
   private async buildOverviewTodos(input: OverviewTodoInput): Promise<string[]> {
-    const todos = [...(await this.listBacklogTodos()), ...this.buildOperationalTodos(input)];
+    // Backlog todos used to be sourced here by reading backlog_tasks directly. That table now belongs
+    // to @nodeadmin/plugin-backlog, so the core overview no longer reaches into it.
+    const todos = this.buildOperationalTodos(input);
 
     return [...new Set(todos)].slice(0, 5);
-  }
-
-  private async listBacklogTodos(): Promise<string[]> {
-    if (!this.databaseService.drizzle) {
-      return [];
-    }
-
-    try {
-      const rows = await this.databaseService.drizzle
-        .select({
-          title: backlogTasks.title,
-        })
-        .from(backlogTasks)
-        .where(ne(backlogTasks.status, 'done'))
-        .orderBy(desc(backlogTasks.createdAt))
-        .limit(3);
-
-      return rows.map((row) => `Backlog: ${row.title}`);
-    } catch (error) {
-      this.logger.warn(`Failed to load backlog todos for overview: ${this.formatError(error)}`);
-      return [];
-    }
   }
 
   private buildOperationalTodos(input: OverviewTodoInput): string[] {

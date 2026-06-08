@@ -41,7 +41,12 @@ export class ApiClient {
       method,
     });
 
-    if (response.status === 401 && this.config.getRefreshToken && !path.includes('/auth/login') && !path.includes('/auth/refresh')) {
+    if (
+      response.status === 401 &&
+      this.config.getRefreshToken &&
+      !path.includes('/auth/login') &&
+      !path.includes('/auth/refresh')
+    ) {
       if (!this.isRefreshing) {
         this.isRefreshing = true;
         try {
@@ -75,19 +80,19 @@ export class ApiClient {
             const newHeaders = this.buildHeaders(body !== undefined);
             // Replace old auth header with new one
             (newHeaders as Record<string, string>).Authorization = `Bearer ${token}`;
-            
+
             const retryResponse = await fetch(`${this.config.baseUrl}${path}`, {
               ...(body !== undefined && { body: JSON.stringify(body) }),
               headers: newHeaders,
               method,
             });
-            
+
             if (!retryResponse.ok) {
               const text = await retryResponse.text().catch(() => '');
               reject(new Error(`HTTP ${retryResponse.status} for ${path}${text ? `: ${text}` : ''}`));
               return;
             }
-            
+
             if (retryResponse.status === 204) {
               resolve(undefined as TResponse);
             } else {

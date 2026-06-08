@@ -5,12 +5,22 @@ import { PluginRegistryService } from './pluginRegistryService';
 
 interface MockDirent {
   isDirectory: () => boolean;
+  isSymbolicLink: () => boolean;
   name: string;
 }
 
 function createDirectoryEntry(name: string): MockDirent {
   return {
     isDirectory: () => true,
+    isSymbolicLink: () => false,
+    name,
+  };
+}
+
+function createSymlinkEntry(name: string): MockDirent {
+  return {
+    isDirectory: () => false,
+    isSymbolicLink: () => true,
     name,
   };
 }
@@ -18,6 +28,7 @@ function createDirectoryEntry(name: string): MockDirent {
 function createFileEntry(name: string): MockDirent {
   return {
     isDirectory: () => false,
+    isSymbolicLink: () => false,
     name,
   };
 }
@@ -103,6 +114,15 @@ describe('PluginRegistryService', () => {
     });
   });
 
+  it('discovers plugins installed as workspace symlinks, not just real directories', async () => {
+    mockFs.readdir.mockResolvedValue([createSymlinkEntry('plugin-kanban')]);
+    mockFs.readFile.mockResolvedValueOnce(JSON.stringify(createManifest()));
+
+    const result = await service.scanInstalledPlugins();
+
+    expect(result.map((plugin) => plugin.id)).toEqual(['@nodeadmin/plugin-kanban']);
+  });
+
   it('skips packages whose manifest fails validation', async () => {
     mockFs.readdir.mockResolvedValue([createDirectoryEntry('plugin-kanban'), createDirectoryEntry('plugin-broken')]);
     mockFs.readFile
@@ -129,19 +149,17 @@ describe('PluginRegistryService', () => {
   });
 
   it('clears stale registrations before each rescan', async () => {
-    mockFs.readdir.mockResolvedValueOnce([createDirectoryEntry('plugin-kanban')]).mockResolvedValueOnce([
-      createDirectoryEntry('plugin-im'),
-    ]);
-    mockFs.readFile
-      .mockResolvedValueOnce(JSON.stringify(createManifest()))
-      .mockResolvedValueOnce(
-        JSON.stringify(
-          createManifest({
-            id: '@nodeadmin/plugin-im',
-            displayName: 'IM',
-          }),
-        ),
-      );
+    mockFs.readdir
+      .mockResolvedValueOnce([createDirectoryEntry('plugin-kanban')])
+      .mockResolvedValueOnce([createDirectoryEntry('plugin-im')]);
+    mockFs.readFile.mockResolvedValueOnce(JSON.stringify(createManifest())).mockResolvedValueOnce(
+      JSON.stringify(
+        createManifest({
+          id: '@nodeadmin/plugin-im',
+          displayName: 'IM',
+        }),
+      ),
+    );
 
     await service.scanInstalledPlugins();
     await service.scanInstalledPlugins();

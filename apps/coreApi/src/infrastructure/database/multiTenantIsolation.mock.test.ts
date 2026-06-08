@@ -466,11 +466,13 @@ function createAuditLogDb(
     limit: vi.fn(),
     orderBy: vi.fn(),
     where: vi.fn(),
+    leftJoin: vi.fn(),
     from: vi.fn(),
   };
   selectChain.limit.mockReturnValue(selectChain);
   selectChain.orderBy.mockReturnValue(selectChain);
   selectChain.where.mockReturnValue(selectChain);
+  selectChain.leftJoin.mockReturnValue(selectChain);
   selectChain.from.mockReturnValue(selectChain);
 
   const countChain = {

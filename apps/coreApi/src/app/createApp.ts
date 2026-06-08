@@ -13,6 +13,7 @@ import { runtimeConfig } from './runtimeConfig';
 import { startTelemetry } from '../infrastructure/observability/telemetry';
 import { resolveCspPolicy } from '../infrastructure/security/cspPolicy';
 import { HttpRateLimiter } from '../infrastructure/security/httpRateLimiter';
+import { HealthService } from '../modules/health/healthService';
 
 export async function createApp(): Promise<NestFastifyApplication> {
   const logger = new Logger('AppBootstrap');
@@ -48,11 +49,15 @@ export async function createApp(): Promise<NestFastifyApplication> {
   });
 
   app.enableCors({
-    origin: true,
+    origin: runtimeConfig.corsOrigins,
     credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
   });
 
   const fastify = app.getHttpAdapter().getInstance();
+  const healthService = app.get(HealthService);
+  fastify.get('/health', async () => healthService.getHealth());
+
   await fastify.register(fastifyMultipart, {
     limits: {
       fileSize: runtimeConfig.upload.maxFileSize,
@@ -77,7 +82,7 @@ export async function createApp(): Promise<NestFastifyApplication> {
   fastify.addHook('onRequest', (request, reply, done) => {
     const pathname = request.url.split('?')[0];
     const isAuthPath = pathname.startsWith('/api/v1/auth/');
-    const isExcludedPath = pathname === '/api/v1/health' || pathname.startsWith('/uploads/');
+    const isExcludedPath = pathname === '/health' || pathname === '/api/v1/health' || pathname.startsWith('/uploads/');
 
     if (runtimeConfig.security.enabled) {
       reply.header('X-Content-Type-Options', 'nosniff');

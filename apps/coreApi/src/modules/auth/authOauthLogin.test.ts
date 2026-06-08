@@ -53,7 +53,7 @@ describe('AuthService OAuth Login', () => {
   it('should login existing user if oauth account already linked', async () => {
     const mockPool = createMockPool([
       {
-        rows: [{ user_id: 'user-1', name: 'Existing User', is_active: 1 }],
+        rows: [{ user_id: 'user-1', name: 'Existing User', is_active: true }],
         rowCount: 1,
       },
       { rows: [{ name: 'admin' }], rowCount: 1 },

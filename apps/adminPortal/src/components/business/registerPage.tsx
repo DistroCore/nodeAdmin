@@ -39,7 +39,14 @@ export function RegisterPage(): JSX.Element {
   useEffect(() => {
     new ApiClient({ baseUrl: resolveApiBaseUrl() })
       .get<TenantItem[]>('/api/v1/tenants')
-      .then(setTenants)
+      .then((list) => {
+        setTenants(list);
+        // The <Select> visually shows the first option; mirror that into state so accepting the
+        // pre-filled tenant doesn't fail with "Tenant ID is required".
+        if (list.length > 0) {
+          setTenantId((current) => current || list[0].id);
+        }
+      })
       .catch(() => {
         /* ignore */
       });
@@ -141,6 +148,7 @@ export function RegisterPage(): JSX.Element {
                 value={password}
               />
               <button
+                aria-label={showPassword ? t({ id: 'auth.hidePassword' }) : t({ id: 'auth.showPassword' })}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 onClick={() => setShowPassword(!showPassword)}
                 tabIndex={-1}

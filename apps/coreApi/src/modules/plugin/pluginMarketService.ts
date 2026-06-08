@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
@@ -8,6 +9,10 @@ import { DatabaseService } from '../../infrastructure/database/databaseService';
 import { validatePluginManifest } from './manifestValidator';
 
 const REMOTE_REGISTRY_CACHE_TTL_MS = 5 * 60 * 1000;
+
+// Parent group under which plugin-contributed sidebar menus are placed (the "Developer Tools" group
+// seeded by core migrations). Manifest menu entries don't declare a parent of their own.
+const PLUGIN_MENU_PARENT_ID = 'menu-group-devtools';
 
 interface MarketplacePluginSummary {
   authorName: string | null;
@@ -306,6 +311,8 @@ export class PluginMarketService {
         version,
       });
 
+      await this.provisionPluginMenus(client, pluginId, selectedVersion.manifest);
+
       return {
         success: true,
         installedVersion: selectedVersion.version,
@@ -349,6 +356,9 @@ export class PluginMarketService {
         tenantId,
         version: installedPlugin?.installed_version ?? null,
       });
+
+      // Remove the plugin's contributed sidebar menus so uninstalling doesn't leave dead entries.
+      await this.removePluginMenus(client, pluginId);
 
       await client.query(
         `DELETE FROM tenant_plugins
@@ -870,6 +880,50 @@ export class PluginMarketService {
       tenantId: input.tenantId,
       version: input.version,
     });
+  }
+
+  /**
+   * Create/refresh the sidebar menu entries declared in a plugin manifest's `contributes.menus`.
+   * Rows are stamped with `plugin_code = pluginId` so the sidebar can hide them when the tenant
+   * disables the plugin and so uninstall can remove exactly this plugin's menus. The id is derived
+   * deterministically from (pluginId, route) so re-installs are idempotent. Menus are global (no
+   * RLS); per-tenant visibility is enforced client-side via the tenant's enabled-plugin list.
+   */
+  private async provisionPluginMenus(client: PoolClient, pluginId: string, manifest: PluginManifest): Promise<void> {
+    const menus = manifest.contributes?.menus ?? [];
+    if (menus.length === 0) {
+      return;
+    }
+
+    // Default the menu's required permission to the plugin's first declared permission, if any.
+    const permissionCode = manifest.contributes?.permissions?.[0]?.code ?? null;
+
+    for (let index = 0; index < menus.length; index += 1) {
+      const menu = menus[index];
+      const menuId = `menu-plugin-${createHash('sha1').update(`${pluginId}|${menu.route}`).digest('hex').slice(0, 16)}`;
+
+      await client.query(
+        `INSERT INTO menus (id, parent_id, name, path, icon, sort_order, permission_code, is_visible, plugin_code)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8)
+         ON CONFLICT (id) DO UPDATE
+           SET name = EXCLUDED.name,
+               path = EXCLUDED.path,
+               icon = EXCLUDED.icon,
+               permission_code = EXCLUDED.permission_code,
+               plugin_code = EXCLUDED.plugin_code,
+               is_visible = true`,
+        [menuId, PLUGIN_MENU_PARENT_ID, menu.name, menu.route, menu.icon ?? null, index, permissionCode, pluginId],
+      );
+    }
+  }
+
+  /** Remove all sidebar menus contributed by a plugin (and any role grants referencing them). */
+  private async removePluginMenus(client: PoolClient, pluginId: string): Promise<void> {
+    const owned = await client.query<{ id: string }>('SELECT id FROM menus WHERE plugin_code = $1', [pluginId]);
+    for (const row of owned.rows) {
+      await client.query('DELETE FROM role_menus WHERE menu_id = $1', [row.id]);
+    }
+    await client.query('DELETE FROM menus WHERE plugin_code = $1', [pluginId]);
   }
 
   private extractPackageName(serverPackage: string): string {

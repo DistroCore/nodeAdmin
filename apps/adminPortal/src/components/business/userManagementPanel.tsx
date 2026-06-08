@@ -9,6 +9,7 @@ import { DataTable } from '@/components/ui/dataTable';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast';
 import { useApiClient } from '@/hooks/useApiClient';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { usePermissionStore } from '@/stores/usePermissionStore';
 import { type UserItem, type PaginatedResponse } from '@nodeadmin/shared-types';
 import { UserFormDialog } from './userFormDialog';
@@ -22,6 +23,9 @@ export function UserManagementPanel(): JSX.Element {
   const canManage = usePermissionStore((s) => s.hasPermission('users:manage'));
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
+  // Server-side search debounced so each keystroke doesn't fire a request; the search input resets
+  // the page to 0 on change.
+  const debouncedSearch = useDebouncedValue(search);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<UserItem | undefined>(undefined);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -30,9 +34,9 @@ export function UserManagementPanel(): JSX.Element {
   const usersQuery = useQuery({
     queryFn: () =>
       apiClient.get<PaginatedResponse<UserItem>>(
-        `/api/v1/users?pageSize=${PAGE_SIZE}&page=${page + 1}&search=${encodeURIComponent(search)}`,
+        `/api/v1/users?pageSize=${PAGE_SIZE}&page=${page + 1}&search=${encodeURIComponent(debouncedSearch)}`,
       ),
-    queryKey: ['users', page, search],
+    queryKey: ['users', page, debouncedSearch],
   });
 
   const deleteMutation = useMutation({
@@ -98,7 +102,10 @@ export function UserManagementPanel(): JSX.Element {
             placeholder={t({ id: 'users.search' })}
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(0);
+            }}
           />
         </div>
 
@@ -133,7 +140,7 @@ export function UserManagementPanel(): JSX.Element {
               header: t({ id: 'users.colStatus' }),
               className: 'hidden sm:table-cell',
               cell: (user) => (
-                <Badge variant={user.is_active ? 'default' : 'secondary'}>
+                <Badge variant={user.is_active ? 'success' : 'secondary'}>
                   {user.is_active ? t({ id: 'users.active' }) : t({ id: 'users.inactive' })}
                 </Badge>
               ),
@@ -180,7 +187,7 @@ export function UserManagementPanel(): JSX.Element {
                   page,
                   totalPages,
                   onPageChange: setPage,
-                  pageInfo: t({ id: 'users.pageInfo' }, { page: page + 1, total: totalPages }),
+                  pageInfo: t({ id: 'users.pageInfo' }, { page: page + 1, total }),
                   prevLabel: t({ id: 'users.prev' }),
                   nextLabel: t({ id: 'users.next' }),
                 }
@@ -201,9 +208,9 @@ export function UserManagementPanel(): JSX.Element {
         key={editingUser?.id ?? 'create'}
         onClose={closeDialog}
         onSaved={() => {
+          // The success toast is shown by UserFormDialog's mutation onSuccess; don't duplicate it here.
           closeDialog();
           usersQuery.refetch();
-          toast.success(t({ id: 'users.saveSuccess' }));
         }}
         open={showCreateDialog}
         user={editingUser}

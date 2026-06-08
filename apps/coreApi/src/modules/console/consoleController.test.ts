@@ -262,9 +262,7 @@ describe('ConsoleController', () => {
         'tenants:view': true,
         'release:view': false,
         'settings:view': false,
-        'modernizer:view': false,
-        'backlog:view': true,
-        'backlog:manage': false,
+        // Plugin codes (backlog:*) are no longer in the core map — delivered dynamically from DB.
       },
       roles: ['viewer', 'im:operator'],
     });

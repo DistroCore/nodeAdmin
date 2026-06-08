@@ -1,9 +1,13 @@
 import { and, count, desc, eq, gte, lte, type SQL } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { randomUUID } from 'node:crypto';
 import * as schema from './schema';
 
-const { auditLogs } = schema;
+const { auditLogs, users } = schema;
+// Separate alias so we can join the users table twice in one query: once for the actor (who
+// performed the action) and once for the target (when the target is itself a user).
+const targetUsers = alias(users, 'target_users');
 
 export interface AuditLogFilter {
   tenantId: string;
@@ -18,9 +22,13 @@ export interface StoredAuditLog {
   id: string;
   tenantId: string;
   userId: string;
+  // Human-readable display name for the actor (user name or email); null if the user was deleted.
+  actorName: string | null;
   action: string;
   targetType: string | null;
   targetId: string | null;
+  // Human-readable display name for the target when it is a user; null otherwise / if deleted.
+  targetName: string | null;
   traceId: string;
   context: Record<string, unknown> | null;
   createdAt: string;
@@ -54,8 +62,24 @@ export class AuditLogRepository {
     const conditions = this.buildConditions(filter);
 
     const rows = await this.db
-      .select()
+      .select({
+        id: auditLogs.id,
+        tenantId: auditLogs.tenantId,
+        userId: auditLogs.userId,
+        action: auditLogs.action,
+        targetType: auditLogs.targetType,
+        targetId: auditLogs.targetId,
+        traceId: auditLogs.traceId,
+        contextJson: auditLogs.contextJson,
+        createdAt: auditLogs.createdAt,
+        actorName: users.name,
+        actorEmail: users.email,
+        targetUserName: targetUsers.name,
+        targetUserEmail: targetUsers.email,
+      })
       .from(auditLogs)
+      .leftJoin(users, eq(users.id, auditLogs.userId))
+      .leftJoin(targetUsers, eq(targetUsers.id, auditLogs.targetId))
       .where(and(...conditions))
       .orderBy(desc(auditLogs.createdAt))
       .limit(pageSize)
@@ -65,9 +89,12 @@ export class AuditLogRepository {
       id: row.id,
       tenantId: row.tenantId,
       userId: row.userId,
+      actorName: row.actorName ?? row.actorEmail ?? null,
       action: row.action,
       targetType: row.targetType,
       targetId: row.targetId,
+      // Only meaningful when the target is a user row; other target types won't match the join.
+      targetName: row.targetType === 'user' ? (row.targetUserName ?? row.targetUserEmail ?? null) : null,
       traceId: row.traceId,
       context: this.parseContext(row.contextJson),
       createdAt: row.createdAt.toISOString(),

@@ -16,13 +16,11 @@ import { TenantControlPanel } from '@/components/business/tenantControlPanel';
 import { UserManagementPanel } from '@/components/business/userManagementPanel';
 import { AuditLogPanel } from '@/components/business/auditLogPanel';
 import { SystemMetricsPanel } from '@/components/business/systemMetricsPanel';
-import { ModernizerPanel } from '@/components/business/modernizerPanel';
-import { BacklogPanel } from '@/components/business/backlogPanel';
 import { NotificationPanel } from '@/components/business/notificationPanel';
-import { PluginMarketplacePage } from '@/components/business/plugins/PluginMarketplacePage';
-import { PluginDetailPage } from '@/components/business/plugins/PluginDetailPage';
-import { InstalledPluginsPage } from '@/components/business/plugins/InstalledPluginsPage';
-import { PluginSettingsPage } from '@/components/business/plugins/PluginSettingsPage';
+import { PluginMarketplacePage } from '@/components/business/plugins/pluginMarketplacePage';
+import { PluginDetailPage } from '@/components/business/plugins/pluginDetailPage';
+import { InstalledPluginsPage } from '@/components/business/plugins/installedPluginsPage';
+import { PluginSettingsPage } from '@/components/business/plugins/pluginSettingsPage';
 import { usePluginStore } from '@/stores/usePluginStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { usePermissionStore } from '@/stores/usePermissionStore';
@@ -108,20 +106,24 @@ export function AppRoot(): JSX.Element {
                   path="/plugins/settings/:id"
                 />
 
-                {/* Plugin routes */}
+                {/* Plugin routes — mounted at the plugin's short name (/plugins/backlog), matching the
+                    server route prefix and the manifest menu. */}
                 {plugins
                   .filter((p) => p.enabled && p.uiUrl)
-                  .map((plugin) => (
-                    <Route
-                      element={
-                        <RouteModule>
-                          <PluginView pluginName={plugin.name} uiUrl={plugin.uiUrl!} />
-                        </RouteModule>
-                      }
-                      key={plugin.name}
-                      path={`/plugins/${plugin.name}/*`}
-                    />
-                  ))}
+                  .map((plugin) => {
+                    const shortName = plugin.name.replace('@nodeadmin/plugin-', '');
+                    return (
+                      <Route
+                        element={
+                          <RouteModule>
+                            <PluginView pluginName={shortName} uiUrl={plugin.uiUrl!} />
+                          </RouteModule>
+                        }
+                        key={plugin.name}
+                        path={`/plugins/${shortName}/*`}
+                      />
+                    );
+                  })}
 
                 <Route
                   element={
@@ -250,26 +252,6 @@ export function AppRoot(): JSX.Element {
                     </RouteModule>
                   }
                   path="/profile"
-                />
-                <Route
-                  element={
-                    <RouteModule>
-                      <RequirePermission permission="modernizer:view">
-                        <ModernizerPanel />
-                      </RequirePermission>
-                    </RouteModule>
-                  }
-                  path="/modernizer"
-                />
-                <Route
-                  element={
-                    <RouteModule>
-                      <RequirePermission permission="backlog:view">
-                        <BacklogPanel />
-                      </RequirePermission>
-                    </RouteModule>
-                  }
-                  path="/backlog"
                 />
                 <Route element={<NotFoundPage />} path="*" />
               </Routes>

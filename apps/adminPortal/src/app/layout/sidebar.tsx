@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { NavLink, useLocation } from 'react-router-dom';
 import { className } from '@/lib/className';
+import { logger } from '@/lib/logger';
 import { useMenuStore } from '@/stores/useMenuStore';
 import { usePermissionStore } from '@/stores/usePermissionStore';
 import { usePluginStore } from '@/stores/usePluginStore';
@@ -18,6 +19,8 @@ export function Sidebar(): JSX.Element {
   const mobileMenuOpen = useUiStore((s) => s.mobileMenuOpen);
   const setMobileMenuOpen = useUiStore((s) => s.setMobileMenuOpen);
   const permissions = usePermissionStore((s) => s.permissions);
+  // Subscribed for reactivity: plugin menus gate on dynamically-delivered plugin permission codes.
+  const pluginPermissions = usePermissionStore((s) => s.pluginPermissions);
   const menus = useMenuStore((s) => s.menus);
   const menusLoaded = useMenuStore((s) => s.loaded);
   const enabledPlugins = usePluginStore((s) => s.enabledPlugins);
@@ -42,36 +45,52 @@ export function Sidebar(): JSX.Element {
     setUserToggled((prev) => ({ ...prev, [id]: !expandedGroups[id] }));
   };
 
+  // When collapsed, a group's children can't render inline — clicking the group
+  // icon expands the rail so the (auto-expanded) children become reachable.
+  const onGroupClick = (id: string, e: React.MouseEvent) => {
+    if (sidebarCollapsed) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleSidebar();
+      return;
+    }
+    toggleGroup(id, e);
+  };
+
   const visibleNavItems = navItems.filter((item) => permissions[item.permission]);
 
-  // Auto-collapse sidebar on tablet (768–1023px)
+  // Don't fail silently: if menus loaded but came back empty, we're rendering the static
+  // navConfig fallback — usually a tenant / role-menu misconfiguration worth surfacing.
   useEffect(() => {
-    const mql = window.matchMedia('(min-width: 768px) and (max-width: 1023px)');
-    if (mql.matches) {
-      useUiStore.setState({ sidebarCollapsed: true });
+    if (menusLoaded && menus.length === 0) {
+      logger.warn(
+        'Sidebar',
+        'Menu tree is empty after load — using static navigation fallback. Check tenant / role-menu configuration.',
+      );
     }
-    const handler = (e: MediaQueryListEvent) => {
-      if (e.matches) {
-        useUiStore.setState({ sidebarCollapsed: true });
-      }
-    };
-    mql.addEventListener('change', handler);
-    return () => mql.removeEventListener('change', handler);
-  }, []);
+  }, [menusLoaded, menus.length]);
 
   function linkClass(isActive: boolean): string {
     return className(
       'group relative flex h-10 items-center rounded-md text-sm font-medium transition-colors',
-      sidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-3',
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+      sidebarCollapsed ? 'justify-center px-0' : 'gap-3 px-3',
       isActive ? 'bg-primary text-primary-foreground shadow-sm' : 'hover:bg-[hsl(var(--sidebar-accent))]',
     );
   }
+
+  // Native title tooltip when collapsed — never clipped by the nav's overflow,
+  // positioned by the browser. Avoids the custom popover that broke when collapsed.
+  const tip = (label: string): string | undefined => (sidebarCollapsed ? label : undefined);
 
   const sidebarBase =
     'flex shrink-0 flex-col border-r bg-[hsl(var(--sidebar))] text-[hsl(var(--sidebar-foreground))] transition-all duration-200';
 
   function renderMenuItem(menu: MenuItem, depth = 0): JSX.Element | null {
-    if (menu.permission_code && !permissions[menu.permission_code as AppPermission]) {
+    // Core codes resolve against the role-derived map; plugin codes (e.g. backlog:view) resolve
+    // against the dynamically-delivered plugin permission set.
+    const code = menu.permission_code;
+    if (code && !permissions[code as AppPermission] && !pluginPermissions.has(code)) {
       return null;
     }
 
@@ -87,9 +106,13 @@ export function Sidebar(): JSX.Element {
     return (
       <div key={menu.id}>
         {hasChildren ? (
-          <div
-            className={className(linkClass(isActive), 'cursor-pointer')}
-            onClick={(e) => toggleGroup(menu.id, e)}
+          <button
+            type="button"
+            aria-expanded={isExpanded}
+            aria-label={sidebarCollapsed ? displayName : undefined}
+            title={tip(displayName)}
+            className={className(linkClass(isActive), 'w-full cursor-pointer text-left')}
+            onClick={(e) => onGroupClick(menu.id, e)}
             style={{ paddingLeft: !sidebarCollapsed ? `${depth * 12 + 12}px` : undefined }}
           >
             <NavIcon name={menu.icon} />
@@ -106,14 +129,12 @@ export function Sidebar(): JSX.Element {
                   <path d="M9 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </>
-            ) : (
-              <span className="absolute left-full ml-2 hidden whitespace-nowrap rounded bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md group-hover:block z-50">
-                {displayName}
-              </span>
-            )}
-          </div>
+            ) : null}
+          </button>
         ) : (
           <NavLink
+            aria-label={sidebarCollapsed ? displayName : undefined}
+            title={tip(displayName)}
             className={() => linkClass(isActive)}
             onClick={() => setMobileMenuOpen(false)}
             style={{ paddingLeft: !sidebarCollapsed ? `${depth * 12 + 12}px` : undefined }}
@@ -121,12 +142,10 @@ export function Sidebar(): JSX.Element {
           >
             <NavIcon name={menu.icon} />
             {!sidebarCollapsed ? (
-              <span className="truncate">{displayName}</span>
-            ) : (
-              <span className="absolute left-full ml-2 hidden whitespace-nowrap rounded bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md group-hover:block z-50">
+              <span className="truncate" data-testid={`nav-label-${menu.id}`}>
                 {displayName}
               </span>
-            )}
+            ) : null}
           </NavLink>
         )}
         {hasChildren && !sidebarCollapsed && isExpanded
@@ -158,17 +177,12 @@ export function Sidebar(): JSX.Element {
                 <NavLink
                   className={({ isActive }) => linkClass(isNavItemActive(location.pathname, item.path) || isActive)}
                   key={item.key}
+                  title={tip(t({ id: item.labelId }))}
                   onClick={() => setMobileMenuOpen(false)}
                   to={item.path}
                 >
                   <NavIcon name={item.icon} />
-                  {!sidebarCollapsed ? (
-                    <span className="truncate">{t({ id: item.labelId })}</span>
-                  ) : (
-                    <span className="absolute left-full ml-2 hidden whitespace-nowrap rounded bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md group-hover:block z-50">
-                      {t({ id: item.labelId })}
-                    </span>
-                  )}
+                  {!sidebarCollapsed ? <span className="truncate">{t({ id: item.labelId })}</span> : null}
                 </NavLink>
               ))}
 
@@ -184,33 +198,27 @@ export function Sidebar(): JSX.Element {
               className={({ isActive }) =>
                 linkClass(isNavItemActive(location.pathname, '/plugins/marketplace') || isActive)
               }
+              title={tip(t({ id: 'nav.marketplace', defaultMessage: 'Marketplace' }))}
               onClick={() => setMobileMenuOpen(false)}
               to="/plugins/marketplace"
             >
               <NavIcon name="building" />
               {!sidebarCollapsed ? (
                 <span className="truncate">{t({ id: 'nav.marketplace', defaultMessage: 'Marketplace' })}</span>
-              ) : (
-                <span className="absolute left-full ml-2 hidden whitespace-nowrap rounded bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md group-hover:block z-50">
-                  {t({ id: 'nav.marketplace', defaultMessage: 'Marketplace' })}
-                </span>
-              )}
+              ) : null}
             </NavLink>
             <NavLink
               className={({ isActive }) =>
                 linkClass(isNavItemActive(location.pathname, '/plugins/installed') || isActive)
               }
+              title={tip(t({ id: 'nav.installed', defaultMessage: 'Installed' }))}
               onClick={() => setMobileMenuOpen(false)}
               to="/plugins/installed"
             >
               <NavIcon name="plus" />
               {!sidebarCollapsed ? (
                 <span className="truncate">{t({ id: 'nav.installed', defaultMessage: 'Installed' })}</span>
-              ) : (
-                <span className="absolute left-full ml-2 hidden whitespace-nowrap rounded bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md group-hover:block z-50">
-                  {t({ id: 'nav.installed', defaultMessage: 'Installed' })}
-                </span>
-              )}
+              ) : null}
             </NavLink>
           </div>
         )}
@@ -229,17 +237,12 @@ export function Sidebar(): JSX.Element {
                 <NavLink
                   className={({ isActive }) => linkClass(isNavItemActive(location.pathname, menu.route) || isActive)}
                   key={`${plugin.name}-menu-${idx}`}
+                  title={tip(menu.name)}
                   onClick={() => setMobileMenuOpen(false)}
                   to={menu.route}
                 >
                   <NavIcon name={menu.icon || 'rocket'} />
-                  {!sidebarCollapsed ? (
-                    <span className="truncate">{menu.name}</span>
-                  ) : (
-                    <span className="absolute left-full ml-2 hidden whitespace-nowrap rounded bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md group-hover:block z-50">
-                      {menu.name}
-                    </span>
-                  )}
+                  {!sidebarCollapsed ? <span className="truncate">{menu.name}</span> : null}
                 </NavLink>
               ))}
             </div>
@@ -252,10 +255,11 @@ export function Sidebar(): JSX.Element {
           className={({ isActive }) =>
             className(
               'group relative flex h-9 items-center rounded-md text-sm transition-colors hover:bg-accent',
-              sidebarCollapsed ? 'justify-center px-2' : 'gap-2 px-3',
+              sidebarCollapsed ? 'justify-center px-0' : 'gap-2 px-3',
               isActive ? 'bg-accent text-accent-foreground' : 'text-muted-foreground',
             )
           }
+          title={tip(t({ id: 'profile.title' }))}
           to="/profile"
           onClick={() => setMobileMenuOpen(false)}
         >
@@ -263,18 +267,15 @@ export function Sidebar(): JSX.Element {
             <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeLinecap="round" strokeLinejoin="round" />
             <circle cx="12" cy="7" r="4" />
           </svg>
-          {!sidebarCollapsed ? (
-            <span className="truncate">{t({ id: 'profile.title' })}</span>
-          ) : (
-            <span className="absolute left-full ml-2 hidden whitespace-nowrap rounded bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md group-hover:block z-50">
-              {t({ id: 'profile.title' })}
-            </span>
-          )}
+          {!sidebarCollapsed ? <span className="truncate">{t({ id: 'profile.title' })}</span> : null}
         </NavLink>
-        <p className="mb-2 text-center text-xs text-muted-foreground">{t({ id: 'version' })}</p>
+        {!sidebarCollapsed ? (
+          <p className="mb-2 text-center text-xs text-muted-foreground">{t({ id: 'version' })}</p>
+        ) : null}
         <button
           aria-label={sidebarCollapsed ? t({ id: 'menu.open' }) : t({ id: 'settings.sidebarCollapsed' })}
-          className="hidden md:flex h-9 w-full items-center justify-center rounded-md border border-border bg-card text-sm transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+          title={sidebarCollapsed ? t({ id: 'menu.open' }) : t({ id: 'settings.sidebarCollapsed' })}
+          className="mt-1 hidden md:flex h-9 w-full items-center justify-center rounded-md border border-border bg-card text-sm transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
           onClick={toggleSidebar}
           type="button"
         >

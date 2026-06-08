@@ -7,7 +7,7 @@
  */
 import * as path from 'node:path';
 import * as fs from 'node:fs';
-import { analyzeProject } from '../../src/modules/modernizer/analyzeCore';
+import { analyzeProject } from './analyzeCore';
 
 // ─── Doc Sync (CLI-only, not shared with NestJS module) ──────────
 

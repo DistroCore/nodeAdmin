@@ -37,6 +37,7 @@ export function RoleFormDialog({ onClose, onSaved, open, role }: RoleFormDialogP
   const [selectedPermissionIds, setSelectedPermissionIds] = useState<string[]>(
     role?.permissions.map((p) => p.id) ?? [],
   );
+  const [permissionSearch, setPermissionSearch] = useState('');
 
   const isEdit = !!role;
 
@@ -77,7 +78,15 @@ export function RoleFormDialog({ onClose, onSaved, open, role }: RoleFormDialogP
 
   const permissions = permissionsQuery.data?.items ?? [];
 
-  const groupedPermissions = permissions.reduce<Record<string, PermissionItem[]>>((acc, perm) => {
+  const filteredPermissions = permissionSearch
+    ? permissions.filter((perm) =>
+        [perm.name, perm.code, perm.module].some((field) =>
+          field.toLowerCase().includes(permissionSearch.toLowerCase()),
+        ),
+      )
+    : permissions;
+
+  const groupedPermissions = filteredPermissions.reduce<Record<string, PermissionItem[]>>((acc, perm) => {
     if (!acc[perm.module]) {
       acc[perm.module] = [];
     }
@@ -157,44 +166,74 @@ export function RoleFormDialog({ onClose, onSaved, open, role }: RoleFormDialogP
                 </svg>
                 {t({ id: 'roles.loadingPermissions' })}
               </div>
+            ) : permissionsQuery.isError ? (
+              <div className="flex items-center gap-3 py-2 text-sm text-destructive">
+                <span>{t({ id: 'roles.loadPermissionsFailed', defaultMessage: 'Failed to load permissions.' })}</span>
+                <button
+                  type="button"
+                  onClick={() => permissionsQuery.refetch()}
+                  className="font-medium underline hover:no-underline"
+                >
+                  {t({ id: 'common.retry', defaultMessage: 'Retry' })}
+                </button>
+              </div>
+            ) : permissions.length === 0 ? (
+              <div className="py-3 text-sm text-muted-foreground">
+                {t({ id: 'roles.noPermissions', defaultMessage: 'No permissions available.' })}
+              </div>
             ) : (
-              <div className="max-h-72 space-y-4 overflow-y-auto rounded-lg border border-border bg-muted/5 p-4">
-                {Object.entries(groupedPermissions).map(([module, modulePerms]) => {
-                  const isModuleAllSelected = modulePerms.every((p) => selectedPermissionIds.includes(p.id));
-                  return (
-                    <div key={module} className="space-y-2">
-                      <div className="flex items-center justify-between border-b border-border/50 pb-1">
-                        <span className="text-xs font-bold uppercase tracking-wider text-primary">{module}</span>
-                        <button
-                          type="button"
-                          onClick={() => toggleModule(modulePerms)}
-                          className="text-[0.625rem] font-bold text-muted-foreground hover:text-primary transition-colors"
-                        >
-                          {isModuleAllSelected ? t({ id: 'common.deselectAll' }) : t({ id: 'common.selectAll' })}
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-1 gap-1 pl-1 sm:grid-cols-2">
-                        {modulePerms.map((perm) => (
-                          <label
-                            key={perm.id}
-                            className={className(
-                              'flex items-center gap-2 rounded-md p-1.5 transition-colors cursor-pointer hover:bg-accent/50',
-                              selectedPermissionIds.includes(perm.id) ? 'text-foreground' : 'text-muted-foreground',
-                            )}
-                          >
-                            <input
-                              checked={selectedPermissionIds.includes(perm.id)}
-                              onChange={() => togglePermission(perm.id)}
-                              type="checkbox"
-                              className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary/20"
-                            />
-                            <span className="text-xs font-medium">{perm.name}</span>
-                          </label>
-                        ))}
-                      </div>
+              <div className="space-y-2">
+                <Input
+                  aria-label={t({ id: 'roles.searchPermissions', defaultMessage: 'Search permissions...' })}
+                  value={permissionSearch}
+                  onChange={(e) => setPermissionSearch(e.target.value)}
+                  placeholder={t({ id: 'roles.searchPermissions', defaultMessage: 'Search permissions...' })}
+                />
+                <div className="max-h-72 space-y-4 overflow-y-auto rounded-lg border border-border bg-muted/5 p-4">
+                  {Object.keys(groupedPermissions).length === 0 ? (
+                    <div className="py-4 text-center text-xs text-muted-foreground">
+                      {t({ id: 'roles.noMatchingPermissions', defaultMessage: 'No matching permissions.' })}
                     </div>
-                  );
-                })}
+                  ) : (
+                    Object.entries(groupedPermissions).map(([module, modulePerms]) => {
+                      const isModuleAllSelected = modulePerms.every((p) => selectedPermissionIds.includes(p.id));
+                      return (
+                        <div key={module} className="space-y-2">
+                          <div className="flex items-center justify-between border-b border-border/50 pb-1">
+                            <span className="text-xs font-bold uppercase tracking-wider text-primary">{module}</span>
+                            <button
+                              type="button"
+                              onClick={() => toggleModule(modulePerms)}
+                              className="text-[0.625rem] font-bold text-muted-foreground hover:text-primary transition-colors"
+                            >
+                              {isModuleAllSelected ? t({ id: 'common.deselectAll' }) : t({ id: 'common.selectAll' })}
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-1 gap-1 pl-1 sm:grid-cols-2">
+                            {modulePerms.map((perm) => (
+                              <label
+                                key={perm.id}
+                                title={perm.code}
+                                className={className(
+                                  'flex items-center gap-2 rounded-md p-1.5 transition-colors cursor-pointer hover:bg-accent/50',
+                                  selectedPermissionIds.includes(perm.id) ? 'text-foreground' : 'text-muted-foreground',
+                                )}
+                              >
+                                <input
+                                  checked={selectedPermissionIds.includes(perm.id)}
+                                  onChange={() => togglePermission(perm.id)}
+                                  type="checkbox"
+                                  className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary/20"
+                                />
+                                <span className="text-xs font-medium">{perm.name}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               </div>
             )}
           </FormField>

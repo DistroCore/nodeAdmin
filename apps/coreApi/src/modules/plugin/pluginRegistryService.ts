@@ -7,7 +7,10 @@ import { ManifestValidationError, validatePluginManifest } from './manifestValid
 
 interface FileSystemLike {
   readFile(path: string, encoding: BufferEncoding): Promise<string>;
-  readdir(path: string, options: { withFileTypes: true }): Promise<Array<Pick<Dirent, 'isDirectory' | 'name'>>>;
+  readdir(
+    path: string,
+    options: { withFileTypes: true },
+  ): Promise<Array<Pick<Dirent, 'isDirectory' | 'isSymbolicLink' | 'name'>>>;
 }
 
 type ModuleLoader = (modulePath: string) => unknown;
@@ -29,6 +32,13 @@ export class PluginRegistryService {
   private nodeModulesScopePath = join(process.cwd(), 'node_modules', '@nodeadmin');
 
   async scanInstalledPlugins(): Promise<RegisteredPlugin[]> {
+    // Escape hatch for deterministic boots (e.g. the OpenAPI core-contract snapshot): when set, no
+    // installed plugins are discovered, so the surface reflects core only regardless of what is built.
+    if (process.env.NODEADMIN_DISABLE_PLUGINS === '1') {
+      this.registry.clear();
+      return [];
+    }
+
     const directoryEntries = await this.readPluginDirectories();
     const registrations: RegisteredPlugin[] = [];
     this.registry.clear();
@@ -52,9 +62,7 @@ export class PluginRegistryService {
         registrations.push(registration);
         this.registry.set(registration.id, registration);
       } catch (error) {
-        this.logger.warn(
-          `Skipping plugin ${entry.name}: ${error instanceof Error ? error.message : String(error)}`,
-        );
+        this.logger.warn(`Skipping plugin ${entry.name}: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
 
@@ -83,13 +91,16 @@ export class PluginRegistryService {
     return [...this.registry.values()].sort((left, right) => left.id.localeCompare(right.id));
   }
 
-  private async readPluginDirectories(): Promise<Array<Pick<Dirent, 'isDirectory' | 'name'>>> {
+  private async readPluginDirectories(): Promise<Array<Pick<Dirent, 'isDirectory' | 'isSymbolicLink' | 'name'>>> {
     try {
       const entries = await this.fs.readdir(this.nodeModulesScopePath, {
         withFileTypes: true,
       });
 
-      return entries.filter((entry) => entry.isDirectory() && entry.name.startsWith('plugin-'));
+      // npm workspaces install local plugin packages as symlinks, not real directories — accept both.
+      return entries.filter(
+        (entry) => (entry.isDirectory() || entry.isSymbolicLink()) && entry.name.startsWith('plugin-'),
+      );
     } catch (error) {
       if (isRecord(error) && error.code === 'ENOENT') {
         return [];

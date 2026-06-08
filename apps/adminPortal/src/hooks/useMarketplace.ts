@@ -60,9 +60,9 @@ export function usePluginManagement() {
     onError: (error: Error) => {
       toast.error(
         t({ id: 'plugins.install.error', defaultMessage: 'Failed to install plugin' }),
-        error.message || t({ id: 'common.error.unknown', defaultMessage: 'An unexpected error occurred.' })
+        error.message || t({ id: 'common.error.unknown', defaultMessage: 'An unexpected error occurred.' }),
       );
-    }
+    },
   });
 
   const uninstall = useMutation({
@@ -78,9 +78,9 @@ export function usePluginManagement() {
     onError: (error: Error) => {
       toast.error(
         t({ id: 'plugins.uninstall.error', defaultMessage: 'Failed to uninstall plugin' }),
-        error.message || t({ id: 'common.error.unknown', defaultMessage: 'An unexpected error occurred.' })
+        error.message || t({ id: 'common.error.unknown', defaultMessage: 'An unexpected error occurred.' }),
       );
-    }
+    },
   });
 
   const update = useMutation({
@@ -91,7 +91,10 @@ export function usePluginManagement() {
     onSuccess: (data) => {
       toast.success(
         t({ id: 'plugins.update.success', defaultMessage: 'Plugin updated successfully' }),
-        t({ id: 'plugins.update.success_desc', defaultMessage: 'Updated to version {version}.' }, { version: data.updatedVersion })
+        t(
+          { id: 'plugins.update.success_desc', defaultMessage: 'Updated to version {version}.' },
+          { version: data.updatedVersion },
+        ),
       );
       queryClient.invalidateQueries({ queryKey: ['tenantPlugins'] });
       queryClient.invalidateQueries({ queryKey: ['marketplace'] });
@@ -99,9 +102,9 @@ export function usePluginManagement() {
     onError: (error: Error) => {
       toast.error(
         t({ id: 'plugins.update.error', defaultMessage: 'Failed to update plugin' }),
-        error.message || t({ id: 'common.error.unknown', defaultMessage: 'An unexpected error occurred.' })
+        error.message || t({ id: 'common.error.unknown', defaultMessage: 'An unexpected error occurred.' }),
       );
-    }
+    },
   });
 
   const updateConfig = useMutation({
@@ -123,14 +126,18 @@ export function usePluginManagement() {
 
   const toggleEnabled = useMutation({
     mutationFn: (id: string) =>
-      apiClient.patch<{ success: boolean; enabled: boolean }>(`/api/v1/admin/plugins/${encodeURIComponent(id)}/toggle`, {}),
+      apiClient.patch<{ success: boolean; enabled: boolean }>(
+        `/api/v1/admin/plugins/${encodeURIComponent(id)}/toggle`,
+        {},
+      ),
     onSuccess: (data) => {
       if (data.success) {
+        // Use two fully-translated messages instead of interpolating a raw English status word,
+        // otherwise the toast reads "Plugin enabled successfully" even under the Chinese locale.
         toast.success(
-          t(
-            { id: 'plugins.toggle.success', defaultMessage: 'Plugin {status} successfully' },
-            { status: data.enabled ? 'enabled' : 'disabled' },
-          ),
+          data.enabled
+            ? t({ id: 'plugins.toggle.enabled', defaultMessage: 'Plugin enabled successfully' })
+            : t({ id: 'plugins.toggle.disabled', defaultMessage: 'Plugin disabled successfully' }),
         );
       }
       queryClient.invalidateQueries({ queryKey: ['tenantPlugins'] });
@@ -144,4 +151,4 @@ export function usePluginManagement() {
   });
 
   return { install, uninstall, update, updateConfig, toggleEnabled };
-  }
+}

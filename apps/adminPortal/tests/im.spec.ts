@@ -94,6 +94,9 @@ test.describe('IM Chat', () => {
   });
 
   test('message viewport area renders', async () => {
+    // The message viewport only mounts for an OPEN conversation; with none selected the panel shows
+    // a placeholder. Open a seeded conversation directly so the viewport renders deterministically.
+    await navigateAfterLogin(sharedPage, '/im/conv-general');
     const messageViewport = sharedPage.getByRole('main').locator('.overflow-y-auto');
     await expect(messageViewport.first()).toBeVisible({ timeout: 10_000 });
   });

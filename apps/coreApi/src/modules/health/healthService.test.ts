@@ -118,7 +118,7 @@ describe('HealthService', () => {
 
     expect(result.status).toBe('error');
     expect(result.checks.database.status).toBe('error');
-    expect(result.checks.database.message).toContain('database unavailable');
+    expect(result.checks.database.message).toBe('Database check failed.');
   });
 
   it('returns error when drizzle is unavailable even if optional dependencies are healthy', async () => {
@@ -148,7 +148,7 @@ describe('HealthService', () => {
 
     expect(result.status).toBe('degraded');
     expect(result.checks.redis.status).toBe('degraded');
-    expect(result.checks.redis.message).toContain('redis timeout');
+    expect(result.checks.redis.message).toBe('Redis check failed.');
     expect(healthMocks.redisClient.quit).toHaveBeenCalledWith();
   });
 
@@ -184,7 +184,7 @@ describe('HealthService', () => {
 
     expect(result.status).toBe('degraded');
     expect(result.checks.kafka.status).toBe('degraded');
-    expect(result.checks.kafka.message).toContain('broker unavailable');
+    expect(result.checks.kafka.message).toBe('Kafka check failed.');
     expect(healthMocks.kafkaAdmin.disconnect).toHaveBeenCalledWith();
   });
 

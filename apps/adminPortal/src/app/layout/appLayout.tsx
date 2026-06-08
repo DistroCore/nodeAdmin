@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { useApiClient } from '@/hooks/useApiClient';
 import { usePlugins } from '@/hooks/usePlugins';
-import { useAuthStore } from '@/stores/useAuthStore';
+import { useAuthStore, clearAuthStore } from '@/stores/useAuthStore';
 import { useMenuStore } from '@/stores/useMenuStore';
 import { usePermissionStore } from '@/stores/usePermissionStore';
 import { useUiStore } from '@/stores/useUiStore';
@@ -13,6 +13,7 @@ import { Sidebar } from './sidebar';
 export function AppLayout({ children }: { children: ReactNode }): JSX.Element {
   const theme = useUiStore((s) => s.theme);
   const setPermissionsFromRoles = usePermissionStore((s) => s.setPermissionsFromRoles);
+  const setPluginPermissions = usePermissionStore((s) => s.setPluginPermissions);
   const apiClient = useApiClient();
   const userId = useAuthStore((s) => s.userId);
   const tenantId = useAuthStore((s) => s.tenantId);
@@ -54,6 +55,37 @@ export function AppLayout({ children }: { children: ReactNode }): JSX.Element {
         });
     }
   }, [userId, tenantId, apiClient, setMenus]);
+
+  // Plugin permission codes (e.g. backlog:*) are delivered from DB grants, not hard-coded in core.
+  // The sidebar and plugin UIs gate on these via usePermissionStore.hasPermission.
+  useEffect(() => {
+    if (!userId || !tenantId) return;
+    apiClient
+      .get<{ permissions: string[] }>('/api/v1/permissions/me/plugins')
+      .then((res) => setPluginPermissions(res.permissions ?? []))
+      .catch((err) => {
+        logger.error('AppLayout', 'Failed to fetch plugin permissions', err);
+      });
+  }, [userId, tenantId, apiClient, setPluginPermissions]);
+
+  // Guard against a stale/invalid tenantId lingering in persisted auth (e.g. a tenant
+  // that was removed, or a leftover dev value). If the stored tenant isn't among the
+  // real tenants, the session is unusable (menus/permissions resolve to nothing) — sign out.
+  useEffect(() => {
+    if (import.meta.env.VITE_SINGLE_TENANT_MODE === 'true') return;
+    if (!tenantId) return;
+    apiClient
+      .get<{ id: string }[]>('/api/v1/tenants')
+      .then((tenants) => {
+        if (tenants.length > 0 && !tenants.some((tn) => tn.id === tenantId)) {
+          logger.warn('AppLayout', `Stored tenantId "${tenantId}" is not a valid tenant; signing out.`);
+          clearAuthStore();
+        }
+      })
+      .catch(() => {
+        /* tenant list is optional — never block the session on its failure */
+      });
+  }, [tenantId, apiClient]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">

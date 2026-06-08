@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, ForbiddenException, Get, Param, Post, Query, Redirect } from '@nestjs/common';
 import { ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { randomUUID } from 'node:crypto';
 import { runtimeConfig } from '../../app/runtimeConfig';
 import { AuditLogService } from '../../infrastructure/audit/auditLogService';
 import { AuthService } from './authService';
@@ -77,13 +78,42 @@ export class AuthController {
   @ApiOperation({ summary: 'Change password for authenticated user' })
   async changePassword(@Body() dto: ChangePasswordDto, @CurrentUser() user: AuthIdentity) {
     await this.authService.changePassword(user.userId, user.tenantId, dto.currentPassword, dto.newPassword);
+
+    // Password changes are security-sensitive and must be auditable. Never log the password itself.
+    try {
+      await this.auditLogService.record({
+        action: 'auth.change_password',
+        targetId: user.userId,
+        targetType: 'user',
+        tenantId: user.tenantId,
+        traceId: randomUUID(),
+        userId: user.userId,
+      });
+    } catch {
+      // Don't block the password change if audit fails.
+    }
+
     return { success: true };
   }
 
   @Post('reset-password')
   @ApiOperation({ summary: 'Reset password via email', security: [] })
   async resetPassword(@Body() dto: ResetPasswordDto) {
-    await this.authService.resetPassword(dto.email, dto.newPassword, dto.tenantId);
+    const userId = await this.authService.resetPassword(dto.email, dto.newPassword, dto.tenantId);
+
+    try {
+      await this.auditLogService.record({
+        action: 'auth.reset_password',
+        targetId: userId,
+        targetType: 'user',
+        tenantId: dto.tenantId,
+        traceId: randomUUID(),
+        userId,
+      });
+    } catch {
+      // Don't block the password reset if audit fails.
+    }
+
     return { success: true };
   }
 

@@ -1,7 +1,15 @@
-import { ConflictException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { DatabaseService } from '../../infrastructure/database/databaseService';
+import { collectPluginTenantTables } from '../plugin/pluginTenantTables';
 
 export interface TenantRecord {
   id: string;
@@ -50,7 +58,7 @@ export class TenantsService {
     const id = randomUUID();
     await this.pool.query(
       'INSERT INTO tenants (id, name, slug, logo, is_active, config_json) VALUES ($1, $2, $3, $4, $5, $6)',
-      [id, data.name, data.slug, data.logo ?? null, data.isActive === false ? 0 : 1, '{}'],
+      [id, data.name, data.slug, data.logo ?? null, data.isActive !== false, '{}'],
     );
     return this.findById(id);
   }
@@ -72,7 +80,7 @@ export class TenantsService {
     }
     if (data.isActive !== undefined) {
       sets.push(`is_active = $${++idx}`);
-      params.push(data.isActive ? 1 : 0);
+      params.push(data.isActive);
     }
 
     if (sets.length === 0) return this.findById(id);
@@ -104,8 +112,12 @@ export class TenantsService {
       await client.query('DELETE FROM role_menus WHERE role_id IN (SELECT id FROM roles WHERE tenant_id = $1)', [id]);
       await client.query('DELETE FROM users WHERE tenant_id = $1', [id]);
       await client.query('DELETE FROM roles WHERE tenant_id = $1', [id]);
-      await client.query('DELETE FROM backlog_tasks WHERE tenant_id = $1', [id]);
-      await client.query('DELETE FROM backlog_sprints WHERE tenant_id = $1', [id]);
+      // Purge tenant-scoped data owned by installed plugins. Table names come from each plugin's
+      // manifest (contributes.tenantTables) and are identifier-validated, so core no longer hard-codes
+      // plugin table names like backlog_tasks/backlog_sprints.
+      for (const table of collectPluginTenantTables()) {
+        await client.query(`DELETE FROM ${table} WHERE tenant_id = $1`, [id]);
+      }
       await client.query('DELETE FROM messages WHERE tenant_id = $1', [id]);
       await client.query('DELETE FROM conversations WHERE tenant_id = $1', [id]);
       await client.query('DELETE FROM outbox_events WHERE tenant_id = $1', [id]);

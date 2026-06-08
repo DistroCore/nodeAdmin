@@ -3,6 +3,7 @@ import { RolesController } from './rolesController';
 import { RolesService } from './rolesService';
 import { CreateRoleDto } from './dto/createRoleDto';
 import { UpdateRoleDto } from './dto/updateRoleDto';
+import { ListRolesQueryDto } from './dto/listRolesQueryDto';
 
 function createMockRolesService() {
   return {
@@ -24,16 +25,18 @@ describe('RolesController', () => {
   });
 
   describe('list', () => {
-    it('should delegate with default tenantId', async () => {
-      service.list.mockResolvedValue([]);
-      await controller.list();
-      expect(service.list).toHaveBeenCalledWith('default');
+    it('should delegate with defaults and pass query params', async () => {
+      service.list.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 });
+      const query: ListRolesQueryDto = { page: 1, pageSize: 20 };
+      await controller.list(query);
+      expect(service.list).toHaveBeenCalledWith('default', 1, 20, undefined);
     });
 
-    it('should pass tenantId from query', async () => {
-      service.list.mockResolvedValue([]);
-      await controller.list('t-1');
-      expect(service.list).toHaveBeenCalledWith('t-1');
+    it('should pass search and tenantId from query', async () => {
+      service.list.mockResolvedValue({ items: [], total: 0, page: 2, pageSize: 10 });
+      const query: ListRolesQueryDto = { page: 2, pageSize: 10, search: 'admin', tenantId: 't-1' };
+      await controller.list(query);
+      expect(service.list).toHaveBeenCalledWith('t-1', 2, 10, 'admin');
     });
   });
 

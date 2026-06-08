@@ -73,7 +73,11 @@ export class MenusController {
 
   @Put('role/:roleId')
   @ApiOperation({ summary: 'Set menus for a role' })
-  async setRoleMenus(@Param('roleId') roleId: string, @Body() dto: SetRoleMenusDto, @Query('tenantId') tenantId?: string) {
+  async setRoleMenus(
+    @Param('roleId') roleId: string,
+    @Body() dto: SetRoleMenusDto,
+    @Query('tenantId') tenantId?: string,
+  ) {
     return this.menusService.setRoleMenus(tenantId ?? DEFAULT_TENANT_ID, roleId, dto.menuIds);
   }
 }

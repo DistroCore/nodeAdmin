@@ -24,7 +24,9 @@ export async function login(page: Page) {
     await expect(tenantLocator).toBeVisible({ timeout: 10_000 });
 
     await page.getByLabel('Email').fill('admin@nodeadmin.dev');
-    await page.getByLabel('Password').fill('Admin123456');
+    // exact:true so this doesn't also match the "Show password" toggle button (aria-label
+    // "Show password" contains "Password" and would otherwise trip Playwright's strict mode).
+    await page.getByLabel('Password', { exact: true }).fill('Admin123456');
 
     const tagName = await tenantLocator.evaluate((el) => el.tagName.toLowerCase());
     if (tagName === 'select') {

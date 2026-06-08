@@ -10,7 +10,7 @@ test.describe('Authentication Flow', () => {
     await page.goto('/login');
 
     await page.getByLabel(/Email/i).fill('admin@nodeadmin.dev');
-    await page.getByLabel(/Password/i).fill('Admin123456');
+    await page.getByLabel(/^Password$/i).fill('Admin123456');
 
     const tenantLocator = page.getByLabel(/Tenant ID/i);
     const tagName = await tenantLocator.evaluate((el) => el.tagName.toLowerCase());
@@ -36,7 +36,7 @@ test.describe('Authentication Flow', () => {
     await page.goto('/login');
 
     await page.getByLabel(/Email/i).fill('wrong@example.com');
-    await page.getByLabel(/Password/i).fill('wrongpassword');
+    await page.getByLabel(/^Password$/i).fill('wrongpassword');
     const tenantLocator = page.getByLabel(/Tenant ID/i);
     const tagName = await tenantLocator.evaluate((el) => el.tagName.toLowerCase());
     if (tagName === 'select') {

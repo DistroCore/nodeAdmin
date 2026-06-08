@@ -13,6 +13,8 @@ import { useApiClient } from '@/hooks/useApiClient';
 import { usePermissionStore } from '@/stores/usePermissionStore';
 import { RoleFormDialog } from './roleFormDialog';
 
+const PAGE_SIZE = 10;
+
 export function RoleManagementPanel(): JSX.Element {
   const { formatMessage: t } = useIntl();
   const apiClient = useApiClient();
@@ -23,10 +25,14 @@ export function RoleManagementPanel(): JSX.Element {
   const [editRole, setEditRole] = useState<RoleItem | undefined>();
   const [deleteRole, setDeleteRole] = useState<RoleItem | undefined>();
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
 
   const rolesQuery = useQuery({
-    queryFn: () => apiClient.get<RoleItem[]>('/api/v1/roles'),
-    queryKey: ['roles'],
+    queryFn: () =>
+      apiClient.get<{ items: RoleItem[]; total: number }>(
+        `/api/v1/roles?page=${page + 1}&pageSize=${PAGE_SIZE}&search=${encodeURIComponent(search)}`,
+      ),
+    queryKey: ['roles', page, search],
   });
 
   const deleteMutation = useMutation({
@@ -47,12 +53,9 @@ export function RoleManagementPanel(): JSX.Element {
     }
   };
 
-  const rawRoles = Array.isArray(rolesQuery.data) ? rolesQuery.data : [];
-  const roles = rawRoles.filter(
-    (role) =>
-      role.name.toLowerCase().includes(search.toLowerCase()) ||
-      role.description?.toLowerCase().includes(search.toLowerCase()),
-  );
+  const roles = rolesQuery.data?.items ?? [];
+  const total = rolesQuery.data?.total ?? 0;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <section className="relative h-full overflow-y-auto pb-20 md:pb-0">
@@ -79,7 +82,10 @@ export function RoleManagementPanel(): JSX.Element {
             placeholder={t({ id: 'roles.search' })}
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(0);
+            }}
           />
         </div>
         <DataTable<RoleItem>
@@ -147,6 +153,18 @@ export function RoleManagementPanel(): JSX.Element {
           onRetry={() => rolesQuery.refetch()}
           retryLabel={t({ id: 'common.retry' })}
           rowKey={(role) => role.id}
+          pagination={
+            totalPages > 0
+              ? {
+                  page,
+                  totalPages,
+                  onPageChange: setPage,
+                  pageInfo: t({ id: 'common.page_info' }, { page: page + 1, total: totalPages }),
+                  prevLabel: t({ id: 'common.previous' }),
+                  nextLabel: t({ id: 'common.next' }),
+                }
+              : undefined
+          }
         />
       </Card>
 
@@ -165,8 +183,8 @@ export function RoleManagementPanel(): JSX.Element {
           setEditRole(undefined);
         }}
         onSaved={() => {
+          // The success toast is shown by RoleFormDialog's mutation onSuccess; don't duplicate it here.
           rolesQuery.refetch();
-          toast.success(t({ id: 'roles.saveSuccess' }));
         }}
         open={createFormOpen || !!editRole}
         role={editRole}

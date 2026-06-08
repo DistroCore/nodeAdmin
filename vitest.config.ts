@@ -10,6 +10,7 @@ export default defineConfig({
       'apps/coreApi/src/**/*.test.ts',
       'apps/coreApi/src/**/*.spec.ts',
       'packages/*/src/**/*.test.ts',
+      'scripts/**/*.test.ts',
     ],
     globalSetup: ['apps/coreApi/src/__tests__/globalSetup.ts'],
   },
