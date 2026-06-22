@@ -89,4 +89,31 @@ describe('InMemoryMessageStore', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('findById', () => {
+    it('returns the stored message by id within the tenant', () => {
+      const store = new InMemoryMessageStore();
+      store.append(createMessage('m1'));
+
+      const found = store.findById('tenant-1', 'm1');
+
+      expect(found).not.toBeNull();
+      expect(found!.messageId).toBe('m1');
+      expect(found!.tenantId).toBe('tenant-1');
+    });
+
+    it('returns null when the message id does not exist', () => {
+      const store = new InMemoryMessageStore();
+      store.append(createMessage('m1'));
+
+      expect(store.findById('tenant-1', 'm99')).toBeNull();
+    });
+
+    it('scopes the lookup by tenant — does not cross tenant boundaries', () => {
+      const store = new InMemoryMessageStore();
+      store.append(createMessage('m1'));
+
+      expect(store.findById('tenant-other', 'm1')).toBeNull();
+    });
+  });
 });

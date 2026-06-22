@@ -11,6 +11,7 @@ import { ImMessageService } from './imMessageService';
 function createMockMessageRepository() {
   return {
     append: vi.fn(),
+    findById: vi.fn(),
     getLatest: vi.fn(),
     softDelete: vi.fn(),
     updateContent: vi.fn(),
@@ -278,19 +279,21 @@ describe('ImMessageService', () => {
     const identity = createIdentity();
     const context = createContext();
 
-    messageRepository.getLatest.mockResolvedValue([]);
+    messageRepository.findById.mockResolvedValue(null);
     await expect(service.deleteMessage(context, 'message-1', identity)).rejects.toThrow('Message not found.');
 
-    messageRepository.getLatest.mockResolvedValue([
+    messageRepository.findById.mockResolvedValue(
       createStoredMessage({
         messageId: 'message-1',
         userId: 'user-2',
       }),
-    ]);
+    );
 
     await expect(service.deleteMessage(context, 'message-1', identity)).rejects.toThrow(
       'You can only delete your own messages.',
     );
+
+    expect(messageRepository.findById).toHaveBeenCalledWith('tenant-1', 'message-1');
   });
 
   it('soft deletes a message after ownership is verified', async () => {
@@ -301,26 +304,43 @@ describe('ImMessageService', () => {
       messageId: 'message-1',
     });
 
-    messageRepository.getLatest.mockResolvedValue([createStoredMessage({ messageId: 'message-1' })]);
+    messageRepository.findById.mockResolvedValue(createStoredMessage({ messageId: 'message-1' }));
     messageRepository.softDelete.mockResolvedValue(deleted);
 
     await expect(service.deleteMessage(context, 'message-1', identity)).resolves.toEqual(deleted);
     expect(messageRepository.softDelete).toHaveBeenCalledWith('tenant-1', 'message-1');
   });
 
+  it('resolves delete target via findById (unbounded), not the 200-message getLatest window', async () => {
+    // Regression guard: previously deleteMessage used getLatest(...,200).find(), silently failing
+    // for messages older than the recent 200. The service should now call findById directly.
+    const identity = createIdentity();
+    const context = createContext();
+
+    messageRepository.findById.mockResolvedValue(createStoredMessage({ messageId: 'message-old' }));
+    messageRepository.softDelete.mockResolvedValue(
+      createStoredMessage({ messageId: 'message-old', deletedAt: '2026-04-08T00:00:00.000Z' }),
+    );
+
+    await service.deleteMessage(context, 'message-old', identity);
+
+    expect(messageRepository.findById).toHaveBeenCalledWith('tenant-1', 'message-old');
+    expect(messageRepository.getLatest).not.toHaveBeenCalled();
+  });
+
   it('records read receipts using the resolved message sequence and rejects unknown message IDs', async () => {
     const identity = createIdentity();
     const context = createContext();
 
-    messageRepository.getLatest.mockResolvedValue([]);
+    messageRepository.findById.mockResolvedValue(null);
     await expect(service.markAsRead(context, 'message-1', identity)).rejects.toThrow('Referenced message not found.');
 
-    messageRepository.getLatest.mockResolvedValue([
+    messageRepository.findById.mockResolvedValue(
       createStoredMessage({
         messageId: 'message-7',
         sequenceId: 7,
       }),
-    ]);
+    );
 
     await expect(service.markAsRead(context, 'message-7', identity)).resolves.toEqual({
       conversationId: 'conversation-1',
@@ -328,6 +348,22 @@ describe('ImMessageService', () => {
       userId: 'user-1',
     });
     expect(messageRepository.upsertReadReceipt).toHaveBeenCalledWith('tenant-1', 'conversation-1', 'user-1', 7);
+  });
+
+  it('resolves read-receipt sequence via findById so messages outside the recent window still mark-as-read', async () => {
+    // Regression guard: markAsRead must not be capped by getLatest(200).
+    const identity = createIdentity();
+    const context = createContext();
+
+    messageRepository.findById.mockResolvedValue(
+      createStoredMessage({ messageId: 'message-old', sequenceId: 999 }),
+    );
+
+    await service.markAsRead(context, 'message-old', identity);
+
+    expect(messageRepository.findById).toHaveBeenCalledWith('tenant-1', 'message-old');
+    expect(messageRepository.upsertReadReceipt).toHaveBeenCalledWith('tenant-1', 'conversation-1', 'user-1', 999);
+    expect(messageRepository.getLatest).not.toHaveBeenCalled();
   });
 });
 
