@@ -218,8 +218,27 @@
 - 验证：`npm run build`（跨包 tsc）+ lint + 后端 600 + 前端 136 单测全绿；迁移本体需在真实 Postgres 上 `npm run db:migrate` + integration 验证（流程见 `harnessUsage.md`）。
 - 责任人：架构负责人 / 项目负责人。
 
+### D-023
+
+- 日期：2026-06-23
+- 决策：四项评估后续落地——(1) IM `deleteMessage`/`markAsRead` 改单行查询，消除"最近 200 条"误报；(2) `OutboxPublisherService` 加定时清理任务 + `OUTBOX_RETENTION_DAYS` / `OUTBOX_CLEANUP_INTERVAL_MS` 配置；(3) `refreshTokens` 增加 `is_active` 守卫，堵住禁用账户靠旧 refresh token 在 7 天寿命内续期的漏洞；(4) 把 `authService` 散落的裸 pg SQL 下沉到新增的 `UserRepository` / `OAuthAccountRepository` / `SmsCodeRepository`，对齐 Controller→Service→Repository 分层。同时把 TD-7（SMS 验证码 `Math.random()`）收尾为 `crypto.randomInt()`。
+- 原因：
+  - (1) `(tenant_id, message_id)` 唯一索引已存在，单行查询零成本；原 `getLatest(...,200).find()` 把功能性 bug（删/已读 200 条前的消息会误报 not found）伪装成权限校验失败。
+  - (2) outbox 表会随消息留存无限增长（消息留存 1 年，D-006），`docs/optimization/team-brainstorming-summary.md` 的 P2 待办一直没实现；选「定时 DELETE + retention」而非分区（pg_partman）是因为运维复杂度低、当前体量未到必须分区的阈值。
+  - (3) access token 默认 15m，靠自然过期可接受；refresh 默认 7d，禁用后仍能续期是真漏洞。只修 refresh 不引入 Redis jti 黑名单是 ROI 取舍——jti 黑名单需要新建共享 Redis service（现有只有 imGateway 私有连接池），改动面过大，留待合规要求触发时再做。
+  - (4) AGENTS.md 明文规定分层，但 `authService` 直连 `pg.Pool` 写了 ~15 处裸 SQL，绕过 Repository 与 Drizzle。下沉后 SQL 正确性由新增的 Repository 单测保障，service 测试转为验证编排（mock 粒度从 SQL 字符串级上升到方法调用级）。
+- 已知技术债（TD-19，显式记账）：本仓库现有三种 Repository 范式并存——(a) 裸 Pool + `runWithTenant`（`ImMessageRepository`、本次新增的 3 个 auth repo）、(b) drizzle client（`ConversationRepository`）、(c) drizzle 无 null 降级（`AuditLogRepository`）。本次**只对齐 auth 这一处到范式 (a)**，不强行统一其他两处——统一是独立工程，触动 ConversationRepository/AuditLogRepository 及其 drizzle mock，代价数倍于本次。留待后续专门治理。
+- OAuth 注册的跨 repo 事务（users + user_roles + oauth_accounts）通过 `UserRepository.acquireClient()` 窄化逃逸口在 service 编排，事务边界不强行下推到每个 repo 方法签名——避免把事务传播参数塞满所有方法。
+- 影响范围：
+  - 新增：`infrastructure/database/{userRepository,oauthAccountRepository,smsCodeRepository}.ts` + 各自单测；`__tests__/helpers/index.ts` 增 `createAuthServiceWithMocks` helper。
+  - 修改：`imMessageService.ts`（delete/markAsRead）、`imMessageRepository.ts`（+findById）、`inMemoryMessageStore.ts`（+findById）、`outboxPublisherService.ts`（+cleanup）、`runtimeConfig.ts`（+retentionDays/cleanupIntervalMs +readNonNegativeInt）、`authService.ts`（重构，668→约 480 行）、`authModule.ts`（useFactory 注册 3 repo）、`.env.example`、7 个 auth 测试文件改写。
+  - 行为变化：`listOAuthAccounts`/`unlinkOAuthAccount` 在 DB 不可用时不再抛 'Database not available'，改为返回空/抛 'Linked account not found'（repository 在 pool=null 时安全降级，更合理）。
+- 验证：`npm run build` + `lint` + `check:layers` + `check:naming` 全绿；后端 581 单测全绿（含 3 个新 repo 单测、IM findById 回归用例、outbox cleanup 4 用例、refresh is_active 3 用例）。Outbox cleanup 与 auth repo 的真库行为需 integration 验证。
+- 责任人：架构负责人。
+
 ## 最近更新时间
 
+- 2026-06-23（D-023：4 项评估后续落地——IM delete/markAsRead 单行查询修 200 条 bug、Outbox 定时清理 + retention、refreshTokens 查 is_active、authService 抽 3 个 Repository；TD-7 SMS crypto.randomInt 收尾；新增 TD-19 记 repository 范式分叉。build + lint + layers + naming + 581 后端单测全绿）
 - 2026-06-03（D-022：RBAC 布尔列 `INTEGER`→`BOOLEAN` 统一；新增迁移 0025 与 `harnessUsage.md`；build + lint + 600/136 单测全绿，真库迁移验证待 Docker 起库后跑）
 - 2026-04-10（D-002 修订：目录命名由 `UpperCamelCase` 改为 `lowercase`，与仓库实际结构对齐）
 - 2026-04-08（P5 七个 PR 全部合入 master：#46 OpenAPI snapshot guard、#47 plugin lifecycle hooks、#49 backend coverage baseline、#48 react-intl 降级、#45 hooks/stores coverage、#43 design token sweep、#44 plugin UI polish；D-021 追加 react-intl 7.x API surface 限制说明；新增 D-020 / D-021，关闭 TD-1 / TD-2 两条挂账技术债的决策状态；新增 D-019 明确框架定位；同日补录 D-012 ~ D-018，对齐插件市场 / CI 加固 / TenantContext 实际落地）
