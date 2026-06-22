@@ -1,12 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ForbiddenException } from '@nestjs/common';
-import { setupTestEnv } from '../../__tests__/helpers';
+import { createAuthServiceWithMocks, setupTestEnv } from '../../__tests__/helpers';
 
 setupTestEnv();
 
 import { runtimeConfig } from '../../app/runtimeConfig';
 import { AuthController } from './authController';
-import { AuthService } from './authService';
 
 function createMockAuditLogService() {
   return {
@@ -16,13 +15,13 @@ function createMockAuditLogService() {
 }
 
 describe('AuthController dev token flow', () => {
-  let authService: AuthService;
   let controller: AuthController;
+  let authService: ReturnType<typeof createAuthServiceWithMocks>['service'];
   let auditLogService: ReturnType<typeof createMockAuditLogService>;
   let originalEnableDevTokenIssue: boolean;
 
   beforeEach(() => {
-    authService = new AuthService();
+    ({ service: authService } = createAuthServiceWithMocks());
     auditLogService = createMockAuditLogService();
     controller = new AuthController(authService, auditLogService as never);
     originalEnableDevTokenIssue = runtimeConfig.auth.enableDevTokenIssue;

@@ -1,95 +1,92 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { createMockPool, setupTestEnv } from '../../__tests__/helpers';
-import type { MockPool } from '../../__tests__/helpers';
+import { describe, expect, it } from 'vitest';
+import { createAuthServiceWithMocks, setupTestEnv } from '../../__tests__/helpers';
 
 setupTestEnv();
 
-import { AuthService } from './authService';
-
 describe('AuthService SMS Login', () => {
-  let service: AuthService;
-  let serviceWithPool: AuthService & { pool: MockPool | null };
-  let pool: MockPool;
-
-  beforeEach(() => {
-    service = new AuthService();
-    serviceWithPool = service as unknown as AuthService & { pool: MockPool | null };
-    pool = createMockPool();
-    serviceWithPool.pool = pool;
-  });
-
   describe('sendSmsCode', () => {
-    it('should generate and store a 6-digit code for a phone number', async () => {
-      // No recent codes (rate limit check returns 0)
-      pool.query.mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 });
-      // INSERT succeeds
-      pool.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });
+    it('generates and stores a 6-digit code when under the rate limit', async () => {
+      const { service, mocks } = createAuthServiceWithMocks();
+      mocks.smsCodeRepository.countRecentByPhone.mockResolvedValue(0);
+      mocks.smsCodeRepository.insert.mockResolvedValue(undefined);
 
       const result = await service.sendSmsCode('13800138000');
 
       expect(result.success).toBe(true);
-      // Verify INSERT was called
-      expect(pool.query).toHaveBeenCalledTimes(2);
+      expect(mocks.smsCodeRepository.countRecentByPhone).toHaveBeenCalledWith('13800138000', 60_000);
+      // A single insert call — the code itself is opaque (CSPRNG-generated) so we only assert shape.
+      expect(mocks.smsCodeRepository.insert).toHaveBeenCalledWith(
+        expect.any(String),
+        '13800138000',
+        expect.stringMatching(/^\d{6}$/),
+        expect.any(Number),
+      );
     });
 
-    it('should reject if rate limited (3 codes in last minute)', async () => {
-      pool.query.mockResolvedValueOnce({ rows: [{ count: '3' }], rowCount: 1 });
+    it('rejects when the per-phone rate limit is exceeded', async () => {
+      const { service, mocks } = createAuthServiceWithMocks();
+      mocks.smsCodeRepository.countRecentByPhone.mockResolvedValue(3);
 
       await expect(service.sendSmsCode('13800138000')).rejects.toThrow(/too many|rate limit/i);
+      expect(mocks.smsCodeRepository.insert).not.toHaveBeenCalled();
     });
   });
 
   describe('loginWithSms', () => {
-    it('should authenticate user with valid SMS code and return tokens', async () => {
-      // 1. Find valid SMS code (join users to get user_id)
-      pool.query.mockResolvedValueOnce({
-        rows: [{ id: 'sms-1', phone: '13800138000', code: '123456', user_id: 'user-1', is_active: true }],
-        rowCount: 1,
+    it('authenticates and issues tokens for a valid code on an active account', async () => {
+      const { service, mocks } = createAuthServiceWithMocks();
+      mocks.smsCodeRepository.findValidByPhoneAndCode.mockResolvedValue({
+        id: 'sms-1',
+        userId: 'user-1',
+        isActive: true,
       });
-      // 2. Get user roles
-      pool.query.mockResolvedValueOnce({ rows: [{ name: 'admin' }] });
-      // 3. Mark code as used
-      pool.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });
+      mocks.smsCodeRepository.markUsed.mockResolvedValue(undefined);
+      mocks.userRepository.getRoleNames.mockResolvedValue(['admin']);
+      mocks.userRepository.findNameById.mockResolvedValue('Test User');
 
       const result = await service.loginWithSms('13800138000', '123456', 'tenant-1');
 
       expect(result.tokens).toBeDefined();
       expect(result.tokens.accessToken).toBeDefined();
       expect(result.userId).toBe('user-1');
+      expect(result.name).toBe('Test User');
+      expect(result.roles).toEqual(['admin']);
+      expect(mocks.smsCodeRepository.markUsed).toHaveBeenCalledWith('sms-1');
     });
 
-    it('should reject expired or invalid SMS codes', async () => {
-      pool.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+    it('rejects expired or unknown codes', async () => {
+      const { service, mocks } = createAuthServiceWithMocks();
+      mocks.smsCodeRepository.findValidByPhoneAndCode.mockResolvedValue(null);
 
-      await expect(service.loginWithSms('13800138000', '000000', 'tenant-1')).rejects.toThrow(/invalid.*code|expired/i);
+      await expect(service.loginWithSms('13800138000', '000000', 'tenant-1')).rejects.toThrow(
+        /invalid.*code|expired/i,
+      );
+      expect(mocks.smsCodeRepository.markUsed).not.toHaveBeenCalled();
     });
 
-    it('should reject if user associated with phone is disabled', async () => {
-      pool.query.mockResolvedValueOnce({
-        rows: [{ id: 'sms-1', phone: '13800138000', code: '123456', user_id: 'user-1', is_active: false }],
-        rowCount: 1,
+    it('rejects when the linked user account is disabled', async () => {
+      const { service, mocks } = createAuthServiceWithMocks();
+      mocks.smsCodeRepository.findValidByPhoneAndCode.mockResolvedValue({
+        id: 'sms-1',
+        userId: 'user-1',
+        isActive: false,
       });
 
       await expect(service.loginWithSms('13800138000', '123456', 'tenant-1')).rejects.toThrow(/disabled|inactive/i);
+      expect(mocks.smsCodeRepository.markUsed).not.toHaveBeenCalled();
     });
 
-    it('should mark SMS code as used after successful login', async () => {
-      pool.query.mockResolvedValueOnce({
-        rows: [{ id: 'sms-1', phone: '13800138000', code: '123456', user_id: 'user-1', is_active: true }],
-        rowCount: 1,
+    it('rejects when no user is linked to the phone in the tenant', async () => {
+      const { service, mocks } = createAuthServiceWithMocks();
+      mocks.smsCodeRepository.findValidByPhoneAndCode.mockResolvedValue({
+        id: 'sms-1',
+        userId: null,
+        isActive: true,
       });
-      pool.query.mockResolvedValueOnce({ rows: [{ name: 'admin' }] });
-      pool.query.mockResolvedValueOnce({ rows: [], rowCount: 1 }); // UPDATE sms_codes
-      pool.query.mockResolvedValueOnce({ rows: [{ name: 'Test' }] }); // SELECT name
 
-      await service.loginWithSms('13800138000', '123456', 'tenant-1');
-
-      // Find the UPDATE sms_codes call
-      const updateCall = pool.query.mock.calls.find(
-        (call: unknown[]) => typeof call[0] === 'string' && call[0].includes('UPDATE sms_codes'),
+      await expect(service.loginWithSms('13800138000', '123456', 'tenant-1')).rejects.toThrow(
+        /no user found/i,
       );
-      expect(updateCall).toBeDefined();
-      expect(updateCall![0]).toContain('used_at');
     });
   });
 });

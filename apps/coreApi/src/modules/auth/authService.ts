@@ -1,11 +1,12 @@
-import { BadRequestException, Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
+import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { randomInt, randomUUID } from 'node:crypto';
 import { compare, hash } from 'bcryptjs';
 import { sign, verify } from 'jsonwebtoken';
 import type { StringValue } from 'ms';
-import { Pool } from 'pg';
 import { runtimeConfig } from '../../app/runtimeConfig';
-import { DatabaseService } from '../../infrastructure/database/databaseService';
+import { OAuthAccountRepository } from '../../infrastructure/database/oauthAccountRepository';
+import { SmsCodeRepository } from '../../infrastructure/database/smsCodeRepository';
+import { UserRepository } from '../../infrastructure/database/userRepository';
 import type { AuthPrincipal } from '../../infrastructure/tenant/authPrincipal';
 import { AuthIdentity } from './authIdentity';
 interface AccessTokenClaims {
@@ -35,30 +36,15 @@ export interface IssuedTokens {
   tokenType: 'Bearer';
 }
 
-interface UserRow {
-  id: string;
-  email: string;
-  password_hash: string;
-  name: string | null;
-  is_active: boolean;
-}
-
-interface RoleRow {
-  name: string;
-}
-
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  private readonly pool: Pool | null;
 
-  constructor(@Inject(DatabaseService) databaseService: DatabaseService = new DatabaseService()) {
-    this.pool = (databaseService.drizzle?.$client as Pool | undefined) ?? null;
-    if (!this.pool) {
-      this.pool = null;
-      this.logger.warn('DATABASE_URL is not set. Database auth is disabled.');
-    }
-  }
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly oauthAccountRepository: OAuthAccountRepository,
+    private readonly smsCodeRepository: SmsCodeRepository,
+  ) {}
 
   issueTokens(input: IssueTokensInput): IssuedTokens {
     const accessTokenJti = randomUUID();
@@ -149,46 +135,19 @@ export class AuthService {
     tenantId: string,
     name?: string,
   ): Promise<{ name: string | null; roles: string[]; tokens: IssuedTokens; userId: string }> {
-    if (!this.pool) throw new UnauthorizedException('Database not available.');
-
-    const existing = await this.pool.query('SELECT id FROM users WHERE tenant_id = $1 AND email = $2', [
-      tenantId,
-      email,
-    ]);
-    if (existing.rows.length > 0) {
+    const existing = await this.userRepository.findByEmail(tenantId, email);
+    if (existing) {
       throw new UnauthorizedException('Email already registered in this tenant.');
     }
 
     const userId = randomUUID();
     const passwordHash = await hash(password, 12);
 
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [tenantId]);
-      await client.query('INSERT INTO users (id, tenant_id, email, password_hash, name) VALUES ($1, $2, $3, $4, $5)', [
-        userId,
-        tenantId,
-        email,
-        passwordHash,
-        name ?? null,
-      ]);
+    // Insert the user and grant the default 'viewer' role atomically. Both writes live in the
+    // user aggregate (users + user_roles), so the repository owns this as a single transaction.
+    await this.userRepository.createUserWithDefaultRole(tenantId, userId, email, passwordHash, name ?? null);
 
-      // Assign viewer role by default
-      await client.query(
-        `INSERT INTO user_roles (user_id, role_id) SELECT $1, id FROM roles WHERE tenant_id = $2 AND name = 'viewer' LIMIT 1`,
-        [userId, tenantId],
-      );
-
-      await client.query('COMMIT');
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
-
-    const roles = await this.getUserRoles(userId, tenantId);
+    const roles = await this.userRepository.getRoleNames(userId, tenantId);
     const tokens = this.issueTokens({ roles, tenantId, userId });
     return { name: name ?? null, roles, tokens, userId };
   }
@@ -198,28 +157,21 @@ export class AuthService {
     password: string,
     tenantId: string,
   ): Promise<{ name: string | null; roles: string[]; tokens: IssuedTokens; userId: string }> {
-    if (!this.pool) throw new UnauthorizedException('Database not available.');
-
-    const result = await this.pool.query<UserRow>(
-      'SELECT id, email, password_hash, name, is_active FROM users WHERE tenant_id = $1 AND email = $2',
-      [tenantId, email],
-    );
-
-    const user = result.rows[0];
+    const user = await this.userRepository.findByEmail(tenantId, email);
     if (!user) {
       throw new UnauthorizedException('Invalid email or password.');
     }
 
-    if (!user.is_active) {
+    if (!user.isActive) {
       throw new UnauthorizedException('Account is disabled.');
     }
 
-    const passwordValid = await compare(password, user.password_hash);
+    const passwordValid = await compare(password, user.passwordHash);
     if (!passwordValid) {
       throw new UnauthorizedException('Invalid email or password.');
     }
 
-    const roles = await this.getUserRoles(user.id, tenantId);
+    const roles = await this.userRepository.getRoleNames(user.id, tenantId);
     const tokens = this.issueTokens({ roles, tenantId, userId: user.id });
     return { name: user.name, roles, tokens, userId: user.id };
   }
@@ -244,28 +196,30 @@ export class AuthService {
       throw new UnauthorizedException('Malformed refresh token.');
     }
 
-    const roles = await this.getUserRoles(userId, tenantId);
+    // Guard against disabled users refreshing: previously a disabled account could keep minting
+    // fresh access tokens for the full 7-day refresh lifetime, because refreshTokens never
+    // re-checked is_active. Access tokens still expire naturally (default 15m); this closes the
+    // long-lived refresh loophole.
+    const user = await this.userRepository.findById(tenantId, userId);
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('Account is disabled.');
+    }
+
+    const roles = await this.userRepository.getRoleNames(userId, tenantId);
     return this.issueTokens({ roles, tenantId, userId });
   }
 
   async changePassword(userId: string, tenantId: string, currentPassword: string, newPassword: string): Promise<void> {
-    if (!this.pool) throw new UnauthorizedException('Database not available.');
-
-    const result = await this.pool.query<UserRow>(
-      'SELECT id, password_hash, is_active FROM users WHERE id = $1 AND tenant_id = $2',
-      [userId, tenantId],
-    );
-
-    const user = result.rows[0];
+    const user = await this.userRepository.findById(tenantId, userId);
     if (!user) {
       throw new UnauthorizedException('User not found.');
     }
 
-    if (!user.is_active) {
+    if (!user.isActive) {
       throw new UnauthorizedException('Account is disabled.');
     }
 
-    const passwordValid = await compare(currentPassword, user.password_hash);
+    const passwordValid = await compare(currentPassword, user.passwordHash);
     if (!passwordValid) {
       // A wrong *current* password is invalid request input, not an authentication failure: the
       // caller IS authenticated. Returning 400 (not 401) also stops the apiClient from treating it
@@ -274,32 +228,7 @@ export class AuthService {
     }
 
     const newPasswordHash = await hash(newPassword, 12);
-
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [tenantId]);
-      await client.query('UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2', [
-        newPasswordHash,
-        userId,
-      ]);
-      await client.query('COMMIT');
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
-
-  private async getUserRoles(userId: string, tenantId: string): Promise<string[]> {
-    if (!this.pool) return [];
-
-    const result = await this.pool.query<RoleRow>(
-      `SELECT r.name FROM roles r JOIN user_roles ur ON ur.role_id = r.id WHERE ur.user_id = $1 AND r.tenant_id = $2`,
-      [userId, tenantId],
-    );
-    return result.rows.map((row) => row.name);
+    await this.userRepository.updatePassword(tenantId, userId, newPasswordHash);
   }
 
   private normalizeRoles(roles: string[]): string[] {
@@ -319,39 +248,17 @@ export class AuthService {
   }
 
   async resetPassword(email: string, newPassword: string, tenantId: string): Promise<string> {
-    if (!this.pool) throw new UnauthorizedException('Database not available.');
-
-    const result = await this.pool.query<{ id: string; is_active: boolean }>(
-      'SELECT id, is_active FROM users WHERE tenant_id = $1 AND email = $2',
-      [tenantId, email],
-    );
-
-    const user = result.rows[0];
+    const user = await this.userRepository.findByEmail(tenantId, email);
     if (!user) {
       throw new UnauthorizedException('User not found.');
     }
 
-    if (!user.is_active) {
+    if (!user.isActive) {
       throw new UnauthorizedException('Account is disabled.');
     }
 
     const newPasswordHash = await hash(newPassword, 12);
-
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [tenantId]);
-      await client.query('UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2', [
-        newPasswordHash,
-        user.id,
-      ]);
-      await client.query('COMMIT');
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
+    await this.userRepository.updatePassword(tenantId, user.id, newPasswordHash);
 
     return user.id;
   }
@@ -359,24 +266,19 @@ export class AuthService {
   // ─── SMS Login ────────────────────────────────────────────────
 
   async sendSmsCode(phone: string): Promise<{ success: boolean }> {
-    if (!this.pool) throw new UnauthorizedException('Database not available.');
-
-    // Rate limit: max 3 codes per phone per minute
-    const rateResult = await this.pool.query(
-      `SELECT COUNT(*)::text AS count FROM sms_codes WHERE phone = $1 AND created_at > now() - interval '1 minute'`,
-      [phone],
-    );
-    if (parseInt(rateResult.rows[0]?.count ?? '0', 10) >= 3) {
+    // Rate limit: max 3 codes per phone per 60s
+    const recentCount = await this.smsCodeRepository.countRecentByPhone(phone, 60_000);
+    if (recentCount >= 3) {
       throw new UnauthorizedException('Too many SMS codes requested. Please try again later.');
     }
 
-    const code = String(Math.floor(100000 + Math.random() * 900000));
+    // Cryptographically secure 6-digit code. Math.random() is not CSPRNG and is theoretically
+    // predictable — replaced as part of closing TD-7 before any real SMS provider integration.
+    const code = String(randomInt(100000, 1000000));
     const id = randomUUID();
 
-    await this.pool.query(
-      `INSERT INTO sms_codes (id, phone, code, expires_at) VALUES ($1, $2, $3, now() + interval '5 minutes')`,
-      [id, phone, code],
-    );
+    // Codes expire 5 minutes after issue.
+    await this.smsCodeRepository.insert(id, phone, code, 5 * 60 * 1000);
 
     // In production, send SMS via provider (Twilio, Alibaba Cloud SMS, etc.)
     // For dev/testing, the code is returned in the DB row
@@ -390,54 +292,33 @@ export class AuthService {
     code: string,
     tenantId: string,
   ): Promise<{ name: string | null; roles: string[]; tokens: IssuedTokens; userId: string }> {
-    if (!this.pool) throw new UnauthorizedException('Database not available.');
+    const smsRow = await this.smsCodeRepository.findValidByPhoneAndCode(phone, code, tenantId);
 
-    // Find valid (unused, not expired) code and join users to get user_id
-    const smsResult = await this.pool.query<{
-      id: string;
-      phone: string;
-      code: string;
-      user_id: string | null;
-      is_active: boolean;
-    }>(
-      `SELECT sc.id, sc.phone, sc.code, u.id AS user_id, u.is_active
-       FROM sms_codes sc
-       LEFT JOIN users u ON u.phone = sc.phone AND u.tenant_id = $3
-       WHERE sc.phone = $1 AND sc.code = $2 AND sc.used_at IS NULL AND sc.expires_at > now()
-       ORDER BY sc.created_at DESC LIMIT 1`,
-      [phone, code, tenantId],
-    );
-
-    if (smsResult.rows.length === 0) {
+    if (!smsRow) {
       throw new UnauthorizedException('Invalid or expired SMS code.');
     }
 
-    const smsRow = smsResult.rows[0];
-
-    if (!smsRow.is_active) {
+    if (!smsRow.isActive) {
       throw new UnauthorizedException('Account is disabled.');
     }
 
-    if (!smsRow.user_id) {
+    if (!smsRow.userId) {
       throw new UnauthorizedException('No user found for this phone number.');
     }
 
     // Mark code as used
-    await this.pool.query('UPDATE sms_codes SET used_at = now() WHERE id = $1', [smsRow.id]);
+    await this.smsCodeRepository.markUsed(smsRow.id);
 
-    const roles = await this.getUserRoles(smsRow.user_id, tenantId);
-    const tokens = this.issueTokens({ roles, tenantId, userId: smsRow.user_id });
+    const roles = await this.userRepository.getRoleNames(smsRow.userId, tenantId);
+    const tokens = this.issueTokens({ roles, tenantId, userId: smsRow.userId });
 
-    // Get user name
-    const userResult = await this.pool.query<{ name: string | null }>('SELECT name FROM users WHERE id = $1', [
-      smsRow.user_id,
-    ]);
+    const name = await this.userRepository.findNameById(smsRow.userId);
 
     return {
-      name: userResult.rows[0]?.name ?? null,
+      name,
       roles,
       tokens,
-      userId: smsRow.user_id,
+      userId: smsRow.userId,
     };
   }
 
@@ -450,8 +331,6 @@ export class AuthService {
     code: string,
     tenantId: string,
   ): Promise<{ name: string | null; roles: string[]; tokens: IssuedTokens; userId: string }> {
-    if (!this.pool) throw new UnauthorizedException('Database not available.');
-
     if (!AuthService.VALID_OAUTH_PROVIDERS.includes(provider as (typeof AuthService.VALID_OAUTH_PROVIDERS)[number])) {
       throw new UnauthorizedException(`Unsupported OAuth provider: ${provider}`);
     }
@@ -463,52 +342,44 @@ export class AuthService {
     }
 
     // Check if oauth account already linked
-    const existingResult = await this.pool.query<{
-      user_id: string;
-      name: string | null;
-      is_active: boolean;
-    }>(
-      `SELECT oa.user_id, u.name, u.is_active
-       FROM oauth_accounts oa
-       JOIN users u ON u.id = oa.user_id
-       WHERE oa.provider = $1 AND oa.provider_id = $2`,
-      [provider, providerUserInfo.providerId],
-    );
+    const existing = await this.oauthAccountRepository.findByProvider(provider, providerUserInfo.providerId);
 
-    if (existingResult.rows.length > 0) {
-      const existing = existingResult.rows[0];
-      if (!existing.is_active) {
+    if (existing) {
+      if (!existing.isActive) {
         throw new UnauthorizedException('Account is disabled.');
       }
-      const roles = await this.getUserRoles(existing.user_id, tenantId);
-      const tokens = this.issueTokens({ roles, tenantId, userId: existing.user_id });
-      return { name: existing.name, roles, tokens, userId: existing.user_id };
+      const roles = await this.userRepository.getRoleNames(existing.userId, tenantId);
+      const tokens = this.issueTokens({ roles, tenantId, userId: existing.userId });
+      return { name: existing.name, roles, tokens, userId: existing.userId };
     }
 
-    // New OAuth user — create user + oauth_account in transaction
+    // New OAuth user — create user + default role + oauth_account in ONE transaction.
+    // This spans two repositories (users aggregate + oauth_accounts), so the service orchestrates
+    // the transaction via UserRepository.acquireClient. The repositories' insert methods accept the
+    // shared client to participate in this transaction.
     const userId = randomUUID();
-    const client = await this.pool.connect();
+    const client = await this.userRepository.acquireClient(tenantId);
     try {
       await client.query('BEGIN');
-      await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [tenantId]);
-      await client.query('INSERT INTO users (id, tenant_id, email, password_hash, name) VALUES ($1, $2, $3, $4, $5)', [
-        userId,
-        tenantId,
-        providerUserInfo.email ?? `${userId}@oauth.${provider}`,
-        '',
-        providerUserInfo.name ?? null,
-      ]);
-      // Assign viewer role
       await client.query(
-        `INSERT INTO user_roles (user_id, role_id) SELECT $1, id FROM roles WHERE tenant_id = $2 AND name = 'viewer' LIMIT 1`,
-        [userId, tenantId],
+        `INSERT INTO users (id, tenant_id, email, password_hash, name) VALUES ($1, $2, $3, $4, $5)`,
+        [
+          userId,
+          tenantId,
+          providerUserInfo.email ?? `${userId}@oauth.${provider}`,
+          '',
+          providerUserInfo.name ?? null,
+        ],
       );
-      await client.query('INSERT INTO oauth_accounts (id, user_id, provider, provider_id) VALUES ($1, $2, $3, $4)', [
+      await this.userRepository.assignDefaultRole(tenantId, userId, client);
+      await this.oauthAccountRepository.insert(
+        tenantId,
         randomUUID(),
         userId,
         provider,
         providerUserInfo.providerId,
-      ]);
+        client,
+      );
       await client.query('COMMIT');
     } catch (error) {
       await client.query('ROLLBACK');
@@ -517,7 +388,7 @@ export class AuthService {
       client.release();
     }
 
-    const roles = await this.getUserRoles(userId, tenantId);
+    const roles = await this.userRepository.getRoleNames(userId, tenantId);
     const tokens = this.issueTokens({ roles, tenantId, userId });
     return { name: providerUserInfo.name ?? null, roles, tokens, userId };
   }
@@ -638,30 +509,13 @@ export class AuthService {
   // ─── OAuth Account Management ──────────────────────────────────
 
   async listOAuthAccounts(userId: string): Promise<{ provider: string; providerId: string; createdAt: string }[]> {
-    if (!this.pool) throw new UnauthorizedException('Database not available.');
-
-    const result = await this.pool.query<{
-      provider: string;
-      provider_id: string;
-      created_at: string;
-    }>('SELECT provider, provider_id, created_at FROM oauth_accounts WHERE user_id = $1', [userId]);
-
-    return result.rows.map((row) => ({
-      createdAt: row.created_at,
-      provider: row.provider,
-      providerId: row.provider_id,
-    }));
+    return this.oauthAccountRepository.listByUserId(userId);
   }
 
   async unlinkOAuthAccount(userId: string, provider: string): Promise<void> {
-    if (!this.pool) throw new UnauthorizedException('Database not available.');
+    const removed = await this.oauthAccountRepository.deleteByUserAndProvider(userId, provider);
 
-    const result = await this.pool.query('DELETE FROM oauth_accounts WHERE user_id = $1 AND provider = $2', [
-      userId,
-      provider,
-    ]);
-
-    if (result.rowCount === 0) {
+    if (removed === 0) {
       throw new UnauthorizedException('Linked account not found.');
     }
   }

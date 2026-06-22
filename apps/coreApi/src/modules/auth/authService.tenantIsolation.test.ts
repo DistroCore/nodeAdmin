@@ -1,89 +1,88 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { hash } from 'bcryptjs';
-import { createMockClient, createMockPool, setupTestEnv } from '../../__tests__/helpers';
+import { createAuthServiceWithMocks, setupTestEnv } from '../../__tests__/helpers';
 
 setupTestEnv();
 
-import { AuthService } from './authService';
-
+// Tenant isolation here is asserted at the service→repository boundary: every call into a
+// repository method must thread the caller's tenantId through. The SQL-level RLS enforcement is
+// covered by repository unit tests (which assert set_config is called inside transactions) and the
+// real-database integration tests. Keeping this file focused on the orchestration contract avoids
+// duplicating the SQL-shape assertions that now live in the repository tests.
 describe('AuthService tenant isolation', () => {
-  let service: AuthService;
+  let mocks: ReturnType<typeof createAuthServiceWithMocks>['mocks'];
+  let service: ReturnType<typeof createAuthServiceWithMocks>['service'];
 
   beforeEach(() => {
-    service = new AuthService();
+    const harness = createAuthServiceWithMocks();
+    service = harness.service;
+    mocks = harness.mocks;
   });
 
-  it('scopes registration uniqueness checks and writes to the requested tenant', async () => {
-    const mockClient = createMockClient([]);
-    const mockPool = createMockPool([
-      { rows: [], rowCount: 0 },
-      { rows: [{ name: 'viewer' }], rowCount: 1 },
-    ]);
-    mockPool.connect = vi.fn(async () => mockClient);
-
-    (service as unknown as { pool: typeof mockPool }).pool = mockPool;
+  it('passes the requested tenant into the registration lookup and write', async () => {
+    mocks.userRepository.findByEmail.mockResolvedValue(null);
+    mocks.userRepository.createUserWithDefaultRole.mockResolvedValue(undefined);
+    mocks.userRepository.getRoleNames.mockResolvedValue(['viewer']);
 
     const result = await service.register('shared@example.com', 'TenantScopedP@ss1', 'tenant-b', 'Tenant B User');
 
     expect(result.roles).toEqual(['viewer']);
-    expect(mockPool.query).toHaveBeenNthCalledWith(
-      1,
-      expect.stringContaining('SELECT id FROM users WHERE tenant_id = $1 AND email = $2'),
-      ['tenant-b', 'shared@example.com'],
-    );
-
-    const insertUserCall = mockClient.calls.find((call) => call.sql.includes('INSERT INTO users'));
-    expect(insertUserCall?.params).toEqual([
-      expect.any(String),
+    // The uniqueness check must scope to tenant-b, not the default tenant.
+    expect(mocks.userRepository.findByEmail).toHaveBeenCalledWith('tenant-b', 'shared@example.com');
+    // And the user creation transaction must carry tenant-b.
+    expect(mocks.userRepository.createUserWithDefaultRole).toHaveBeenCalledWith(
       'tenant-b',
+      expect.any(String),
       'shared@example.com',
       expect.any(String),
       'Tenant B User',
-    ]);
+    );
+    // Role resolution also scoped to tenant-b.
+    expect(mocks.userRepository.getRoleNames).toHaveBeenCalledWith(result.userId, 'tenant-b');
+  });
+
+  it('refuses registration when the email already exists in the same tenant', async () => {
+    mocks.userRepository.findByEmail.mockResolvedValue({
+      id: 'existing-user',
+      email: 'shared@example.com',
+      isActive: true,
+      name: null,
+      passwordHash: 'hash',
+    });
+
+    await expect(service.register('shared@example.com', 'TenantScopedP@ss1', 'tenant-b', 'Dup')).rejects.toThrow(
+      'Email already registered in this tenant.',
+    );
+    expect(mocks.userRepository.createUserWithDefaultRole).not.toHaveBeenCalled();
   });
 
   it('looks up login credentials inside the tenant supplied by the caller', async () => {
     const passwordHash = await hash('TenantBP@ss2', 4);
-    const mockPool = createMockPool([
-      {
-        rows: [
-          {
-            id: 'tenant-b-user',
-            email: 'shared@example.com',
-            password_hash: passwordHash,
-            name: 'Tenant B User',
-            is_active: true,
-          },
-        ],
-        rowCount: 1,
-      },
-      { rows: [{ name: 'admin' }], rowCount: 1 },
-    ]);
-
-    (service as unknown as { pool: typeof mockPool }).pool = mockPool;
+    mocks.userRepository.findByEmail.mockResolvedValue({
+      id: 'tenant-b-user',
+      email: 'shared@example.com',
+      isActive: true,
+      name: 'Tenant B User',
+      passwordHash,
+    });
+    mocks.userRepository.getRoleNames.mockResolvedValue(['admin']);
 
     const result = await service.login('shared@example.com', 'TenantBP@ss2', 'tenant-b');
 
     expect(result.userId).toBe('tenant-b-user');
     expect(result.roles).toEqual(['admin']);
-    expect(mockPool.query).toHaveBeenNthCalledWith(1, expect.stringContaining('WHERE tenant_id = $1 AND email = $2'), [
-      'tenant-b',
-      'shared@example.com',
-    ]);
+    expect(mocks.userRepository.findByEmail).toHaveBeenCalledWith('tenant-b', 'shared@example.com');
+    expect(mocks.userRepository.getRoleNames).toHaveBeenCalledWith('tenant-b-user', 'tenant-b');
   });
 
-  it('rejects cross-tenant logins when the email exists in another tenant only', async () => {
-    const mockPool = createMockPool([{ rows: [], rowCount: 0 }]);
-
-    (service as unknown as { pool: typeof mockPool }).pool = mockPool;
+  it('rejects cross-tenant logins when the email exists only in another tenant', async () => {
+    // Repository returns null for tenant-a — the email lives in tenant-b only. The service must
+    // surface a generic "invalid" error rather than leaking which tenant has the account.
+    mocks.userRepository.findByEmail.mockResolvedValue(null);
 
     await expect(service.login('shared@example.com', 'TenantBP@ss2', 'tenant-a')).rejects.toThrow(
       'Invalid email or password.',
     );
-
-    expect(mockPool.query).toHaveBeenCalledWith(expect.stringContaining('WHERE tenant_id = $1 AND email = $2'), [
-      'tenant-a',
-      'shared@example.com',
-    ]);
+    expect(mocks.userRepository.getRoleNames).not.toHaveBeenCalled();
   });
 });

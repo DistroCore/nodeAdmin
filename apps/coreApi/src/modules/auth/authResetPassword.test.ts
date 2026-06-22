@@ -1,147 +1,65 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { setupTestEnv } from '../../__tests__/helpers';
-import { AuthService } from './authService';
+import { compare } from 'bcryptjs';
+import { createAuthServiceWithMocks, setupTestEnv } from '../../__tests__/helpers';
 
 setupTestEnv();
 
-interface MockQueryResult {
-  rowCount?: number;
-  rows: Array<Record<string, string | number | null>>;
-}
-
-interface MockClient {
-  query: ReturnType<typeof vi.fn<(sql: string, params?: readonly unknown[]) => Promise<MockQueryResult | void>>>;
-  release: ReturnType<typeof vi.fn<() => void>>;
-}
-
-interface MockPool {
-  connect: ReturnType<typeof vi.fn<() => Promise<MockClient>>>;
-  query: ReturnType<typeof vi.fn<(sql: string, params?: readonly unknown[]) => Promise<MockQueryResult>>>;
-}
-
-type AuthServiceWithPool = AuthService & { pool: MockPool | null };
-
-function createMockPool(queryResults: MockQueryResult[] = []) {
-  const mockQuery = vi.fn<(sql: string, params?: readonly unknown[]) => Promise<MockQueryResult>>();
-  for (const result of queryResults) {
-    mockQuery.mockResolvedValueOnce(result);
-  }
-  // Default: return empty rows for unmocked calls
-  mockQuery.mockResolvedValue({ rows: [] });
-
-  const mockClient = {
-    query: vi.fn<(sql: string, params?: readonly unknown[]) => Promise<MockQueryResult | void>>(),
-    release: vi.fn<() => void>(),
-  } satisfies MockClient;
-  mockClient.query.mockResolvedValue({ rows: [] });
-
-  return {
-    mockQuery,
-    mockClient,
-    pool: {
-      query: mockQuery,
-      connect: vi.fn<() => Promise<MockClient>>().mockResolvedValue(mockClient),
-    } satisfies MockPool,
-  };
-}
-
 describe('AuthService — resetPassword', () => {
-  const passwordHashTimeoutMs = 15_000;
-
   beforeEach(() => {
-    vi.restoreAllMocks();
+    vi.resetAllMocks();
   });
 
-  it(
-    'should reset password for an existing active user',
-    async () => {
-      const { pool, mockQuery, mockClient } = createMockPool();
+  it('resets the password for an existing active user', async () => {
+    const { service, mocks } = createAuthServiceWithMocks();
+    mocks.userRepository.findByEmail.mockResolvedValue({
+      id: 'user-1',
+      email: 'user@example.com',
+      isActive: true,
+      name: null,
+      passwordHash: 'old-hash',
+    });
 
-      // 1st call: find user by email + tenantId
-      mockQuery.mockResolvedValueOnce({
-        rows: [{ id: 'user-1', is_active: true }],
-      });
+    let persistedHash: string | null = null;
+    mocks.userRepository.updatePassword.mockImplementation(
+      async (_tenantId: string, _userId: string, hash: string) => {
+        persistedHash = hash;
+      },
+    );
 
-      const service = new AuthService() as AuthServiceWithPool;
-      service.pool = pool;
+    await service.resetPassword('user@example.com', 'newPassword123', 'tenant-1');
 
-      await service.resetPassword('user@example.com', 'newPassword123', 'tenant-1');
+    expect(mocks.userRepository.findByEmail).toHaveBeenCalledWith('tenant-1', 'user@example.com');
+    // The repository receives the userId it resolved from the email lookup, not the email.
+    expect(mocks.userRepository.updatePassword).toHaveBeenCalledWith('tenant-1', 'user-1', expect.any(String));
 
-      // Verify user lookup query
-      expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining('SELECT id'), ['tenant-1', 'user@example.com']);
+    // The hash is freshly derived from the new password (not the old one) and is bcrypt-formatted.
+    expect(persistedHash).not.toBe('old-hash');
+    expect(await compare('newPassword123', persistedHash as string)).toBe(true);
+  });
 
-      // Verify password update via client transaction
-      expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
-      expect(mockClient.query).toHaveBeenCalledWith(expect.stringContaining('set_config'), ['tenant-1']);
-      expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE users SET password_hash'),
-        expect.arrayContaining(['user-1']),
-      );
-      expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
-    },
-    passwordHashTimeoutMs,
-  );
-
-  it('should throw if user not found', async () => {
-    const { pool, mockQuery } = createMockPool();
-    mockQuery.mockResolvedValueOnce({ rows: [] });
-
-    const service = new AuthService() as AuthServiceWithPool;
-    service.pool = pool;
+  it('throws when no user matches the email in the tenant', async () => {
+    const { service, mocks } = createAuthServiceWithMocks();
+    mocks.userRepository.findByEmail.mockResolvedValue(null);
 
     await expect(service.resetPassword('nobody@example.com', 'newPassword123', 'tenant-1')).rejects.toThrow(
       'User not found.',
     );
+    expect(mocks.userRepository.updatePassword).not.toHaveBeenCalled();
   });
 
-  it('should throw if user account is disabled', async () => {
-    const { pool, mockQuery } = createMockPool();
-    mockQuery.mockResolvedValueOnce({
-      rows: [{ id: 'user-1', is_active: false }],
+  it('throws when the account is disabled', async () => {
+    const { service, mocks } = createAuthServiceWithMocks();
+    mocks.userRepository.findByEmail.mockResolvedValue({
+      id: 'user-1',
+      email: 'disabled@example.com',
+      isActive: false,
+      name: null,
+      passwordHash: 'old-hash',
     });
-
-    const service = new AuthService() as AuthServiceWithPool;
-    service.pool = pool;
 
     await expect(service.resetPassword('disabled@example.com', 'newPassword123', 'tenant-1')).rejects.toThrow(
       'Account is disabled.',
     );
+    expect(mocks.userRepository.updatePassword).not.toHaveBeenCalled();
   });
-
-  it('should throw if database is not available', async () => {
-    const service = new AuthService() as AuthServiceWithPool;
-    service.pool = null;
-
-    await expect(service.resetPassword('user@example.com', 'newPassword123', 'tenant-1')).rejects.toThrow(
-      'Database not available.',
-    );
-  });
-
-  it(
-    'should rollback transaction on failure',
-    async () => {
-      const { pool, mockQuery, mockClient } = createMockPool();
-
-      // User found
-      mockQuery.mockResolvedValueOnce({
-        rows: [{ id: 'user-1', is_active: true }],
-      });
-
-      // Make UPDATE fail
-      mockClient.query.mockImplementation(async (sql: string) => {
-        if (sql === 'BEGIN') return;
-        if (sql.includes('set_config')) return;
-        if (sql.includes('UPDATE')) throw new Error('DB error');
-        if (sql === 'COMMIT') return;
-      });
-
-      const service = new AuthService() as AuthServiceWithPool;
-      service.pool = pool;
-
-      await expect(service.resetPassword('user@example.com', 'newPassword123', 'tenant-1')).rejects.toThrow('DB error');
-
-      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
-    },
-    passwordHashTimeoutMs,
-  );
 });
