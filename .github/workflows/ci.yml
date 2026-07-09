@@ -50,7 +50,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: CoreApi unit tests
-        run: npm run test:coreApi
+        run: npm run test:coreApi -- --coverage
       - name: AdminPortal unit tests
         run: npm run test:adminPortal
 
