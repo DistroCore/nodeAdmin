@@ -5,6 +5,7 @@
 This handbook provides Standard Operating Procedures (SOP) for responding to Prometheus alerts configured in `infra/prometheus/alerts.yml`. All alerts are monitored via AlertManager at `http://localhost:9093` and visualized in Grafana at `http://localhost:3003`.
 
 **Alert Severity Levels**:
+
 - **P0**: System unavailable - immediate action required
 - **P1**: Major degradation - respond within 15 minutes
 - **P2**: Service-risk trend - investigate within 1 hour
@@ -24,21 +25,26 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
 #### Diagnostic Steps
 
 1. **Check CoreApi health**:
+
    ```bash
    curl http://localhost:11451/health
    ```
+
    - Expected: `{"status":"ok"}`
    - If fails: CoreApi is down
 
 2. **Check CoreApi logs**:
+
    ```bash
    docker logs nodeadmin-coreapi --tail 100
    # OR if running locally
    npm run dev:api
    ```
+
    - Look for startup errors, uncaught exceptions, or port conflicts
 
 3. **Verify OpenTelemetry configuration**:
+
    ```bash
    # Check if OTEL_ENABLED=true in .env
    grep OTEL_ENABLED .env
@@ -53,22 +59,24 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
 
 #### Common Root Causes
 
-| Root Cause | Solution |
-|------------|----------|
-| CoreApi crashed | Restart: `npm run dev:api` or `docker restart nodeadmin-coreapi` |
-| Port 11451 already in use | Kill conflicting process: `lsof -ti:11451 \| xargs kill -9` |
-| OTEL_ENABLED=false | Set `OTEL_ENABLED=true` in .env and restart |
+| Root Cause                | Solution                                                           |
+| ------------------------- | ------------------------------------------------------------------ |
+| CoreApi crashed           | Restart: `npm run dev:api` or `docker restart nodeadmin-coreapi`   |
+| Port 11451 already in use | Kill conflicting process: `lsof -ti:11451 \| xargs kill -9`        |
+| OTEL_ENABLED=false        | Set `OTEL_ENABLED=true` in .env and restart                        |
 | Metrics port 9464 blocked | Check firewall rules, ensure port is exposed in docker-compose.yml |
-| Out of memory | Check `docker stats`, increase memory limit in docker-compose.yml |
+| Out of memory             | Check `docker stats`, increase memory limit in docker-compose.yml  |
 
 #### Resolution Steps
 
 1. Restart CoreApi:
+
    ```bash
    npm run dev:api
    ```
 
 2. Verify metrics endpoint:
+
    ```bash
    curl http://localhost:9464/metrics | grep im_messages_appended_total
    ```
@@ -88,7 +96,7 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
 
 **Severity**: P2 - Service-risk trend
 
-**Description**: No IM messages have been appended in the last 10 minutes. This could indicate a stalled message pipeline or no active users.
+**Description**: Despite the legacy alert name, this rule does not inspect outbox retry counters. It fires when no IM messages have been appended in the last 10 minutes, which can indicate a stalled message pipeline or simply no active users.
 
 #### Diagnostic Steps
 
@@ -99,18 +107,31 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
    - If 0 connections: No users connected (expected behavior)
 
 2. **Check message queue status**:
+
    ```bash
    # Check CoreApi logs for queue warnings
    docker logs nodeadmin-coreapi --tail 100 | grep "queue pressure"
    ```
 
-3. **Verify database connectivity**:
+3. **Check outbox publisher state only if messages are expected**:
+
+   ```bash
+   grep -E "OUTBOX_PUBLISHER_ENABLED|OUTBOX_RETENTION_DAYS|OUTBOX_CLEANUP_INTERVAL_MS" .env
+   docker logs nodeadmin-coreapi --tail 200 | grep -E "Outbox batch|Outbox cleanup|Outbox publish"
+   ```
+
+   - D-023 added retention cleanup for processed outbox rows.
+   - Cleanup deletes only rows that are already published or sent to DLQ and older than `OUTBOX_RETENTION_DAYS`.
+   - `OUTBOX_RETENTION_DAYS=0` disables cleanup.
+
+4. **Verify database connectivity**:
+
    ```bash
    # Test PostgreSQL connection
    npm run smoke:pgbouncer
    ```
 
-4. **Check for rate limiting**:
+5. **Check for rate limiting**:
    ```bash
    # Look for rate limit errors in logs
    docker logs nodeadmin-coreapi --tail 100 | grep "Rate limit exceeded"
@@ -118,18 +139,20 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
 
 #### Common Root Causes
 
-| Root Cause | Solution |
-|------------|----------|
-| No active users | Expected behavior - no action needed |
-| Database connection pool exhausted | Check PgBouncer stats: `docker logs nodeadmin-pgbouncer` |
-| Message queue stalled | Restart CoreApi to flush queue |
-| Rate limiting too aggressive | Increase `RATE_LIMIT_WS_MESSAGES_PER_SECOND` in .env |
+| Root Cause                                     | Solution                                                                       |
+| ---------------------------------------------- | ------------------------------------------------------------------------------ |
+| No active users                                | Expected behavior - no action needed                                           |
+| Database connection pool exhausted             | Check PgBouncer stats: `docker logs nodeadmin-pgbouncer`                       |
+| Message queue stalled                          | Restart CoreApi to flush queue                                                 |
+| Rate limiting too aggressive                   | Increase `RATE_LIMIT_WS_MESSAGES_PER_SECOND` in .env                           |
+| Outbox publisher disabled or Kafka unavailable | Verify `OUTBOX_PUBLISHER_ENABLED`, `KAFKA_BROKERS`, and `npm run smoke:outbox` |
 
 #### Resolution Steps
 
 1. If no active users, acknowledge alert (expected behavior)
 
 2. If database issues detected:
+
    ```bash
    # Check PgBouncer connection pool
    docker exec -it nodeadmin-pgbouncer psql -h localhost -p 5432 -U nodeadmin -d pgbouncer -c "SHOW POOLS;"
@@ -173,6 +196,7 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
    - If P95 > 200ms: Database is slow
 
 4. **Check system resources**:
+
    ```bash
    # Check CPU and memory usage
    docker stats nodeadmin-coreapi nodeadmin-postgres nodeadmin-pgbouncer
@@ -186,29 +210,33 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
 
 #### Common Root Causes
 
-| Root Cause | Solution |
-|------------|----------|
-| Persist queue backlog | Queue length > 5000, wait for flush or restart CoreApi |
-| Database slow queries | Optimize queries, add indexes (escalate to database-engineer) |
-| PgBouncer connection pool exhausted | Increase `default_pool_size` in pgbouncer.ini |
-| High CPU usage | Scale horizontally (add more CoreApi instances) |
-| Disk I/O bottleneck | Check disk usage: `df -h`, optimize PostgreSQL config |
+| Root Cause                          | Solution                                                      |
+| ----------------------------------- | ------------------------------------------------------------- |
+| Persist queue backlog               | Queue length > 5000, wait for flush or restart CoreApi        |
+| Database slow queries               | Optimize queries, add indexes (escalate to database-engineer) |
+| PgBouncer connection pool exhausted | Increase `default_pool_size` in pgbouncer.ini                 |
+| High CPU usage                      | Scale horizontally (add more CoreApi instances)               |
+| Disk I/O bottleneck                 | Check disk usage: `df -h`, optimize PostgreSQL config         |
 
 #### Resolution Steps
 
 1. **If queue backlog detected**:
+
    ```bash
    # Check queue length in logs
    docker logs nodeadmin-coreapi --tail 100 | grep "queueLength"
    ```
+
    - If > 10000: Wait for queue to drain (automatic)
    - If > 45000: System is rejecting new messages (expected backpressure)
 
 2. **If database slow**:
+
    ```bash
    # Check active connections
    docker exec -it nodeadmin-postgres psql -U nodeadmin -d nodeadmin -c "SELECT count(*) FROM pg_stat_activity WHERE state = 'active';"
    ```
+
    - If > 80: Connection pool near limit, consider increasing `max_connections`
 
 3. **If CPU high**:
@@ -245,6 +273,7 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
    - Check "Database Write Latency" (persistence)
 
 3. **Check Redis Adapter performance**:
+
    ```bash
    # Check Redis latency
    docker exec -it nodeadmin-redis redis-cli --latency-history
@@ -258,16 +287,17 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
 
 #### Common Root Causes
 
-| Root Cause | Solution |
-|------------|----------|
-| High append latency | See "HighMessageLatency" alert response |
-| Redis slow | Check Redis memory usage, restart if needed |
-| Network latency | Check Docker network, restart containers |
+| Root Cause               | Solution                                                    |
+| ------------------------ | ----------------------------------------------------------- |
+| High append latency      | See "HighMessageLatency" alert response                     |
+| Redis slow               | Check Redis memory usage, restart if needed                 |
+| Network latency          | Check Docker network, restart containers                    |
 | Socket.IO broadcast slow | Check active connections count, may need horizontal scaling |
 
 #### Resolution Steps
 
 1. **If Redis slow**:
+
    ```bash
    # Check Redis memory usage
    docker exec -it nodeadmin-redis redis-cli INFO memory
@@ -277,6 +307,7 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
    ```
 
 2. **If network issues**:
+
    ```bash
    # Restart Docker network
    docker-compose down && docker-compose up -d
@@ -310,19 +341,23 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
    - Check "Message Throughput" panel for failure rate
 
 2. **Check for timeout errors**:
+
    ```bash
    # Check logs for timeout errors
    docker logs nodeadmin-coreapi --tail 200 | grep -E "timeout|ETIMEDOUT"
    ```
 
 3. **Check Socket.IO configuration**:
+
    ```bash
    # Verify pingTimeout > pingInterval
    grep -E "SOCKETIO_PING" .env
    ```
+
    - Expected: `SOCKETIO_PING_TIMEOUT` (60000) > `SOCKETIO_PING_INTERVAL` (25000)
 
 4. **Check database persistence**:
+
    ```bash
    # Verify messages are being persisted
    docker exec -it nodeadmin-postgres psql -U nodeadmin -d nodeadmin -c "SELECT COUNT(*) FROM im_messages WHERE created_at > NOW() - INTERVAL '5 minutes';"
@@ -336,17 +371,18 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
 
 #### Common Root Causes
 
-| Root Cause | Solution |
-|------------|----------|
+| Root Cause                         | Solution                                            |
+| ---------------------------------- | --------------------------------------------------- |
 | Socket.IO timeout misconfiguration | Fix pingTimeout/pingInterval in .env (see P0 fixes) |
-| Redis connection lost | Restart Redis: `docker restart nodeadmin-redis` |
-| Database write failures | Check PostgreSQL logs, verify disk space |
-| Network partition | Check Docker network, restart containers |
-| Queue overflow (> 50000) | System is rejecting messages due to backpressure |
+| Redis connection lost              | Restart Redis: `docker restart nodeadmin-redis`     |
+| Database write failures            | Check PostgreSQL logs, verify disk space            |
+| Network partition                  | Check Docker network, restart containers            |
+| Queue overflow (> 50000)           | System is rejecting messages due to backpressure    |
 
 #### Resolution Steps
 
 1. **Verify P0 timeout fixes are applied**:
+
    ```bash
    # Check if P0 fixes are in place
    grep "SOCKETIO_PING_TIMEOUT=60000" .env
@@ -354,6 +390,7 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
    ```
 
 2. **If timeout misconfiguration**:
+
    ```bash
    # Apply P0 fixes
    cp .env.example .env
@@ -363,6 +400,7 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
    ```
 
 3. **If Redis connection lost**:
+
    ```bash
    docker restart nodeadmin-redis
    # Wait 30 seconds
@@ -370,6 +408,7 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
    ```
 
 4. **If database write failures**:
+
    ```bash
    # Check disk space
    df -h
@@ -403,12 +442,14 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
    - Check "Message Throughput" panel for failure count
 
 2. **Check error types in logs**:
+
    ```bash
    # Check for common error patterns
    docker logs nodeadmin-coreapi --tail 200 | grep -E "WsException|Error|failed"
    ```
 
 3. **Check for validation errors**:
+
    ```bash
    # Look for DTO validation failures
    docker logs nodeadmin-coreapi --tail 200 | grep "ValidationPipe"
@@ -422,13 +463,13 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
 
 #### Common Root Causes
 
-| Root Cause | Solution |
-|------------|----------|
-| Client sending invalid payloads | Check client-side validation, review error logs |
-| Rate limiting too aggressive | Increase `RATE_LIMIT_WS_MESSAGES_PER_SECOND` |
-| Database constraint violations | Check for duplicate messageId, foreign key errors |
-| Message size exceeds limit | Check if messages > 1MB, client should validate |
-| Tenant/conversation mismatch | Client sending wrong tenantId/conversationId |
+| Root Cause                      | Solution                                          |
+| ------------------------------- | ------------------------------------------------- |
+| Client sending invalid payloads | Check client-side validation, review error logs   |
+| Rate limiting too aggressive    | Increase `RATE_LIMIT_WS_MESSAGES_PER_SECOND`      |
+| Database constraint violations  | Check for duplicate messageId, foreign key errors |
+| Message size exceeds limit      | Check if messages > 1MB, client should validate   |
+| Tenant/conversation mismatch    | Client sending wrong tenantId/conversationId      |
 
 #### Resolution Steps
 
@@ -437,6 +478,7 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
    - Notify client developers to fix payload format
 
 2. **If rate limiting**:
+
    ```bash
    # Increase rate limit (default: 100 msg/sec)
    # Edit .env
@@ -475,12 +517,14 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
    - Check "WebSocket Connection Success/Failure" panel
 
 2. **Check authentication failures**:
+
    ```bash
    # Look for auth errors
    docker logs nodeadmin-coreapi --tail 200 | grep -E "Unauthorized|JWT|token"
    ```
 
 3. **Check Socket.IO handshake errors**:
+
    ```bash
    # Look for handshake failures
    docker logs nodeadmin-coreapi --tail 200 | grep "handshake"
@@ -494,17 +538,18 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
 
 #### Common Root Causes
 
-| Root Cause | Solution |
-|------------|----------|
-| Invalid JWT tokens | Check token expiration, verify JWT secret |
-| Connection limit reached | Increase `MAX_CONNECTIONS` or scale horizontally |
-| CORS issues | Verify CORS configuration in main.ts |
-| Network issues | Check Docker network, firewall rules |
-| Redis Adapter connection lost | Restart Redis |
+| Root Cause                    | Solution                                         |
+| ----------------------------- | ------------------------------------------------ |
+| Invalid JWT tokens            | Check token expiration, verify JWT secret        |
+| Connection limit reached      | Increase `MAX_CONNECTIONS` or scale horizontally |
+| CORS issues                   | Verify CORS configuration in main.ts             |
+| Network issues                | Check Docker network, firewall rules             |
+| Redis Adapter connection lost | Restart Redis                                    |
 
 #### Resolution Steps
 
 1. **If authentication failures**:
+
    ```bash
    # Verify JWT secret is consistent
    grep JWT_SECRET .env
@@ -514,6 +559,7 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
    ```
 
 2. **If connection limit reached**:
+
    ```bash
    # Increase connection limit (default: 10000)
    # Edit .env
@@ -552,6 +598,7 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
    - Check "Persist Queue Wait Time (P50/P95/P99)" panel
 
 2. **Check queue length**:
+
    ```bash
    # Look for queue pressure warnings
    docker logs nodeadmin-coreapi --tail 100 | grep "queue pressure"
@@ -568,12 +615,12 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
 
 #### Common Root Causes
 
-| Root Cause | Solution |
-|------------|----------|
-| High message throughput | Queue is processing normally, wait for drain |
-| Database slow | See "HighDatabaseWriteLatency" alert response |
-| Persist concurrency too low | Increase concurrency (requires code change) |
-| Batch size too small | Increase batch size (requires code change) |
+| Root Cause                  | Solution                                      |
+| --------------------------- | --------------------------------------------- |
+| High message throughput     | Queue is processing normally, wait for drain  |
+| Database slow               | See "HighDatabaseWriteLatency" alert response |
+| Persist concurrency too low | Increase concurrency (requires code change)   |
+| Batch size too small        | Increase batch size (requires code change)    |
 
 #### Resolution Steps
 
@@ -582,6 +629,7 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
    - Monitor for 10 minutes
 
 2. **If queue length > 10000**:
+
    ```bash
    # Check if database is slow
    docker exec -it nodeadmin-postgres psql -U nodeadmin -d nodeadmin -c "SELECT count(*) FROM pg_stat_activity WHERE state = 'active';"
@@ -625,11 +673,11 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
 
 #### Common Root Causes
 
-| Root Cause | Solution |
-|------------|----------|
-| Client not generating traceId | Update client to generate UUID for each message |
-| Client sending null/undefined traceId | Add client-side validation |
-| Server not propagating traceId | Check imMessageService.ts, verify traceId is passed through |
+| Root Cause                            | Solution                                                    |
+| ------------------------------------- | ----------------------------------------------------------- |
+| Client not generating traceId         | Update client to generate UUID for each message             |
+| Client sending null/undefined traceId | Add client-side validation                                  |
+| Server not propagating traceId        | Check imMessageService.ts, verify traceId is passed through |
 
 #### Resolution Steps
 
@@ -665,24 +713,28 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
    - Check "Database Write Latency (P50/P95/P99)" panel
 
 2. **Check PostgreSQL performance**:
+
    ```bash
    # Check active queries
    docker exec -it nodeadmin-postgres psql -U nodeadmin -d nodeadmin -c "SELECT pid, state, query_start, query FROM pg_stat_activity WHERE state = 'active';"
    ```
 
 3. **Check for slow queries**:
+
    ```bash
    # Check pg_stat_statements (if enabled)
    docker exec -it nodeadmin-postgres psql -U nodeadmin -d nodeadmin -c "SELECT query, mean_exec_time, calls FROM pg_stat_statements ORDER BY mean_exec_time DESC LIMIT 10;"
    ```
 
 4. **Check PgBouncer connection pool**:
+
    ```bash
    # Check pool status
    docker exec -it nodeadmin-pgbouncer psql -h localhost -p 5432 -U nodeadmin -d pgbouncer -c "SHOW POOLS;"
    ```
 
 5. **Check disk I/O**:
+
    ```bash
    # Check disk usage
    df -h
@@ -693,17 +745,18 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
 
 #### Common Root Causes
 
-| Root Cause | Solution |
-|------------|----------|
-| Missing indexes | Add indexes on frequently queried columns |
-| Connection pool exhausted | Increase PgBouncer `default_pool_size` |
-| Disk I/O bottleneck | Optimize PostgreSQL config, consider SSD |
-| Long-running transactions | Identify and kill blocking queries |
-| Table bloat | Run VACUUM ANALYZE |
+| Root Cause                | Solution                                  |
+| ------------------------- | ----------------------------------------- |
+| Missing indexes           | Add indexes on frequently queried columns |
+| Connection pool exhausted | Increase PgBouncer `default_pool_size`    |
+| Disk I/O bottleneck       | Optimize PostgreSQL config, consider SSD  |
+| Long-running transactions | Identify and kill blocking queries        |
+| Table bloat               | Run VACUUM ANALYZE                        |
 
 #### Resolution Steps
 
 1. **If connection pool exhausted**:
+
    ```bash
    # Check pool status
    docker exec -it nodeadmin-pgbouncer psql -h localhost -p 5432 -U nodeadmin -d pgbouncer -c "SHOW POOLS;"
@@ -717,6 +770,7 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
    ```
 
 2. **If slow queries detected**:
+
    ```bash
    # Analyze query plan
    docker exec -it nodeadmin-postgres psql -U nodeadmin -d nodeadmin -c "EXPLAIN ANALYZE <slow_query>;"
@@ -736,22 +790,153 @@ This handbook provides Standard Operating Procedures (SOP) for responding to Pro
 
 ---
 
+## Alert Group: nodeadmin-resilience
+
+Configured in `infra/prometheus/alerts.yml`:
+
+| Alert                       | Trigger                                                      | Severity | First check                                                                       |
+| --------------------------- | ------------------------------------------------------------ | -------- | --------------------------------------------------------------------------------- |
+| CircuitBreakerOpen          | `circuit_breaker_state > 0` for 1 minute                     | P0       | Identify the circuit breaker name label and inspect the protected dependency logs |
+| CircuitBreakerFrequentTrips | `rate(circuit_breaker_trips_total[5m]) > 0.1` for 3 minutes  | P1       | Check recent dependency errors and retry storms                                   |
+| BackpressureActive          | `rate(backpressure_rejections_total[5m]) > 10` for 2 minutes | P1       | Check request/message volume and rejection reason label                           |
+| BackpressureRedZone         | `backpressure_zone >= 2` for 5 minutes                       | P2       | Check queue depth and downstream latency                                          |
+| DegradationActive           | `degradation_active == 1` for 5 minutes                      | P1       | Identify the degraded feature label and confirm expected fallback behavior        |
+
+### Diagnostic Steps
+
+1. Inspect resilience metrics in Prometheus:
+
+   ```bash
+   curl http://localhost:9464/metrics | grep -E "circuit_breaker|backpressure|degradation"
+   ```
+
+2. Check CoreApi logs for dependency and backpressure events:
+
+   ```bash
+   docker logs nodeadmin-coreapi --tail 200 | grep -E "Circuit|Backpressure|degradation|queue pressure"
+   ```
+
+3. Run the reliability regression when the API is locally available:
+   ```bash
+   npm run reliability:regression
+   ```
+
+### Resolution Notes
+
+- Circuit breaker alerts are dependency-first incidents: verify PostgreSQL, Redis, Kafka, and external service health before changing application code.
+- Backpressure alerts are protective behavior. Do not bypass limits until queue depth, database latency, and downstream capacity are understood.
+- Feature degradation should be cleared only after the degraded dependency recovers and the application logs show normal behavior.
+
+---
+
+## Alert Group: nodeadmin-pgbouncer
+
+Configured in `infra/prometheus/alerts.yml` and scraped through `pgbouncer-exporter` when `npm run infra:up:monitoring` is running.
+
+| Alert                            | Trigger                                           | Severity | First check                             |
+| -------------------------------- | ------------------------------------------------- | -------- | --------------------------------------- |
+| PgBouncerHighConnectionPoolUsage | Server active/max connections > 80% for 5 minutes | P1       | `SHOW POOLS;` and API concurrency       |
+| PgBouncerClientWaiting           | Client waiting connections > 10 for 3 minutes     | P1       | Pool saturation and slow queries        |
+| PgBouncerDown                    | `up{job="pgbouncer"} == 0` for 1 minute           | P0       | Exporter and PgBouncer container health |
+| PgBouncerHighQueryWaitTime       | Pooled query rate > 100/sec for 5 minutes         | P2       | Query pressure trend                    |
+
+### Diagnostic Steps
+
+1. Check exporter scrape status:
+
+   ```bash
+   curl http://localhost:9127/metrics | head
+   ```
+
+2. Inspect PgBouncer pools:
+
+   ```bash
+   docker exec -it nodeadmin-pgbouncer psql -h localhost -p 5432 -U nodeadmin -d pgbouncer -c "SHOW POOLS;"
+   ```
+
+3. Check active database work:
+   ```bash
+   docker exec -it nodeadmin-postgres psql -U nodeadmin -d nodeadmin -c "SELECT pid, state, query_start, query FROM pg_stat_activity WHERE state = 'active';"
+   ```
+
+### Resolution Notes
+
+- If clients are waiting, first look for slow or stuck PostgreSQL queries.
+- Increase PgBouncer pool sizes only after confirming PostgreSQL has capacity.
+- If the exporter is down but PgBouncer works, restart `nodeadmin-pgbouncer-exporter` under the monitoring profile.
+
+---
+
+## Alert Group: nodeadmin-backup
+
+Configured in `infra/prometheus/alerts.yml`:
+
+| Alert                  | Trigger                                      | Severity | First check                                |
+| ---------------------- | -------------------------------------------- | -------- | ------------------------------------------ |
+| PostgreSQLBackupStale  | No successful backup metric within 2 days    | P1       | Latest backup artifact and metric exporter |
+| PostgreSQLBackupFailed | `postgres_backup_success == 0` for 5 minutes | P0       | Backup logs and `npm run backup:pg` result |
+
+### Diagnostic Steps
+
+1. Run a manual backup:
+
+   ```bash
+   npm run backup:pg
+   ```
+
+2. Verify the generated SQL artifact:
+
+   ```bash
+   ls -lh Backups/
+   ```
+
+3. Confirm restore path with a selected backup:
+
+   ```bash
+   BACKUP_FILE=Backups/<file>.sql npm run restore:pg
+   ```
+
+4. After restore, run migrations and acceptance smoke:
+   ```bash
+   npm run db:migrate -w coreApi
+   npm run m1:acceptance:auto
+   ```
+
+### Resolution Notes
+
+- The npm backup script writes plain SQL under `Backups/`.
+- The alert rules expect `postgres_backup_*` metrics. Current `infra/prometheus/prometheus.yml` does not scrape a Pushgateway, so production deployments must provide the metric exporter or scrape target for these rules to fire.
+- D-022 added migration `0025_booleanize_rbac_flags.sql`; restored databases must run migrations before validation.
+
+---
+
 ## Quick Reference
 
 ### Alert Severity Matrix
 
-| Alert | Severity | Response Time | First Responder |
-|-------|----------|---------------|-----------------|
-| CoreApiMetricsMissing | P0 | Immediate | devops-engineer |
-| MessageLossDetected | P0 | Immediate | reliability-engineer |
-| HighMessageLatency | P1 | 15 minutes | performance-engineer |
-| HighE2EMessageLatency | P1 | 15 minutes | performance-engineer |
-| HighMessageFailureRate | P1 | 15 minutes | reliability-engineer |
-| WebSocketConnectionFailures | P1 | 15 minutes | reliability-engineer |
-| HighDatabaseWriteLatency | P1 | 15 minutes | database-engineer |
-| HighOutboxRetry | P2 | 1 hour | reliability-engineer |
-| HighPersistQueueWait | P2 | 1 hour | performance-engineer |
-| TraceIdPropagationFailure | P2 | 1 hour | qa-engineer |
+| Alert                            | Severity | Response Time | First Responder      |
+| -------------------------------- | -------- | ------------- | -------------------- |
+| CoreApiMetricsMissing            | P0       | Immediate     | devops-engineer      |
+| MessageLossDetected              | P0       | Immediate     | reliability-engineer |
+| HighMessageLatency               | P1       | 15 minutes    | performance-engineer |
+| HighE2EMessageLatency            | P1       | 15 minutes    | performance-engineer |
+| HighMessageFailureRate           | P1       | 15 minutes    | reliability-engineer |
+| WebSocketConnectionFailures      | P1       | 15 minutes    | reliability-engineer |
+| HighDatabaseWriteLatency         | P1       | 15 minutes    | database-engineer    |
+| HighOutboxRetry                  | P2       | 1 hour        | reliability-engineer |
+| HighPersistQueueWait             | P2       | 1 hour        | performance-engineer |
+| TraceIdPropagationFailure        | P2       | 1 hour        | qa-engineer          |
+| CircuitBreakerOpen               | P0       | Immediate     | reliability-engineer |
+| CircuitBreakerFrequentTrips      | P1       | 15 minutes    | reliability-engineer |
+| BackpressureActive               | P1       | 15 minutes    | performance-engineer |
+| BackpressureRedZone              | P2       | 1 hour        | performance-engineer |
+| DegradationActive                | P1       | 15 minutes    | reliability-engineer |
+| PgBouncerHighConnectionPoolUsage | P1       | 15 minutes    | database-engineer    |
+| PgBouncerClientWaiting           | P1       | 15 minutes    | database-engineer    |
+| PgBouncerDown                    | P0       | Immediate     | devops-engineer      |
+| PgBouncerHighQueryWaitTime       | P2       | 1 hour        | database-engineer    |
+| PostgreSQLBackupStale            | P1       | 15 minutes    | devops-engineer      |
+| PostgreSQLBackupFailed           | P0       | Immediate     | devops-engineer      |
 
 ### Common Commands
 
@@ -770,6 +955,10 @@ npm run dev:api
 
 # Restart infrastructure
 npm run infra:down && npm run infra:up
+
+# Run reliability and backup checks
+npm run reliability:regression
+npm run backup:pg
 
 # Check logs
 docker logs nodeadmin-coreapi --tail 100
@@ -805,6 +994,7 @@ docker exec -it nodeadmin-redis redis-cli PING
 
 ---
 
-**Last Updated**: 2026-03-02
+**Last Updated**: 2026-07-09
+**Review Note**: 2026-07-09 复审后已对齐当前 Prometheus 规则、D-022 restore 验证影响和 D-023 outbox retention 行为。
 **Maintained By**: documentation-engineer
 **Review Frequency**: Monthly or after major incidents
