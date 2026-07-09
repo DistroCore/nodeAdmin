@@ -93,11 +93,16 @@ export class AuditLogService implements OnModuleDestroy {
     const repository = this.resolveRepository();
     if (!repository) {
       this.warnAboutActiveFallback();
+      const startTime = filter.startDate ? new Date(filter.startDate).getTime() : null;
+      const endTime = filter.endDate ? new Date(filter.endDate).getTime() : null;
       const filtered = this.fallbackRows.filter((row) => {
         if (row.tenantId !== filter.tenantId) return false;
         if (filter.userId && row.userId !== filter.userId) return false;
         if (filter.action && row.action !== filter.action) return false;
         if (filter.targetType && row.targetType !== filter.targetType) return false;
+        const createdTime = new Date(row.createdAt).getTime();
+        if (startTime !== null && createdTime < startTime) return false;
+        if (endTime !== null && createdTime > endTime) return false;
         return true;
       });
 

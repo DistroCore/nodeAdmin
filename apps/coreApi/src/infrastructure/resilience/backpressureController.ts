@@ -52,6 +52,18 @@ export class BackpressureController {
 
   checkCapacity(queueSize: number): BackpressureStatus {
     this.currentQueueSize = queueSize;
+    const status = this.calculateStatus(queueSize);
+
+    if (status.zone === BackpressureZone.RED) {
+      this.recordRejection('queue_full');
+    } else if (status.zone === BackpressureZone.YELLOW) {
+      this.warnIfNeeded(queueSize);
+    }
+
+    return status;
+  }
+
+  private calculateStatus(queueSize: number): BackpressureStatus {
     const totalLoad = this.currentConcurrent + queueSize;
     const maxLoad = this.config.maxConcurrent + this.config.maxQueueSize;
     const utilizationPercent = (totalLoad / maxLoad) * 100;
@@ -65,10 +77,8 @@ export class BackpressureController {
     } else if (queueSize >= this.config.rejectThreshold) {
       zone = BackpressureZone.RED;
       shouldReject = true;
-      this.recordRejection('queue_full');
     } else if (queueSize >= this.config.warnThreshold) {
       zone = BackpressureZone.YELLOW;
-      this.warnIfNeeded(queueSize);
     } else {
       zone = BackpressureZone.GREEN;
     }
@@ -97,7 +107,7 @@ export class BackpressureController {
   }
 
   getStatus(): BackpressureStatus {
-    return this.checkCapacity(this.currentQueueSize);
+    return this.calculateStatus(this.currentQueueSize);
   }
 
   reset(): void {

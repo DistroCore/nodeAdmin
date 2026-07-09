@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AuditLogRepository, StoredAuditLog } from '../database/auditLogRepository';
 import { AuditLogService } from './auditLogService';
 
@@ -30,6 +30,10 @@ function createRepositoryMock() {
 describe('AuditLogService', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('stores audit rows in memory when the repository is unavailable and applies filters with pagination', async () => {
@@ -105,6 +109,47 @@ describe('AuditLogService', () => {
     expect(result.total).toBe(200);
     expect(result.items[0]?.action).toBe('audit.204');
     expect(result.items.at(-1)?.action).toBe('audit.5');
+  });
+
+  it('applies inclusive date filters to fallback audit rows', async () => {
+    vi.useFakeTimers();
+    const service = new AuditLogService();
+
+    for (const [createdAt, action] of [
+      ['2026-05-01T00:00:00.000Z', 'audit.before'],
+      ['2026-05-10T00:00:00.000Z', 'audit.start'],
+      ['2026-05-15T00:00:00.000Z', 'audit.middle'],
+      ['2026-05-20T00:00:00.000Z', 'audit.end'],
+      ['2026-06-01T00:00:00.000Z', 'audit.after'],
+    ] as const) {
+      vi.setSystemTime(new Date(createdAt));
+      await service.record({
+        action,
+        tenantId: 'tenant-1',
+        traceId: `${action}-trace`,
+        userId: 'user-1',
+      });
+    }
+
+    const range = await service.listByFilter(
+      {
+        tenantId: 'tenant-1',
+        startDate: '2026-05-10T00:00:00.000Z',
+        endDate: '2026-05-20T00:00:00.000Z',
+      },
+      1,
+      10,
+    );
+    const fromStart = await service.listByFilter(
+      { tenantId: 'tenant-1', startDate: '2026-06-01T00:00:00.000Z' },
+      1,
+      10,
+    );
+    const throughEnd = await service.listByFilter({ tenantId: 'tenant-1', endDate: '2026-05-01T00:00:00.000Z' }, 1, 10);
+
+    expect(range.items.map((row) => row.action)).toEqual(['audit.end', 'audit.middle', 'audit.start']);
+    expect(fromStart.items.map((row) => row.action)).toEqual(['audit.after']);
+    expect(throughEnd.items.map((row) => row.action)).toEqual(['audit.before']);
   });
 
   it('delegates persistence and filtered reads to the repository when available', async () => {

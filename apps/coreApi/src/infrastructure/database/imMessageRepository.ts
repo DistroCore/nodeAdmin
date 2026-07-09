@@ -259,7 +259,9 @@ export class ImMessageRepository {
 
   async updateContent(tenantId: string, messageId: string, content: string): Promise<StoredMessage | null> {
     if (!this.pool) {
-      return this.inMemoryStore.updateContent(tenantId, '', messageId, content);
+      const existingMessage = this.inMemoryStore.findById(tenantId, messageId);
+      if (!existingMessage) return null;
+      return this.inMemoryStore.updateContent(tenantId, existingMessage.conversationId, messageId, content);
     }
 
     return this.runWithTenant(tenantId, async (client) => {
@@ -282,7 +284,9 @@ export class ImMessageRepository {
 
   async softDelete(tenantId: string, messageId: string): Promise<StoredMessage | null> {
     if (!this.pool) {
-      return this.inMemoryStore.softDelete(tenantId, '', messageId);
+      const existingMessage = this.inMemoryStore.findById(tenantId, messageId);
+      if (!existingMessage) return null;
+      return this.inMemoryStore.softDelete(tenantId, existingMessage.conversationId, messageId);
     }
 
     return this.runWithTenant(tenantId, async (client) => {

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BackpressureController, BackpressureZone } from './backpressureController';
 
 describe('BackpressureController', () => {
@@ -50,6 +50,20 @@ describe('BackpressureController', () => {
       expect(status.currentLoad).toBe(2500);
       expect(status.maxLoad).toBe(6000);
       expect(status.utilizationPercent).toBeCloseTo(41.67, 1);
+    });
+
+    it('should keep status reads free of rejection side effects', () => {
+      const recordRejection = vi.spyOn(
+        controller as unknown as { recordRejection: (reason: string) => void },
+        'recordRejection',
+      );
+
+      controller.checkCapacity(4600);
+      expect(recordRejection).toHaveBeenCalledTimes(1);
+
+      recordRejection.mockClear();
+      expect(controller.getStatus().zone).toBe(BackpressureZone.RED);
+      expect(recordRejection).not.toHaveBeenCalled();
     });
   });
 
