@@ -122,14 +122,14 @@ Status legend:
 - [x] Modernizer module — analyze / docSync / controller (part of `dff4c45` batch)
 - [x] Plugin marketplace Phase 0+1+2 — manifest schema, dynamic NestJS module registration, plugin sandbox, install/uninstall/publish API, auto-update service, version management (`e11a5d9`)
 - [x] TenantContext abstraction + `SINGLE_TENANT_MODE` switch (`d132602`)
-- [ ] TD-1: upgrade/replace `@nestjs/swagger@11.2.6` to escape exact-pinned `lodash` / `path-to-regexp` (allowlist expiry 2026-07-07)
+- [x] TD-1: `@nestjs/swagger@11.2.6` 锁死 lodash/path-to-regexp —— D-020 defer（迁移代价过大、可利用性近零），allowlist 延至 2027-01-07，2026-10-08 复核
 
 ### Frontend
 
 - [x] Audit log timeline UI + filters (`auditLogPanel.tsx`, Timeline primitive)
 - [x] Plugin marketplace UI — marketplace page, detail page, installed plugins management, settings page
 - [x] Button + Link a11y fixes (`07d0942`, `2cdb769`) — export `buttonVariants`, eliminate invalid `<Button><Link/></Button>` nesting
-- [ ] TD-2: resolve `react-intl@10.1.1` vs `@types/react@18.3.28` peer conflict so that `npm install` can regenerate the lockfile from scratch (currently only `npm ci` works)
+- [x] TD-2: react-intl peer 冲突 —— D-021 闭环：降级到 react-intl@7.1.14（PR #48），`npm install` 可重建 lockfile
 
 ### Quality and Platform
 
@@ -141,7 +141,7 @@ Status legend:
 - [x] Build artifact shared between `build` and `test-integration` jobs via `actions/upload-artifact`
 - [x] Frontend unit warnings cleaned up (BacklogPanel duplicate-key, LoginPage `act()`, plugin marketplace Button+Link)
 - [x] drizzle-orm 0.45.1 → 0.45.2 patching GHSA-gpj5-g38j-94v9 SQL injection (`f2ee0d8`), caught by new audit-ci gate
-- [ ] TD-3: root-cause Playwright E2E flake (removed from CI in `c33a0fc`) before re-adding E2E job
+- [x] TD-3: Playwright E2E flaky —— 已闭环：消除 waitForTimeout/networkidle、CI 用 vite preview、E2E 重接入 CI（`13a97e7`）
 
 ## Quick Commands
 
@@ -166,4 +166,4 @@ Status legend:
 - `npx audit-ci --config audit-ci.jsonc`
 - `node scripts/checkAuditAllowlistExpiry.cjs`
 
-Last updated: 2026-04-08 (Phase 5 added, reflecting post-M3 delivery and open tech debt)
+Last updated: 2026-07-09（Phase 5 持续：D-022 RBAC 布尔列统一、D-023 IM/outbox/auth Repository 落地；TD-1/2/3 对齐 decisionLog 闭环状态——TD-1 defer 至 2027-01-07、TD-2 react-intl 降级闭环、TD-3 E2E 重接入 CI 闭环）
