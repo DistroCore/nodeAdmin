@@ -361,16 +361,13 @@ export class AuthService {
     const client = await this.userRepository.acquireClient(tenantId);
     try {
       await client.query('BEGIN');
-      await client.query(
-        `INSERT INTO users (id, tenant_id, email, password_hash, name) VALUES ($1, $2, $3, $4, $5)`,
-        [
-          userId,
-          tenantId,
-          providerUserInfo.email ?? `${userId}@oauth.${provider}`,
-          '',
-          providerUserInfo.name ?? null,
-        ],
-      );
+      await client.query(`INSERT INTO users (id, tenant_id, email, password_hash, name) VALUES ($1, $2, $3, $4, $5)`, [
+        userId,
+        tenantId,
+        providerUserInfo.email ?? `${userId}@oauth.${provider}`,
+        '',
+        providerUserInfo.name ?? null,
+      ]);
       await this.userRepository.assignDefaultRole(tenantId, userId, client);
       await this.oauthAccountRepository.insert(
         tenantId,

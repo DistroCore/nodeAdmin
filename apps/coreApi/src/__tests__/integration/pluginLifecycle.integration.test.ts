@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, symlink, unlink } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { Pool } from 'pg';
+import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createIntegrationContext, type IntegrationContext } from './integrationHarness';
 
@@ -36,7 +36,9 @@ describe('plugin lifecycle integration', () => {
 
   afterAll(async () => {
     if (pool) {
-      await pool.query('DELETE FROM tenant_plugins WHERE plugin_name = $1', [FIXTURE_PLUGIN_ID]);
+      await runWithTenant(pool, 'default', (client) =>
+        client.query('DELETE FROM tenant_plugins WHERE plugin_name = $1', [FIXTURE_PLUGIN_ID]),
+      );
       await pool.query('DELETE FROM plugin_versions WHERE plugin_id = $1', [FIXTURE_PLUGIN_ID]);
       await pool.query('DELETE FROM plugin_registry WHERE id = $1', [FIXTURE_PLUGIN_ID]);
       await pool.end();
@@ -60,15 +62,17 @@ describe('plugin lifecycle integration', () => {
 
     expect(installResponse.status).toBe(201);
 
-    const installedRow = await pool.query<{
-      config: Record<string, unknown>;
-      enabled: boolean;
-      installed_version: string | null;
-    }>(
-      `SELECT enabled, installed_version, config
-       FROM tenant_plugins
-       WHERE tenant_id = $1 AND plugin_name = $2`,
-      ['default', FIXTURE_PLUGIN_ID],
+    const installedRow = await runWithTenant(pool, 'default', (client) =>
+      client.query<{
+        config: Record<string, unknown>;
+        enabled: boolean;
+        installed_version: string | null;
+      }>(
+        `SELECT enabled, installed_version, config
+         FROM tenant_plugins
+         WHERE tenant_id = $1 AND plugin_name = $2`,
+        ['default', FIXTURE_PLUGIN_ID],
+      ),
     );
 
     expect(installedRow.rows[0]).toMatchObject({
@@ -83,11 +87,13 @@ describe('plugin lifecycle integration', () => {
 
     expect(uninstallResponse.status).toBe(200);
 
-    const remainingRow = await pool.query(
-      `SELECT 1
-       FROM tenant_plugins
-       WHERE tenant_id = $1 AND plugin_name = $2`,
-      ['default', FIXTURE_PLUGIN_ID],
+    const remainingRow = await runWithTenant(pool, 'default', (client) =>
+      client.query(
+        `SELECT 1
+         FROM tenant_plugins
+         WHERE tenant_id = $1 AND plugin_name = $2`,
+        ['default', FIXTURE_PLUGIN_ID],
+      ),
     );
 
     expect(remainingRow.rowCount).toBe(0);
@@ -103,6 +109,22 @@ describe('plugin lifecycle integration', () => {
     });
   });
 });
+
+async function runWithTenant<T>(pool: Pool, tenantId: string, work: (client: PoolClient) => Promise<T>): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [tenantId]);
+    const result = await work(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
 
 async function seedMarketplacePlugin(pool: Pool): Promise<void> {
   const manifest = await readFile(join(FIXTURE_ROOT, 'nodeadmin-plugin.json'), 'utf8');

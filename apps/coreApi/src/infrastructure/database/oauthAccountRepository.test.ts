@@ -20,10 +20,10 @@ describe('OAuthAccountRepository', () => {
       const result = await repo.findByProvider('github', '12345');
 
       expect(result).toEqual({ userId: 'user-1', name: 'Octo', isActive: true });
-      expect(pool.query).toHaveBeenCalledWith(
-        expect.stringContaining('JOIN users u ON u.id = oa.user_id'),
-        ['github', '12345'],
-      );
+      expect(pool.query).toHaveBeenCalledWith(expect.stringContaining('JOIN users u ON u.id = oa.user_id'), [
+        'github',
+        '12345',
+      ]);
     });
 
     it('returns null when no link exists', async () => {

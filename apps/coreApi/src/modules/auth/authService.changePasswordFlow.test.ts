@@ -76,9 +76,9 @@ describe('AuthService changePassword flow', () => {
     });
 
     // Returns BadRequest (400), not Unauthorized — see authService.changePassword rationale.
-    await expect(
-      service.changePassword('user-1', 'tenant-a', 'WrongCurrentP@ss', 'NewP@ssword2'),
-    ).rejects.toThrow('Current password is incorrect.');
+    await expect(service.changePassword('user-1', 'tenant-a', 'WrongCurrentP@ss', 'NewP@ssword2')).rejects.toThrow(
+      'Current password is incorrect.',
+    );
     expect(mocks.userRepository.updatePassword).not.toHaveBeenCalled();
   });
 });

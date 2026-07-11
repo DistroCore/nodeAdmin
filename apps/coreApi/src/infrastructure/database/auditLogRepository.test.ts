@@ -32,7 +32,8 @@ function createMockDb(selectRows: unknown[] = [], countRows: Array<{ total: numb
   const selChain = createSelectChain(selectRows);
   const cntChain = createCountChain(countRows);
 
-  return {
+  const db = {
+    execute: vi.fn().mockResolvedValue(undefined),
     insert: vi.fn().mockReturnValue({
       values: vi.fn().mockResolvedValue(undefined),
     }),
@@ -44,9 +45,13 @@ function createMockDb(selectRows: unknown[] = [], countRows: Array<{ total: numb
       // regular select
       return selChain;
     }),
+    transaction: vi.fn(),
     _selChain: selChain,
     _cntChain: cntChain,
   };
+
+  db.transaction.mockImplementation(async (callback) => callback(db));
+  return db;
 }
 
 describe('AuditLogRepository', () => {
@@ -73,6 +78,8 @@ describe('AuditLogRepository', () => {
       });
 
       expect(mockDb.insert).toHaveBeenCalledTimes(1);
+      expect(mockDb.transaction).toHaveBeenCalledTimes(1);
+      expect(mockDb.execute).toHaveBeenCalledTimes(1);
 
       const insertMock = mockDb.insert.mock.results[0].value;
       expect(insertMock.values).toHaveBeenCalledTimes(1);
@@ -151,6 +158,8 @@ describe('AuditLogRepository', () => {
 
       const results = await repo.findByFilter({ tenantId: 'tenant-1' }, 1, 10);
 
+      expect(mockDb.transaction).toHaveBeenCalledTimes(1);
+      expect(mockDb.execute).toHaveBeenCalledTimes(1);
       expect(results).toHaveLength(2);
       expect(results[0]).toEqual<StoredAuditLog>({
         id: 'log-1',
@@ -218,6 +227,8 @@ describe('AuditLogRepository', () => {
       repo = new AuditLogRepository(mockDb as never);
 
       const total = await repo.countByFilter({ tenantId: 'tenant-1' });
+      expect(mockDb.transaction).toHaveBeenCalledTimes(1);
+      expect(mockDb.execute).toHaveBeenCalledTimes(1);
       expect(total).toBe(42);
     });
 

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ConnectionRegistry } from '../../infrastructure/connectionRegistry';
 import { MetricsController, ConsoleController } from './consoleController';
 
 function createMockAuditLogService() {
@@ -65,6 +66,12 @@ describe('MetricsController', () => {
 });
 
 describe('ConsoleController', () => {
+  const identity = {
+    jti: 'jti-1',
+    roles: ['admin'],
+    tenantId: 'tenant-1',
+    userId: 'user-1',
+  };
   let controller: ConsoleController;
   let auditLogService: ReturnType<typeof createMockAuditLogService>;
   let connectionRegistry: ReturnType<typeof createMockConnectionRegistry>;
@@ -103,7 +110,10 @@ describe('ConsoleController', () => {
     vi.spyOn(controller as never, 'buildOverviewTodos').mockResolvedValue(['Follow up high-priority backlog tasks']);
     vi.spyOn(process, 'uptime').mockReturnValue(7500);
 
-    const result = await controller.getOverview();
+    const result = await controller.getOverview(identity);
+
+    expect((controller as never).countAllConversations).toHaveBeenCalledWith('tenant-1');
+    expect((controller as never).countTodayMessages).toHaveBeenCalledWith('tenant-1');
 
     expect(result).toEqual({
       stats: [
@@ -117,6 +127,39 @@ describe('ConsoleController', () => {
     });
   });
 
+  it('reports unique users from the live shared connection registry', async () => {
+    const sharedConnectionRegistry = new ConnectionRegistry();
+    controller = new ConsoleController(
+      auditLogService as never,
+      sharedConnectionRegistry,
+      conversationRepository as never,
+      databaseService as never,
+      tenantsService as never,
+    );
+    tenantsService.list.mockResolvedValue([]);
+    vi.spyOn(controller as never, 'countAllConversations').mockResolvedValue(0);
+    vi.spyOn(controller as never, 'countTodayMessages').mockResolvedValue(0);
+    vi.spyOn(controller as never, 'buildOverviewTodos').mockResolvedValue([]);
+
+    sharedConnectionRegistry.upsert('socket-1', {
+      conversationId: 'conversation-1',
+      tenantId: 'tenant-1',
+      userId: 'user-1',
+    });
+    sharedConnectionRegistry.upsert('socket-2', {
+      conversationId: 'conversation-2',
+      tenantId: 'tenant-1',
+      userId: 'user-1',
+    });
+
+    const result = await controller.getOverview(identity);
+
+    expect(result.stats).toContainEqual({
+      label: 'overview.stat.onlineUsers',
+      value: '1',
+    });
+  });
+
   it('keeps overview responsive when tenant loading fails and surfaces an actionable todo', async () => {
     tenantsService.list.mockRejectedValue(new Error('tenants unavailable'));
     connectionRegistry.totalUniqueUsers.mockReturnValue(0);
@@ -127,7 +170,7 @@ describe('ConsoleController', () => {
     ]);
     vi.spyOn(process, 'uptime').mockReturnValue(120);
 
-    const result = await controller.getOverview();
+    const result = await controller.getOverview(identity);
 
     expect(result).toEqual({
       stats: [

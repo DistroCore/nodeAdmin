@@ -151,6 +151,36 @@ describe('OutboxPublisherService', () => {
     expect(pool.end).not.toHaveBeenCalled();
   });
 
+  it('waits for an in-flight publish before disconnecting Kafka', async () => {
+    const sendDeferred = createDeferred<void>();
+    const client = createMockClient([
+      { rowCount: 0, rows: [] },
+      { rowCount: 1, rows: [createOutboxRow()] },
+      { rowCount: 1, rows: [] },
+      { rowCount: 0, rows: [] },
+    ]);
+    const pool = createMockPool();
+    pool.connect = vi.fn(async () => client);
+    const producer = {
+      disconnect: vi.fn().mockResolvedValue(undefined),
+      send: vi.fn(() => sendDeferred.promise),
+    };
+    assignInternals(service, { pool, producer });
+
+    const publish = invokePublishBatch(service);
+    await vi.waitFor(() => expect(producer.send).toHaveBeenCalledTimes(1));
+    const destroy = service.onModuleDestroy();
+    await Promise.resolve();
+
+    expect(producer.disconnect).not.toHaveBeenCalled();
+
+    sendDeferred.resolve(undefined);
+    await Promise.all([publish, destroy]);
+
+    expect(producer.disconnect).toHaveBeenCalledTimes(1);
+    expect(producer.send.mock.invocationCallOrder[0]).toBeLessThan(producer.disconnect.mock.invocationCallOrder[0]);
+  });
+
   it('increments retry_count when Kafka is unavailable but max retry is not reached', async () => {
     const originalMaxRetry = runtimeConfig.outbox.maxRetry;
     runtimeConfig.outbox.maxRetry = 5;

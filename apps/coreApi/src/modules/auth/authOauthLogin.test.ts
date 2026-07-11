@@ -59,13 +59,7 @@ describe('AuthService OAuth Login', () => {
     // insert run through their repository mocks (so they don't hit the fake client) — what we
     // verify here is the outer transaction shell that the service orchestrates.
     const sqls = clientCalls.map((c) => c.sql);
-    expect(sqls).toEqual(
-      expect.arrayContaining([
-        'BEGIN',
-        expect.stringContaining('INSERT INTO users'),
-        'COMMIT',
-      ]),
-    );
+    expect(sqls).toEqual(expect.arrayContaining(['BEGIN', expect.stringContaining('INSERT INTO users'), 'COMMIT']));
     expect(mocks.userRepository.assignDefaultRole).toHaveBeenCalledWith('tenant-1', result.userId, fakeClient);
     // oauthAccountRepository.insert receives the SAME client so the link row shares the transaction.
     expect(mocks.oauthAccountRepository.insert).toHaveBeenCalledWith(

@@ -15,7 +15,10 @@ export default defineConfig({
     globalSetup: ['apps/coreApi/src/__tests__/globalSetup.ts'],
     coverage: {
       provider: 'v8',
-      include: ['apps/coreApi/src/{app,infrastructure,modules}/**/*.ts'],
+      include: [
+        'apps/coreApi/src/{app,infrastructure,modules}/**/*.ts',
+        'scripts/{checkAuditAllowlistExpiry,postgresBackup,postgresRestore}.cjs',
+      ],
       exclude: [
         'apps/coreApi/src/**/*.test.ts',
         'apps/coreApi/src/**/*.spec.ts',
@@ -27,6 +30,18 @@ export default defineConfig({
       thresholds: {
         statements: 70,
         branches: 60,
+        'apps/coreApi/src/app/filters/**': {
+          statements: 90,
+          branches: 80,
+        },
+        'apps/coreApi/src/infrastructure/**': {
+          statements: 80,
+          branches: 75,
+        },
+        'scripts/{checkAuditAllowlistExpiry,postgresBackup,postgresRestore}.cjs': {
+          statements: 75,
+          branches: 70,
+        },
       },
     },
   },

@@ -58,10 +58,10 @@ describe('OutboxPublisherService lifecycle', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('does not initialize Kafka without a database pool', async () => {
+  it('fails initialization without a dedicated database pool', async () => {
     const service = new OutboxPublisherService();
 
-    await service.onModuleInit();
+    await expect(service.onModuleInit()).rejects.toThrow('OUTBOX_DATABASE_URL is required');
 
     expect(kafkaMocks.Kafka).not.toHaveBeenCalled();
     expect(vi.getTimerCount()).toBe(0);
@@ -69,10 +69,9 @@ describe('OutboxPublisherService lifecycle', () => {
 
   it('does not initialize Kafka when no brokers are configured', async () => {
     runtimeConfig.kafka.brokers = [];
-    const service = new OutboxPublisherService();
-    assignPool(service, createMockPool());
+    const service = createService(createMockPool());
 
-    await service.onModuleInit();
+    await expect(service.onModuleInit()).rejects.toThrow('KAFKA_BROKERS is required');
 
     expect(kafkaMocks.Kafka).not.toHaveBeenCalled();
     expect(vi.getTimerCount()).toBe(0);
@@ -84,8 +83,7 @@ describe('OutboxPublisherService lifecycle', () => {
     pool.connect = vi.fn(async () => client);
     const producer = createProducer();
     installProducer(producer);
-    const service = new OutboxPublisherService();
-    assignPool(service, pool);
+    const service = createService(pool);
 
     await service.onModuleInit();
 
@@ -105,13 +103,29 @@ describe('OutboxPublisherService lifecycle', () => {
     expect(producer.disconnect).toHaveBeenCalledTimes(1);
   });
 
+  it('runs the scheduled retention cleanup callback', async () => {
+    runtimeConfig.outbox.cleanupIntervalMs = 1_000;
+    runtimeConfig.outbox.pollIntervalMs = 60_000;
+    const client = createMockClient();
+    const pool = createMockPool();
+    pool.connect = vi.fn(async () => client);
+    const producer = createProducer();
+    installProducer(producer);
+    const service = createService(pool);
+
+    await service.onModuleInit();
+    await vi.advanceTimersByTimeAsync(runtimeConfig.outbox.cleanupIntervalMs);
+
+    expect(client.calls.some((call) => call.sql.includes('DELETE FROM outbox_events'))).toBe(true);
+    await service.onModuleDestroy();
+  });
+
   it('omits the cleanup timer when retention is disabled', async () => {
     runtimeConfig.outbox.retentionDays = 0;
     const pool = createMockPool();
     const producer = createProducer();
     installProducer(producer);
-    const service = new OutboxPublisherService();
-    assignPool(service, pool);
+    const service = createService(pool);
 
     await service.onModuleInit();
 
@@ -123,10 +137,9 @@ describe('OutboxPublisherService lifecycle', () => {
     const producer = createProducer();
     producer.connect.mockRejectedValue(new Error('broker unavailable'));
     installProducer(producer);
-    const service = new OutboxPublisherService();
-    assignPool(service, createMockPool());
+    const service = createService(createMockPool());
 
-    await expect(service.onModuleInit()).resolves.toBeUndefined();
+    await expect(service.onModuleInit()).rejects.toThrow('broker unavailable');
 
     expect(producer.disconnect).toHaveBeenCalledTimes(1);
     expect(readProducer(service)).toBeNull();
@@ -150,8 +163,11 @@ function installProducer(producer: ProducerMock): void {
   });
 }
 
-function assignPool(service: OutboxPublisherService, pool: ReturnType<typeof createMockPool>): void {
-  (service as unknown as { pool: typeof pool }).pool = pool;
+function createService(pool: ReturnType<typeof createMockPool>): OutboxPublisherService {
+  return new OutboxPublisherService({
+    assertSafeRole: vi.fn().mockResolvedValue(undefined),
+    pool,
+  } as never);
 }
 
 function readProducer(service: OutboxPublisherService): unknown {

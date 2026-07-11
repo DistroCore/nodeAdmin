@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { WsException } from '@nestjs/websockets';
 import { randomUUID } from 'node:crypto';
 import { ConnectionRegistry, SocketContext } from '../../../infrastructure/connectionRegistry';
 import {
@@ -70,6 +71,11 @@ export class ImConversationService {
     conversationId: string,
     identity: AuthIdentity,
   ): Promise<JoinConversationResult> {
+    const conversation = await this.conversationRepository.findById(identity.tenantId, conversationId, identity.userId);
+    if (!conversation) {
+      throw new WsException('Conversation not found.');
+    }
+
     const context: SocketContext = {
       conversationId,
       tenantId: identity.tenantId,

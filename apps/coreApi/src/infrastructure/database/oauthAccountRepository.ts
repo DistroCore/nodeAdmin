@@ -35,10 +35,7 @@ export class OAuthAccountRepository {
    * Find a linked user by provider-scoped identity. Joins `users` to surface is_active / name so
    * the service can short-circuit disabled accounts in one round-trip.
    */
-  async findByProvider(
-    provider: string,
-    providerId: string,
-  ): Promise<LinkedOAuthAccount | null> {
+  async findByProvider(provider: string, providerId: string): Promise<LinkedOAuthAccount | null> {
     if (!this.pool) return null;
 
     const result = await this.pool.query<LinkedOAuthAccount>(
@@ -70,10 +67,12 @@ export class OAuthAccountRepository {
     client: PoolClient,
   ): Promise<void> {
     await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [tenantId]);
-    await client.query(
-      `INSERT INTO oauth_accounts (id, user_id, provider, provider_id) VALUES ($1, $2, $3, $4)`,
-      [id, userId, provider, providerId],
-    );
+    await client.query(`INSERT INTO oauth_accounts (id, user_id, provider, provider_id) VALUES ($1, $2, $3, $4)`, [
+      id,
+      userId,
+      provider,
+      providerId,
+    ]);
   }
 
   async listByUserId(userId: string): Promise<OAuthAccountSummary[]> {
@@ -98,10 +97,10 @@ export class OAuthAccountRepository {
   async deleteByUserAndProvider(userId: string, provider: string): Promise<number> {
     if (!this.pool) return 0;
 
-    const result = await this.pool.query(
-      'DELETE FROM oauth_accounts WHERE user_id = $1 AND provider = $2',
-      [userId, provider],
-    );
+    const result = await this.pool.query('DELETE FROM oauth_accounts WHERE user_id = $1 AND provider = $2', [
+      userId,
+      provider,
+    ]);
     return result.rowCount ?? 0;
   }
 }

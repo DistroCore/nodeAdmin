@@ -102,6 +102,7 @@ export class TenantsService {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
+      await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [id]);
       await client.query('DELETE FROM oauth_accounts WHERE user_id IN (SELECT id FROM users WHERE tenant_id = $1)', [
         id,
       ]);

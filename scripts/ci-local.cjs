@@ -6,7 +6,7 @@ const { argv } = require('process');
 const args = argv.slice(2);
 const runFull = args.includes('--full');
 const runAcceptance = args.includes('--acceptance');
-const runChecks = args.includes('--checks') || runFull;
+const runChecks = !args.includes('--no-checks');
 
 const GREEN = '\x1b[32m';
 const RED = '\x1b[31m';
@@ -86,6 +86,9 @@ function printSummary() {
   process.stdout.write(`${BOLD}═══════════════════════════════════════${RESET}\n`);
   const statusIcon = allPassed ? `${GREEN}${BOLD}PASS${RESET}` : `${RED}${BOLD}FAIL${RESET}`;
   process.stdout.write(`  ${statusIcon} — ${results.length} stages, ${totalElapsed}s total\n`);
+  if (allPassed && !runFull && !runAcceptance) {
+    process.stdout.write(`  ${YELLOW}Integration/RLS: NOT RUN (use npm run ci:local -- --full)${RESET}\n`);
+  }
   process.stdout.write(`${BOLD}═══════════════════════════════════════${RESET}\n`);
 }
 
@@ -97,7 +100,7 @@ async function main() {
   let stage1Pass = true;
   stage1Pass = runStage('Format Check', 'npm run format:check') && stage1Pass;
   stage1Pass = runStage('Lint', 'npm run lint') && stage1Pass;
-  stage1Pass = runStage('Unit Tests (backend)', 'npm run test:coreApi') && stage1Pass;
+  stage1Pass = runStage('Unit Tests + Coverage Gate (backend)', 'npm run test:coreApi:coverage') && stage1Pass;
   stage1Pass = runStage('Unit Tests (frontend)', 'npm run test:adminPortal') && stage1Pass;
   stage1Pass = runStage('Build', 'npm run build') && stage1Pass;
 

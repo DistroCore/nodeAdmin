@@ -20,11 +20,9 @@ describe('AuthService — resetPassword', () => {
     });
 
     let persistedHash: string | null = null;
-    mocks.userRepository.updatePassword.mockImplementation(
-      async (_tenantId: string, _userId: string, hash: string) => {
-        persistedHash = hash;
-      },
-    );
+    mocks.userRepository.updatePassword.mockImplementation(async (_tenantId: string, _userId: string, hash: string) => {
+      persistedHash = hash;
+    });
 
     await service.resetPassword('user@example.com', 'newPassword123', 'tenant-1');
 

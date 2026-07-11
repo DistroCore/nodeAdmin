@@ -7,10 +7,13 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      pgbouncer:
+        condition: service_healthy
       redis:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://nodeadmin:nodeadmin@postgres:5432/nodeadmin
+      DATABASE_URL: postgres://nodeadmin_app:nodeadmin@pgbouncer:5432/nodeadmin
+      OUTBOX_DATABASE_URL: postgres://nodeadmin_outbox:nodeadmin@postgres:5432/nodeadmin
       # DATABASE_URL_FILE: /run/secrets/database_url
       REDIS_URL: redis://redis:6379
       PORT: '11451'

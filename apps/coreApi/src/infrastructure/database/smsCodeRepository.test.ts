@@ -14,10 +14,7 @@ describe('SmsCodeRepository', () => {
       const count = await repo.countRecentByPhone('13800138000', 60_000);
 
       expect(count).toBe(2);
-      expect(pool.query).toHaveBeenCalledWith(
-        expect.stringContaining('created_at > now()'),
-        ['13800138000', '60000'],
-      );
+      expect(pool.query).toHaveBeenCalledWith(expect.stringContaining('created_at > now()'), ['13800138000', '60000']);
     });
 
     it('returns 0 when the pool is unavailable', async () => {
@@ -34,10 +31,12 @@ describe('SmsCodeRepository', () => {
 
       await repo.insert('sms-id', '13800138000', '123456', 5 * 60 * 1000);
 
-      expect(pool.query).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO sms_codes'),
-        ['sms-id', '13800138000', '123456', '300000'],
-      );
+      expect(pool.query).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO sms_codes'), [
+        'sms-id',
+        '13800138000',
+        '123456',
+        '300000',
+      ]);
       expect(pool.query).toHaveBeenNthCalledWith(
         1,
         expect.stringContaining('now() +'),
@@ -48,9 +47,7 @@ describe('SmsCodeRepository', () => {
 
   describe('findValidByPhoneAndCode', () => {
     it('joins users within the tenant and surfaces userId + isActive', async () => {
-      const pool = createMockPool([
-        { rows: [{ id: 'sms-1', userId: 'user-1', isActive: true }], rowCount: 1 },
-      ]);
+      const pool = createMockPool([{ rows: [{ id: 'sms-1', userId: 'user-1', isActive: true }], rowCount: 1 }]);
       const repo = new SmsCodeRepository(pool);
 
       const result = await repo.findValidByPhoneAndCode('13800138000', '123456', 'tenant-1');

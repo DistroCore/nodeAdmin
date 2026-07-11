@@ -183,6 +183,7 @@ describe('Multi-tenant isolation (mock)', () => {
         tenantId: string;
       };
       expect(values.tenantId).toBe(TENANT_A);
+      expect(mockDb.execute).toHaveBeenCalledTimes(1);
     });
 
     it('AuditLogRepository.findByFilter only returns rows from the requested tenant', async () => {
@@ -197,6 +198,7 @@ describe('Multi-tenant isolation (mock)', () => {
           tenantId: TENANT_A,
         }),
       ]);
+      expect(mockDb.execute).toHaveBeenCalledTimes(1);
     });
 
     it('AuditLogRepository.countByFilter counts rows only within one tenant scope', async () => {
@@ -204,6 +206,7 @@ describe('Multi-tenant isolation (mock)', () => {
       const repository = new AuditLogRepository(mockDb as never);
 
       await expect(repository.countByFilter({ tenantId: TENANT_B })).resolves.toBe(1);
+      expect(mockDb.execute).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -481,7 +484,8 @@ function createAuditLogDb(
   };
   countChain.from.mockReturnValue(countChain);
 
-  return {
+  const db = {
+    execute: vi.fn().mockResolvedValue(undefined),
     insert: vi.fn().mockReturnValue({
       values: vi.fn().mockResolvedValue(undefined),
     }),
@@ -492,7 +496,10 @@ function createAuditLogDb(
 
       return selectChain;
     }),
+    transaction: vi.fn(),
   };
+  db.transaction.mockImplementation(async (callback) => callback(db));
+  return db;
 }
 
 async function runWithTenant<T>(

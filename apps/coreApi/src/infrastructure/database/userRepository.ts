@@ -101,27 +101,22 @@ export class UserRepository {
     client?: PoolClient,
   ): Promise<void> {
     await this.runWith(tenantId, client, async (c) => {
-      await c.query(
-        `INSERT INTO users (id, tenant_id, email, password_hash, name) VALUES ($1, $2, $3, $4, $5)`,
-        [userId, tenantId, email, passwordHash, name],
-      );
+      await c.query(`INSERT INTO users (id, tenant_id, email, password_hash, name) VALUES ($1, $2, $3, $4, $5)`, [
+        userId,
+        tenantId,
+        email,
+        passwordHash,
+        name,
+      ]);
     });
   }
 
   /**
    * Update a user's password hash. `client` participates in the caller's transaction when provided.
    */
-  async updatePassword(
-    tenantId: string,
-    userId: string,
-    passwordHash: string,
-    client?: PoolClient,
-  ): Promise<void> {
+  async updatePassword(tenantId: string, userId: string, passwordHash: string, client?: PoolClient): Promise<void> {
     await this.runWith(tenantId, client, async (c) => {
-      await c.query('UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2', [
-        passwordHash,
-        userId,
-      ]);
+      await c.query('UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2', [passwordHash, userId]);
     });
   }
 
@@ -132,9 +127,7 @@ export class UserRepository {
   async findNameById(userId: string): Promise<string | null> {
     if (!this.pool) return null;
 
-    const result = await this.pool.query<{ name: string | null }>('SELECT name FROM users WHERE id = $1', [
-      userId,
-    ]);
+    const result = await this.pool.query<{ name: string | null }>('SELECT name FROM users WHERE id = $1', [userId]);
     return result.rows[0]?.name ?? null;
   }
 
@@ -157,11 +150,7 @@ export class UserRepository {
    * Assign the default 'viewer' role to a freshly created user. Called inside the registration
    * transaction — `client` is required so the insert shares BEGIN/COMMIT with the users insert.
    */
-  async assignDefaultRole(
-    tenantId: string,
-    userId: string,
-    client: PoolClient,
-  ): Promise<void> {
+  async assignDefaultRole(tenantId: string, userId: string, client: PoolClient): Promise<void> {
     await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [tenantId]);
     await client.query(
       `INSERT INTO user_roles (user_id, role_id) SELECT $1, id FROM roles WHERE tenant_id = $2 AND name = 'viewer' LIMIT 1`,
@@ -189,10 +178,13 @@ export class UserRepository {
     await client.query('BEGIN');
     try {
       await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [tenantId]);
-      await client.query(
-        `INSERT INTO users (id, tenant_id, email, password_hash, name) VALUES ($1, $2, $3, $4, $5)`,
-        [userId, tenantId, email, passwordHash, name],
-      );
+      await client.query(`INSERT INTO users (id, tenant_id, email, password_hash, name) VALUES ($1, $2, $3, $4, $5)`, [
+        userId,
+        tenantId,
+        email,
+        passwordHash,
+        name,
+      ]);
       await client.query(
         `INSERT INTO user_roles (user_id, role_id) SELECT $1, id FROM roles WHERE tenant_id = $2 AND name = 'viewer' LIMIT 1`,
         [userId, tenantId],

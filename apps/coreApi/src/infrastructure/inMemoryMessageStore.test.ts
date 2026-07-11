@@ -68,6 +68,17 @@ describe('InMemoryMessageStore', () => {
       const result = store.updateContent('tenant-1', 'conversation-1', 'm99', 'x');
       expect(result).toBeNull();
     });
+
+    it('returns null without changing content after the message is deleted', () => {
+      const store = new InMemoryMessageStore();
+      store.append(createMessage('m1'));
+      store.softDelete('tenant-1', 'conversation-1', 'm1');
+
+      const updated = store.updateContent('tenant-1', 'conversation-1', 'm1', 'restored content');
+
+      expect(updated).toBeNull();
+      expect(store.findById('tenant-1', 'm1')).toMatchObject({ content: '', editedAt: null });
+    });
   });
 
   describe('softDelete', () => {
@@ -87,6 +98,18 @@ describe('InMemoryMessageStore', () => {
 
       const result = store.softDelete('tenant-1', 'conversation-1', 'm99');
       expect(result).toBeNull();
+    });
+
+    it('returns null when the same message is deleted twice', () => {
+      const store = new InMemoryMessageStore();
+      store.append(createMessage('m1'));
+
+      const firstDelete = store.softDelete('tenant-1', 'conversation-1', 'm1');
+      const secondDelete = store.softDelete('tenant-1', 'conversation-1', 'm1');
+
+      expect(firstDelete).not.toBeNull();
+      expect(secondDelete).toBeNull();
+      expect(store.findById('tenant-1', 'm1')?.deletedAt).toBe(firstDelete?.deletedAt);
     });
   });
 

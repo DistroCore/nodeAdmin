@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import type { Pool } from 'pg';
 import { AuthModule } from '../auth/authModule';
-import { ConnectionRegistry } from '../../infrastructure/connectionRegistry';
 import { ConversationRepository } from '../../infrastructure/database/conversationRepository';
 import { DatabaseService } from '../../infrastructure/database/databaseService';
 import { InMemoryMessageStore } from '../../infrastructure/inMemoryMessageStore';
@@ -21,7 +20,6 @@ import { ImUploadController } from './imUploadController';
   providers: [
     ImGateway,
     WsTenantGuard,
-    ConnectionRegistry,
     InMemoryMessageStore,
     // Repositories receive the drizzle client / pg Pool directly (not DatabaseService) to keep the
     // controller→service→repository layering clean; the Service dependency lives here in the module.

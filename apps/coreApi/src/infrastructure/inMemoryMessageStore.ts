@@ -114,7 +114,7 @@ export class InMemoryMessageStore {
     if (!messageById) return null;
 
     const msg = messageById.get(messageId);
-    if (!msg) return null;
+    if (!msg || msg.deletedAt !== null) return null;
 
     msg.content = content;
     msg.editedAt = new Date().toISOString();
@@ -127,7 +127,7 @@ export class InMemoryMessageStore {
     if (!messageById) return null;
 
     const msg = messageById.get(messageId);
-    if (!msg) return null;
+    if (!msg || msg.deletedAt !== null) return null;
 
     msg.content = '';
     msg.deletedAt = new Date().toISOString();

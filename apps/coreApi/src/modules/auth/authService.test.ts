@@ -307,11 +307,7 @@ describe('AuthService', () => {
 
       await service.changePassword('user-1', 'tenant-1', 'old-password', 'newpass123');
 
-      expect(mocks.userRepository.updatePassword).toHaveBeenCalledWith(
-        'tenant-1',
-        'user-1',
-        expect.any(String),
-      );
+      expect(mocks.userRepository.updatePassword).toHaveBeenCalledWith('tenant-1', 'user-1', expect.any(String));
     });
   });
 });

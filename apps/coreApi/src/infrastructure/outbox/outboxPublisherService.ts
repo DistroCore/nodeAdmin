@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nest
 import { Kafka, Producer } from 'kafkajs';
 import { Pool, type PoolClient } from 'pg';
 import { runtimeConfig } from '../../app/runtimeConfig';
-import { DatabaseService } from '../database/databaseService';
+import { OutboxDatabaseService } from './outboxDatabaseService';
 
 interface OutboxRow {
   aggregate_id: string;
@@ -24,9 +24,13 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
   private isPublishing = false;
   private readonly pool: Pool | null;
   private producer: Producer | null = null;
+  private publishCompletion: Promise<void> | null = null;
 
-  constructor(@Inject(DatabaseService) databaseService: DatabaseService = new DatabaseService()) {
-    this.pool = (databaseService.drizzle?.$client as Pool | undefined) ?? null;
+  constructor(
+    @Inject(OutboxDatabaseService)
+    private readonly databaseService: OutboxDatabaseService = new OutboxDatabaseService(),
+  ) {
+    this.pool = databaseService.pool;
   }
 
   async onModuleInit(): Promise<void> {
@@ -35,16 +39,15 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
     }
 
     if (!this.pool) {
-      this.logger.warn('Outbox publisher enabled but DATABASE_URL is missing.');
-      return;
+      throw new Error('OUTBOX_DATABASE_URL is required when the outbox publisher is enabled.');
     }
 
     if (runtimeConfig.kafka.brokers.length === 0) {
-      this.logger.warn('Outbox publisher enabled but KAFKA_BROKERS is empty.');
-      return;
+      throw new Error('KAFKA_BROKERS is required when the outbox publisher is enabled.');
     }
 
     try {
+      await this.databaseService.assertSafeRole();
       const kafka = new Kafka({
         brokers: runtimeConfig.kafka.brokers,
         clientId: runtimeConfig.kafka.clientId,
@@ -64,15 +67,13 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
         `Outbox publisher enabled interval=${runtimeConfig.outbox.pollIntervalMs}ms batchSize=${runtimeConfig.outbox.batchSize} topic=${runtimeConfig.kafka.topic} dlq=${runtimeConfig.kafka.dlqTopic}.`,
       );
     } catch (error) {
-      this.logger.error(
-        'Failed to initialize Outbox publisher. Service will continue without outbox functionality.',
-        error,
-      );
+      this.logger.error('Failed to initialize Outbox publisher. Application startup will fail.', error);
       // Clean up resources if initialization failed
       if (this.producer) {
         await this.producer.disconnect().catch(() => {});
         this.producer = null;
       }
+      throw error;
     }
   }
 
@@ -87,22 +88,43 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
       this.cleanupIntervalHandle = null;
     }
 
-    if (this.producer) {
-      await this.producer.disconnect();
-      this.producer = null;
+    try {
+      if (this.publishCompletion) {
+        await this.publishCompletion;
+      }
+    } finally {
+      if (this.producer) {
+        await this.producer.disconnect();
+        this.producer = null;
+      }
     }
   }
 
-  private async publishBatch(): Promise<void> {
-    if (this.isPublishing || !this.pool || !this.producer) {
-      return;
+  private publishBatch(): Promise<void> {
+    if (this.publishCompletion) {
+      return this.publishCompletion;
+    }
+    const pool = this.pool;
+    const producer = this.producer;
+    if (!pool || !producer) {
+      return Promise.resolve();
     }
 
+    const completion = this.executePublishBatch(pool, producer);
+    this.publishCompletion = completion;
+    void completion.then(
+      () => this.clearPublishCompletion(completion),
+      () => this.clearPublishCompletion(completion),
+    );
+    return completion;
+  }
+
+  private async executePublishBatch(pool: Pool, producer: Producer): Promise<void> {
     this.isPublishing = true;
     let client: PoolClient | null = null;
 
     try {
-      client = await this.pool.connect();
+      client = await pool.connect();
       await client.query('BEGIN');
       const picked = await client.query<OutboxRow>(
         `
@@ -135,7 +157,7 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
         const payload = row.payload;
 
         try {
-          await this.producer.send({
+          await producer.send({
             messages: [
               {
                 headers: {
@@ -168,7 +190,7 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
 
           if (nextRetry >= runtimeConfig.outbox.maxRetry) {
             try {
-              await this.producer.send({
+              await producer.send({
                 messages: [
                   {
                     headers: {
@@ -237,6 +259,12 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
     } finally {
       client?.release();
       this.isPublishing = false;
+    }
+  }
+
+  private clearPublishCompletion(completion: Promise<void>): void {
+    if (this.publishCompletion === completion) {
+      this.publishCompletion = null;
     }
   }
 

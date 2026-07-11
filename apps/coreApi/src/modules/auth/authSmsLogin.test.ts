@@ -58,9 +58,7 @@ describe('AuthService SMS Login', () => {
       const { service, mocks } = createAuthServiceWithMocks();
       mocks.smsCodeRepository.findValidByPhoneAndCode.mockResolvedValue(null);
 
-      await expect(service.loginWithSms('13800138000', '000000', 'tenant-1')).rejects.toThrow(
-        /invalid.*code|expired/i,
-      );
+      await expect(service.loginWithSms('13800138000', '000000', 'tenant-1')).rejects.toThrow(/invalid.*code|expired/i);
       expect(mocks.smsCodeRepository.markUsed).not.toHaveBeenCalled();
     });
 
@@ -84,9 +82,7 @@ describe('AuthService SMS Login', () => {
         isActive: true,
       });
 
-      await expect(service.loginWithSms('13800138000', '123456', 'tenant-1')).rejects.toThrow(
-        /no user found/i,
-      );
+      await expect(service.loginWithSms('13800138000', '123456', 'tenant-1')).rejects.toThrow(/no user found/i);
     });
   });
 });

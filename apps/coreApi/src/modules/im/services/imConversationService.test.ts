@@ -20,6 +20,7 @@ function createMockMessageRepository() {
 function createMockConversationRepository() {
   return {
     create: vi.fn(),
+    findById: vi.fn(),
     listMembers: vi.fn(),
   };
 }
@@ -65,6 +66,7 @@ describe('ImConversationService', () => {
         userId: 'user-1',
       },
     ];
+    conversationRepository.findById.mockResolvedValue({ conversationId: 'conversation-1' });
     messageRepository.getLatest.mockResolvedValue(history);
 
     const result = await service.joinConversation('socket-1', 'conversation-1', identity);
@@ -74,6 +76,7 @@ describe('ImConversationService', () => {
       tenantId: identity.tenantId,
       userId: identity.userId,
     });
+    expect(conversationRepository.findById).toHaveBeenCalledWith('tenant-1', 'conversation-1', 'user-1');
     expect(messageRepository.getLatest).toHaveBeenCalledWith(identity.tenantId, 'conversation-1', 50);
     expect(result).toEqual({
       context: {
@@ -84,6 +87,17 @@ describe('ImConversationService', () => {
       history,
       roomKey: 'tenant-1::conversation-1',
     });
+  });
+
+  it('rejects non-members before registering the socket or loading history', async () => {
+    conversationRepository.findById.mockResolvedValue(null);
+
+    await expect(service.joinConversation('socket-1', 'conversation-private', identity)).rejects.toThrow(
+      'Conversation not found.',
+    );
+
+    expect(connectionRegistry.upsert).not.toHaveBeenCalled();
+    expect(messageRepository.getLatest).not.toHaveBeenCalled();
   });
 
   it('finds a connection context through the registry', () => {
