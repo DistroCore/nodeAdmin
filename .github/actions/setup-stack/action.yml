@@ -48,3 +48,10 @@ runs:
       if: inputs.migrate == 'true'
       shell: bash
       run: npm run db:migrate -w coreApi
+
+    # The outbox publisher requires OUTBOX_TOPIC / OUTBOX_DLQ_TOPIC to exist. Nothing else in CI
+    # creates them, so the M2 acceptance hung waiting on events that could never be published.
+    - name: Bootstrap Kafka Topics
+      if: contains(inputs.services, 'kafka')
+      shell: bash
+      run: npm run kafka:topics:bootstrap
