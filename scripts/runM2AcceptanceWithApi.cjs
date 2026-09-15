@@ -12,6 +12,8 @@ async function run() {
     OUTBOX_BATCH_SIZE: process.env.OUTBOX_BATCH_SIZE || '100',
     OUTBOX_POLL_INTERVAL_MS: process.env.OUTBOX_POLL_INTERVAL_MS || '500',
     OUTBOX_PUBLISHER_ENABLED: process.env.OUTBOX_PUBLISHER_ENABLED || 'true',
+    OUTBOX_DATABASE_URL:
+      process.env.OUTBOX_DATABASE_URL || 'postgres://nodeadmin_outbox:nodeadmin@localhost:55432/nodeadmin',
     OUTBOX_TOPIC: process.env.OUTBOX_TOPIC || 'im.events',
     PORT: process.env.PORT || '11451',
   };
