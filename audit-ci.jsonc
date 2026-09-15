@@ -10,6 +10,17 @@
 // whichever comes first. Entries past their expiry should be re-evaluated
 // and either removed (upstream fixed), replaced with a concrete fix, or
 // extended with fresh justification.
+//
+// 2026-09-15 re-triage — the allowlist went 15 entries → 1:
+//   `npm audit fix` (non-breaking) resolved the whole v0.2.0 batch:
+//     lodash 4.17.23→4.18.1, path-to-regexp 8.3.0→8.4.2, fast-uri 3.1.0→4.1.4,
+//     react-router 7.13.1→7.18.3, ws 8.18.3→8.21.3, brace-expansion 1.1.13→1.1.21.
+//   @nestjs/swagger moved 11.2.6→11.4.7, which finally unblocked the exact-pin
+//   deadlock tracked in D-020 — so the lodash and path-to-regexp entries are gone.
+//   @fastify/static moved ^9.0.0→^10.1.3 to match @nestjs/platform-fastify 11.2.4
+//   (11.2.4 requires ^10.1.2; the old ^9 range silently broke SwaggerModule
+//   static serving), which cleared its two advisories as a side effect.
+//   Prod high+ advisories: 21 → 1.
 {
   "$schema": "https://github.com/IBM/audit-ci/raw/main/docs/schema.json",
   "high": true,
@@ -18,69 +29,19 @@
   "report-type": "summary",
   //
   // NOTE: audit-ci dedupes advisories per package, so one GHSA ID per
-  // affected package is enough to cover both advisories listed on that
-  // package by `npm audit`. The complementary advisories (one extra per
-  // package) are intentionally left out to keep the allowlist lean:
-  //   lodash          — also GHSA-f23m-r3pf-42rh (prototype pollution)
-  //   path-to-regexp  — also GHSA-27v5-c462-wpq7 (ReDoS multiple wildcards)
-  // If a future audit-ci or registry change causes those to start matching
-  // independently, add them here with the same expiry.
+  // affected package is enough to cover the complementary advisory listed
+  // on that same package by `npm audit`.
   "allowlist": [
-    // ─── lodash (transitive via @nestjs/swagger@11.x and @nestjs/config@4.x) ───
-    // Fix requires @nestjs/swagger upgrade to a version that no longer
-    // exact-pins "lodash": "4.17.23". `npm audit fix --force` proposes a
-    // destructive downgrade to @nestjs/swagger@2.5.1 (6 years old), not acceptable.
-    //
-    // 2026-04-08 reassessment (D-020, T-P5-BE-01 trade-off note):
-    //   (a) upgrade @nestjs/swagger — latest is still 11.2.6, pin unchanged. Dead.
-    //   (b) `npm overrides`        — already verified ineffective on npm 11
-    //                                 + workspace setup (D-016). Dead.
-    //   (c) fork or migrate to zod-openapi/scalar — only viable path, but
-    //       requires touching ~70 controllers' @Api* decorators + every
-    //       @ApiProperty DTO + generator templates. Deferred.
-    //
-    // Practical exploitability in this codebase is near-zero:
-    //   - swagger UI gated by SWAGGER_ENABLED env (off by default in prod)
-    //   - vulnerable code path takes compile-time decorator input, not user input
-    //   - `_.template` is not invoked on attacker-controllable strings
-    // Risk accepted; revisit at 2026-10-08 (whether upstream has shipped a fix
-    // or whether we commit to the (c) migration).
-    // Expiry: 2027-01-07 (extended +6 months from 2026-07-07 per D-020).
-    "GHSA-r5fr-rjxr-66jc", // lodash: code injection via `_.template` key names
-
-    // ─── path-to-regexp (transitive via @nestjs/swagger@11.x) ───
-    // Same root cause: @nestjs/swagger@11.2.6 exact-pins "path-to-regexp": "8.3.0".
-    // @nestjs/core and @nestjs/platform-fastify already resolve to 8.4.2
-    // (non-vulnerable); only the swagger branch retains 8.3.0.
-    // Practical exploitability: paths consumed by swagger come from controller
-    // route metadata (compile-time, static), not user-controlled input.
-    // Same reassessment and revisit schedule as the lodash entry above.
-    // Expiry: 2027-01-07 (extended +6 months from 2026-07-07 per D-020).
-    "GHSA-j3q9-mxjg-w52f", // path-to-regexp: DoS via sequential optional groups
-
-    // ─── v0.2.0 release audit triage (2026-06-08) ───
-    // Batch of transitive high+ advisories newly surfaced by the GitHub advisory DB.
-    // All are pulled in by framework deps and have NO non-breaking fix:
-    // `npm audit fix` (non-force) does not resolve any of them; only `--force` does,
-    // which proposes major/breaking downgrades of @nestjs/platform-fastify,
-    // react-router-dom and @opentelemetry/* — not acceptable for a patch release.
-    // Tracked-debt: file a dep-upgrade ticket to re-evaluate after the next NestJS /
-    // react-router / opentelemetry minor bumps. Exploitability in this codebase is low
-    // (fast-uri/fastify paths take framework-validated routes; protobufjs is only reached
-    // via the otel prometheus exporter on the internal metrics port; react-router runs
-    // client-side behind auth). Expiry: 2026-09-08 (90-day review per policy).
-    "GHSA-247c-9743-5963", // fastify (via @nestjs/platform-fastify)
-    "GHSA-q3j6-qgpj-74h6", // fast-uri: ReDoS
-    "GHSA-v39h-62p7-jpjc", // fast-uri
-    "GHSA-49rj-9fvp-4h2h", // react-router (via react-router-dom)
-    "GHSA-8646-j5j9-6r62", // react-router
-    "GHSA-8x6r-g9mw-2r78", // react-router
-    "GHSA-rxv8-25v2-qmq8", // react-router
-    "GHSA-66ff-xgx4-vchm", // protobufjs (via @opentelemetry/exporter-prometheus)
-    "GHSA-685m-2w69-288q", // protobufjs
-    "GHSA-75px-5xx7-5xc7", // protobufjs
-    "GHSA-jvwf-75h9-cwgg", // protobufjs
-    "GHSA-xq3m-2v4x-88gg", // protobufjs
-    "GHSA-q7rr-3cgh-j5r3", // @opentelemetry/* (auto-instrumentations-node / sdk-node / exporter-prometheus)
+    // ─── @opentelemetry/* — Prometheus exporter crash on malformed request ───
+    // Path: @opentelemetry/auto-instrumentations-node → instrumentation-http /
+    //       sdk-node → exporter-prometheus.
+    // No non-breaking fix: the patched line requires an auto-instrumentations-node
+    // bump past 0.76.0, which `npm audit fix` cannot reach without --force.
+    // Exploitability is low in this codebase — the metrics port is internal-only and
+    // not exposed through the public ingress, so a malformed request has to originate
+    // from inside the trust boundary already.
+    // Revisit when the @opentelemetry/* line is next upgraded.
+    // Expiry: 2026-12-14 (90-day review per policy).
+    "GHSA-q7rr-3cgh-j5r3", // @opentelemetry/*: exporter crash via malformed request
   ],
 }
