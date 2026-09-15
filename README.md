@@ -1,5 +1,7 @@
 <div align="center">
 
+**English** | [简体中文](README.zh-CN.md)
+
 # nodeAdmin
 
 **An opinionated, enterprise-grade framework for building multi-tenant middle/back-office applications — fast.**
