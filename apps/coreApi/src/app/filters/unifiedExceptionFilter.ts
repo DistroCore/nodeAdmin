@@ -17,12 +17,18 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
     const traceId = this.createTraceId();
     const payload = this.toErrorPayload(exception, traceId);
 
-    this.logger.error(
-      JSON.stringify({
-        ...payload,
-        hostType: host.getType(),
-      }),
-    );
+    const logContext = JSON.stringify({
+      code: payload.code,
+      errorMessage: exception instanceof Error ? exception.message : String(exception),
+      errorName: exception instanceof Error ? exception.name : typeof exception,
+      hostType: host.getType(),
+      traceId,
+    });
+    if (exception instanceof Error) {
+      this.logger.error(logContext, exception.stack);
+    } else {
+      this.logger.error(logContext);
+    }
 
     if (host.getType() === 'http') {
       const response = host.switchToHttp().getResponse<FastifyReply>();
@@ -67,6 +73,14 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       const statusCode = exception.getStatus();
       const code = statusCode >= 500 ? 'API_500' : `API_${statusCode}`;
+      if (statusCode >= 500) {
+        return {
+          code,
+          message: 'Internal server error.',
+          traceId,
+        };
+      }
+
       const response = exception.getResponse();
 
       if (typeof response === 'string') {
@@ -97,7 +111,7 @@ export class UnifiedExceptionFilter implements ExceptionFilter {
     if (exception instanceof Error) {
       return {
         code: 'API_500',
-        message: exception.message,
+        message: 'Internal server error.',
         traceId,
       };
     }

@@ -11,6 +11,7 @@ import { ImMessageService } from './imMessageService';
 function createMockMessageRepository() {
   return {
     append: vi.fn(),
+    findById: vi.fn(),
     getLatest: vi.fn(),
     softDelete: vi.fn(),
     updateContent: vi.fn(),
@@ -247,14 +248,19 @@ describe('ImMessageService', () => {
       messageId: 'message-1',
     });
 
+    messageRepository.findById.mockResolvedValue(createStoredMessage({ messageId: 'message-1' }));
     messageRepository.updateContent.mockResolvedValue(updated);
 
     await expect(service.editMessage(context, 'message-1', '<b>updated</b>', identity)).resolves.toEqual(updated);
 
+    expect(messageRepository.findById).toHaveBeenCalledWith('tenant-1', 'message-1');
     expect(messageRepository.updateContent).toHaveBeenCalledWith('tenant-1', 'message-1', 'updated');
+    expect(messageRepository.findById.mock.invocationCallOrder[0]).toBeLessThan(
+      messageRepository.updateContent.mock.invocationCallOrder[0],
+    );
   });
 
-  it('rejects editing when the sanitized content is empty or the updated row belongs to another user', async () => {
+  it('rejects editing when sanitized content is empty before reading or writing the message', async () => {
     const identity = createIdentity();
     const context = createContext();
 
@@ -262,7 +268,51 @@ describe('ImMessageService', () => {
       'Edited message content is empty after sanitization.',
     );
 
-    messageRepository.updateContent.mockResolvedValue(
+    expect(messageRepository.findById).not.toHaveBeenCalled();
+    expect(messageRepository.updateContent).not.toHaveBeenCalled();
+  });
+
+  it('rejects editing missing or deleted messages without writing', async () => {
+    const identity = createIdentity();
+    const context = createContext();
+
+    messageRepository.findById.mockResolvedValue(null);
+    await expect(service.editMessage(context, 'message-1', 'updated', identity)).rejects.toThrow(
+      'Message not found or already deleted.',
+    );
+
+    messageRepository.findById.mockResolvedValue(
+      createStoredMessage({ deletedAt: '2026-04-08T00:00:00.000Z', messageId: 'message-1' }),
+    );
+    await expect(service.editMessage(context, 'message-1', 'updated', identity)).rejects.toThrow(
+      'Message not found or already deleted.',
+    );
+
+    expect(messageRepository.updateContent).not.toHaveBeenCalled();
+  });
+
+  it('rejects editing messages outside the active tenant or conversation without writing', async () => {
+    const identity = createIdentity();
+    const context = createContext();
+
+    for (const target of [
+      createStoredMessage({ messageId: 'message-1', tenantId: 'tenant-2' }),
+      createStoredMessage({ conversationId: 'conversation-2', messageId: 'message-1' }),
+    ]) {
+      messageRepository.findById.mockResolvedValue(target);
+      await expect(service.editMessage(context, 'message-1', 'updated', identity)).rejects.toThrow(
+        'Message not found or already deleted.',
+      );
+    }
+
+    expect(messageRepository.updateContent).not.toHaveBeenCalled();
+  });
+
+  it("rejects editing another user's message without writing", async () => {
+    const identity = createIdentity();
+    const context = createContext();
+
+    messageRepository.findById.mockResolvedValue(
       createStoredMessage({
         messageId: 'message-1',
         userId: 'user-2',
@@ -272,25 +322,44 @@ describe('ImMessageService', () => {
     await expect(service.editMessage(context, 'message-1', 'updated', identity)).rejects.toThrow(
       'You can only edit your own messages.',
     );
+
+    expect(messageRepository.updateContent).not.toHaveBeenCalled();
   });
 
   it('rejects delete requests when the message is missing or owned by another user', async () => {
     const identity = createIdentity();
     const context = createContext();
 
-    messageRepository.getLatest.mockResolvedValue([]);
+    messageRepository.findById.mockResolvedValue(null);
     await expect(service.deleteMessage(context, 'message-1', identity)).rejects.toThrow('Message not found.');
+    expect(messageRepository.softDelete).not.toHaveBeenCalled();
 
-    messageRepository.getLatest.mockResolvedValue([
+    messageRepository.findById.mockResolvedValue(
       createStoredMessage({
         messageId: 'message-1',
         userId: 'user-2',
       }),
-    ]);
+    );
 
     await expect(service.deleteMessage(context, 'message-1', identity)).rejects.toThrow(
       'You can only delete your own messages.',
     );
+
+    expect(messageRepository.findById).toHaveBeenCalledWith('tenant-1', 'message-1');
+    expect(messageRepository.softDelete).not.toHaveBeenCalled();
+  });
+
+  it('rejects deleting a message outside the active conversation without writing', async () => {
+    const identity = createIdentity();
+    const context = createContext();
+
+    messageRepository.findById.mockResolvedValue(
+      createStoredMessage({ conversationId: 'conversation-2', messageId: 'message-1' }),
+    );
+
+    await expect(service.deleteMessage(context, 'message-1', identity)).rejects.toThrow('Message not found.');
+
+    expect(messageRepository.softDelete).not.toHaveBeenCalled();
   });
 
   it('soft deletes a message after ownership is verified', async () => {
@@ -301,26 +370,44 @@ describe('ImMessageService', () => {
       messageId: 'message-1',
     });
 
-    messageRepository.getLatest.mockResolvedValue([createStoredMessage({ messageId: 'message-1' })]);
+    messageRepository.findById.mockResolvedValue(createStoredMessage({ messageId: 'message-1' }));
     messageRepository.softDelete.mockResolvedValue(deleted);
 
     await expect(service.deleteMessage(context, 'message-1', identity)).resolves.toEqual(deleted);
     expect(messageRepository.softDelete).toHaveBeenCalledWith('tenant-1', 'message-1');
   });
 
+  it('resolves delete target via findById (unbounded), not the 200-message getLatest window', async () => {
+    // Regression guard: previously deleteMessage used getLatest(...,200).find(), silently failing
+    // for messages older than the recent 200. The service should now call findById directly.
+    const identity = createIdentity();
+    const context = createContext();
+
+    messageRepository.findById.mockResolvedValue(createStoredMessage({ messageId: 'message-old' }));
+    messageRepository.softDelete.mockResolvedValue(
+      createStoredMessage({ messageId: 'message-old', deletedAt: '2026-04-08T00:00:00.000Z' }),
+    );
+
+    await service.deleteMessage(context, 'message-old', identity);
+
+    expect(messageRepository.findById).toHaveBeenCalledWith('tenant-1', 'message-old');
+    expect(messageRepository.getLatest).not.toHaveBeenCalled();
+  });
+
   it('records read receipts using the resolved message sequence and rejects unknown message IDs', async () => {
     const identity = createIdentity();
     const context = createContext();
 
-    messageRepository.getLatest.mockResolvedValue([]);
+    messageRepository.findById.mockResolvedValue(null);
     await expect(service.markAsRead(context, 'message-1', identity)).rejects.toThrow('Referenced message not found.');
+    expect(messageRepository.upsertReadReceipt).not.toHaveBeenCalled();
 
-    messageRepository.getLatest.mockResolvedValue([
+    messageRepository.findById.mockResolvedValue(
       createStoredMessage({
         messageId: 'message-7',
         sequenceId: 7,
       }),
-    ]);
+    );
 
     await expect(service.markAsRead(context, 'message-7', identity)).resolves.toEqual({
       conversationId: 'conversation-1',
@@ -328,6 +415,33 @@ describe('ImMessageService', () => {
       userId: 'user-1',
     });
     expect(messageRepository.upsertReadReceipt).toHaveBeenCalledWith('tenant-1', 'conversation-1', 'user-1', 7);
+  });
+
+  it('rejects read receipts for messages outside the active conversation without writing', async () => {
+    const identity = createIdentity();
+    const context = createContext();
+
+    messageRepository.findById.mockResolvedValue(
+      createStoredMessage({ conversationId: 'conversation-2', messageId: 'message-7', sequenceId: 7 }),
+    );
+
+    await expect(service.markAsRead(context, 'message-7', identity)).rejects.toThrow('Referenced message not found.');
+
+    expect(messageRepository.upsertReadReceipt).not.toHaveBeenCalled();
+  });
+
+  it('resolves read-receipt sequence via findById so messages outside the recent window still mark-as-read', async () => {
+    // Regression guard: markAsRead must not be capped by getLatest(200).
+    const identity = createIdentity();
+    const context = createContext();
+
+    messageRepository.findById.mockResolvedValue(createStoredMessage({ messageId: 'message-old', sequenceId: 999 }));
+
+    await service.markAsRead(context, 'message-old', identity);
+
+    expect(messageRepository.findById).toHaveBeenCalledWith('tenant-1', 'message-old');
+    expect(messageRepository.upsertReadReceipt).toHaveBeenCalledWith('tenant-1', 'conversation-1', 'user-1', 999);
+    expect(messageRepository.getLatest).not.toHaveBeenCalled();
   });
 });
 

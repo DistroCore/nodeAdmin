@@ -3,7 +3,7 @@ const path = require('node:path');
 const { Client } = require('pg');
 
 const defaultDatabaseUrl = 'postgres://nodeadmin:nodeadmin@localhost:55432/nodeadmin';
-const databaseUrl = (process.env.DATABASE_URL || defaultDatabaseUrl).trim();
+const databaseUrl = (process.env.MIGRATION_DATABASE_URL || process.env.DATABASE_URL || defaultDatabaseUrl).trim();
 const migrationsDir = path.resolve(__dirname, '..', 'apps', 'coreApi', 'drizzle', 'migrations');
 // Installed plugins live under node_modules/@nodeadmin/plugin-*; each may carry its own
 // migrations/ directory so a plugin can own its tables + RLS policies (see pluginRegistryService).

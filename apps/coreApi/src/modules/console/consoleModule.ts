@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { ConnectionRegistry } from '../../infrastructure/connectionRegistry';
 import { ConversationRepository } from '../../infrastructure/database/conversationRepository';
 import { DatabaseService } from '../../infrastructure/database/databaseService';
 import { InfrastructureModule } from '../../infrastructure/infrastructureModule';
@@ -10,8 +9,6 @@ import { ConsoleController, MetricsController } from './consoleController';
   imports: [InfrastructureModule, TenantsModule],
   controllers: [ConsoleController, MetricsController],
   providers: [
-    DatabaseService,
-    ConnectionRegistry,
     // ConversationRepository takes the drizzle client directly (not DatabaseService) to satisfy the
     // repository layering rule, so it must be provided via a factory here too — not as a plain class.
     {

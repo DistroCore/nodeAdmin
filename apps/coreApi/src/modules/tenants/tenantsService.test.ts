@@ -215,6 +215,7 @@ describe('TenantsService', () => {
         { rows: [], rowCount: 0 },
         { rows: [], rowCount: 0 },
         { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
       ]);
       const mockPool = createMockPool([]);
       mockPool.connect = vi.fn(async () => mockClient);
@@ -239,6 +240,7 @@ describe('TenantsService', () => {
         { rows: [], rowCount: 0 },
         { rows: [], rowCount: 0 },
         { rows: [], rowCount: 0 },
+        { rows: [], rowCount: 0 },
         { rows: [{ id: 't-1' }], rowCount: 1 },
         { rows: [], rowCount: 0 },
       ]);
@@ -247,6 +249,11 @@ describe('TenantsService', () => {
       setTenantsServicePool(service, mockPool);
 
       await service.remove('t-1');
+      expect(
+        mockClient.calls.some(
+          (call) => call.sql.includes("set_config('app.current_tenant'") && call.params[0] === 't-1',
+        ),
+      ).toBe(true);
       expect(mockClient.calls.some((call) => call.sql === 'DELETE FROM users WHERE tenant_id = $1')).toBe(true);
       expect(mockClient.calls.some((call) => call.sql === 'DELETE FROM roles WHERE tenant_id = $1')).toBe(true);
       // Plugin-owned tenant tables are purged from the installed backlog plugin's manifest

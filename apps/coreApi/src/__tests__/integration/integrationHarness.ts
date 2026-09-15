@@ -1,9 +1,11 @@
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { Client } from 'pg';
 import request from 'supertest';
 
 const REPO_ROOT = process.cwd();
-const DATABASE_URL = 'postgres://nodeadmin:nodeadmin@127.0.0.1:55432/nodeadmin';
+const DEFAULT_APP_DATABASE_URL = 'postgres://nodeadmin_app:nodeadmin@127.0.0.1:55432/nodeadmin';
+const DEFAULT_MIGRATION_DATABASE_URL = 'postgres://nodeadmin:nodeadmin@127.0.0.1:55432/nodeadmin';
 const REDIS_URL = 'redis://127.0.0.1:56379';
 const PORT = '11459';
 
@@ -16,8 +18,13 @@ export interface IntegrationContext {
 }
 
 export async function createIntegrationContext(envOverrides?: Record<string, string>): Promise<IntegrationContext> {
-  ensureIntegrationEnv(envOverrides);
-  ensureInfrastructure();
+  const appDatabaseUrl =
+    envOverrides?.DATABASE_URL?.trim() || process.env.INTEGRATION_DATABASE_URL?.trim() || DEFAULT_APP_DATABASE_URL;
+  const migrationDatabaseUrl = process.env.MIGRATION_DATABASE_URL?.trim() || DEFAULT_MIGRATION_DATABASE_URL;
+
+  ensureIntegrationEnv(appDatabaseUrl, envOverrides);
+  ensureInfrastructure(migrationDatabaseUrl);
+  await assertRestrictedApplicationRole(appDatabaseUrl);
   buildCoreApi();
   const serverProcess = await startCoreApiServer();
   const baseUrl = `http://127.0.0.1:${PORT}`;
@@ -46,8 +53,8 @@ export async function createIntegrationContext(envOverrides?: Record<string, str
   };
 }
 
-function ensureIntegrationEnv(envOverrides?: Record<string, string>): void {
-  process.env.DATABASE_URL = DATABASE_URL;
+function ensureIntegrationEnv(appDatabaseUrl: string, envOverrides?: Record<string, string>): void {
+  process.env.DATABASE_URL = appDatabaseUrl;
   process.env.REDIS_URL = REDIS_URL;
   process.env.PORT = PORT;
   process.env.JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'test-access-secret-key';
@@ -55,6 +62,7 @@ function ensureIntegrationEnv(envOverrides?: Record<string, string>): void {
   process.env.FRONTEND_ORIGINS = process.env.FRONTEND_ORIGINS || 'http://localhost:3000';
   process.env.AUTH_ENABLE_DEV_TOKEN_ISSUE = 'true';
   process.env.KAFKA_BROKERS = '';
+  process.env.OUTBOX_PUBLISHER_ENABLED = 'false';
   process.env.OTEL_ENABLED = 'false';
 
   for (const [key, value] of Object.entries(envOverrides ?? {})) {
@@ -62,7 +70,7 @@ function ensureIntegrationEnv(envOverrides?: Record<string, string>): void {
   }
 }
 
-function ensureInfrastructure(): void {
+function ensureInfrastructure(migrationDatabaseUrl: string): void {
   execFileSync('docker', ['compose', 'up', '-d', 'postgres', 'redis'], {
     cwd: REPO_ROOT,
     stdio: 'inherit',
@@ -72,9 +80,27 @@ function ensureInfrastructure(): void {
     stdio: 'inherit',
     env: {
       ...process.env,
-      DATABASE_URL,
+      MIGRATION_DATABASE_URL: migrationDatabaseUrl,
     },
   });
+}
+
+async function assertRestrictedApplicationRole(databaseUrl: string): Promise<void> {
+  const client = new Client({ connectionString: databaseUrl });
+  try {
+    await client.connect();
+    const result = await client.query<{ rolbypassrls: boolean; rolname: string; rolsuper: boolean }>(
+      `SELECT rolname, rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user`,
+    );
+    const role = result.rows[0];
+    if (!role || role.rolsuper || role.rolbypassrls) {
+      throw new Error(
+        `Integration application role must be non-superuser and non-BYPASSRLS; received ${role?.rolname ?? 'unknown'}.`,
+      );
+    }
+  } finally {
+    await client.end();
+  }
 }
 
 function buildCoreApi(): void {
@@ -96,10 +122,18 @@ async function startCoreApiServer(): Promise<ChildProcess> {
   let stdout = '';
 
   serverProcess.stderr?.on('data', (chunk) => {
-    stderr += chunk.toString();
+    const output = chunk.toString();
+    stderr += output;
+    if (process.env.INTEGRATION_DEBUG_LOGS === '1') {
+      process.stderr.write(output);
+    }
   });
   serverProcess.stdout?.on('data', (chunk) => {
-    stdout += chunk.toString();
+    const output = chunk.toString();
+    stdout += output;
+    if (process.env.INTEGRATION_DEBUG_LOGS === '1') {
+      process.stdout.write(output);
+    }
   });
 
   await waitForHealth(serverProcess, () => `${stdout}\n${stderr}`.trim());

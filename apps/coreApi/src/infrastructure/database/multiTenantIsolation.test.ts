@@ -8,30 +8,17 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
  * Tests all attack vectors: unauthorized reads, writes, updates, deletes.
  *
  * Prerequisites:
- * - DATABASE_URL environment variable set
- * - Migrations applied (0001_rls.sql, 0003_audit_logs.sql)
+ * - RLS_DATABASE_URL points to a non-superuser, non-BYPASSRLS role
+ * - Migrations applied
  * - PostgreSQL running with RLS enabled
  */
 
-const databaseUrl = process.env.DATABASE_URL;
-
-let dbAvailable = false;
-
-async function checkDatabaseConnection(): Promise<boolean> {
-  if (!databaseUrl) return false;
-  const testPool = new Pool({ connectionString: databaseUrl, max: 1 });
-  try {
-    const client = await testPool.connect();
-    client.release();
-    await testPool.end();
-    return true;
-  } catch {
-    await testPool.end();
-    return false;
-  }
+const databaseUrl = process.env.RLS_DATABASE_URL?.trim();
+if (!databaseUrl) {
+  throw new Error('RLS_DATABASE_URL is required for the RLS integration suite.');
 }
 
-describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
+describe('Multi-Tenant Isolation (RLS)', () => {
   let pool: Pool;
   const TENANT_A = 'tenant-alpha';
   const TENANT_B = 'tenant-beta';
@@ -43,21 +30,30 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
   const USER_B = 'user-beta-001';
 
   beforeAll(async () => {
-    dbAvailable = await checkDatabaseConnection();
-    if (!dbAvailable) return;
-
     pool = new Pool({
       connectionString: databaseUrl,
       max: 5,
+    });
+
+    const roleResult = await pool.query<{
+      rolbypassrls: boolean;
+      rolsuper: boolean;
+    }>(`SELECT rolbypassrls, rolsuper FROM pg_roles WHERE rolname = current_user`);
+    expect(roleResult.rows[0]).toEqual({
+      rolbypassrls: false,
+      rolsuper: false,
     });
 
     await seedTestData();
   });
 
   afterAll(async () => {
-    if (!dbAvailable || !pool) return;
-    await cleanupTestData();
-    await pool.end();
+    if (!pool) return;
+    try {
+      await cleanupTestData();
+    } finally {
+      await pool.end();
+    }
   });
 
   async function seedTestData(): Promise<void> {
@@ -150,14 +146,19 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
 
   async function runWithTenant<T>(tenantId: string, work: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await pool.connect();
-    await client.query('BEGIN');
+    let transactionStarted = false;
     try {
+      await client.query('BEGIN');
+      transactionStarted = true;
       await client.query(`SELECT set_config('app.current_tenant', $1, true)`, [tenantId]);
       const result = await work(client);
       await client.query('COMMIT');
+      transactionStarted = false;
       return result;
     } catch (error) {
-      await client.query('ROLLBACK');
+      if (transactionStarted) {
+        await client.query('ROLLBACK');
+      }
       throw error;
     } finally {
       client.release();
@@ -166,7 +167,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
 
   describe('Conversations Table RLS', () => {
     it('should allow tenant to read own conversations', async () => {
-      if (!dbAvailable) return;
       const result = await runWithTenant(TENANT_A, async (client) => {
         return client.query(`SELECT id FROM conversations WHERE tenant_id = $1 AND id = $2`, [
           TENANT_A,
@@ -179,7 +179,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
     });
 
     it('should block tenant from reading other tenant conversations', async () => {
-      if (!dbAvailable) return;
       const result = await runWithTenant(TENANT_A, async (client) => {
         return client.query(`SELECT id FROM conversations WHERE tenant_id = $1 AND id = $2`, [
           TENANT_B,
@@ -191,7 +190,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
     });
 
     it('should block tenant from inserting into other tenant namespace', async () => {
-      if (!dbAvailable) return;
       await expect(
         runWithTenant(TENANT_A, async (client) => {
           return client.query(`INSERT INTO conversations (tenant_id, id) VALUES ($1, 'malicious-conv')`, [TENANT_B]);
@@ -200,7 +198,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
     });
 
     it('should block tenant from updating other tenant conversations', async () => {
-      if (!dbAvailable) return;
       const result = await runWithTenant(TENANT_A, async (client) => {
         return client.query(`UPDATE conversations SET created_at = NOW() WHERE tenant_id = $1 AND id = $2`, [
           TENANT_B,
@@ -212,7 +209,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
     });
 
     it('should block tenant from deleting other tenant conversations', async () => {
-      if (!dbAvailable) return;
       const result = await runWithTenant(TENANT_A, async (client) => {
         return client.query(`DELETE FROM conversations WHERE tenant_id = $1 AND id = $2`, [TENANT_B, CONVERSATION_B]);
       });
@@ -223,7 +219,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
 
   describe('Messages Table RLS', () => {
     it('should allow tenant to read own messages', async () => {
-      if (!dbAvailable) return;
       const result = await runWithTenant(TENANT_A, async (client) => {
         return client.query(`SELECT message_id, content FROM messages WHERE tenant_id = $1 AND message_id = $2`, [
           TENANT_A,
@@ -237,7 +232,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
     });
 
     it('should block tenant from reading other tenant messages', async () => {
-      if (!dbAvailable) return;
       const result = await runWithTenant(TENANT_A, async (client) => {
         return client.query(`SELECT message_id, content FROM messages WHERE tenant_id = $1 AND message_id = $2`, [
           TENANT_B,
@@ -249,7 +243,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
     });
 
     it('should block tenant from inserting messages into other tenant conversations', async () => {
-      if (!dbAvailable) return;
       await expect(
         runWithTenant(TENANT_A, async (client) => {
           return client.query(
@@ -262,7 +255,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
     });
 
     it('should block tenant from updating other tenant messages', async () => {
-      if (!dbAvailable) return;
       const result = await runWithTenant(TENANT_A, async (client) => {
         return client.query(`UPDATE messages SET content = 'HACKED' WHERE tenant_id = $1 AND message_id = $2`, [
           TENANT_B,
@@ -274,7 +266,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
     });
 
     it('should block tenant from deleting other tenant messages', async () => {
-      if (!dbAvailable) return;
       const result = await runWithTenant(TENANT_A, async (client) => {
         return client.query(`DELETE FROM messages WHERE tenant_id = $1 AND message_id = $2`, [TENANT_B, MESSAGE_B]);
       });
@@ -283,7 +274,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
     });
 
     it('should block wildcard queries from leaking cross-tenant data', async () => {
-      if (!dbAvailable) return;
       const result = await runWithTenant(TENANT_A, async (client) => {
         return client.query(`SELECT message_id, tenant_id FROM messages WHERE content LIKE '%Secret%'`);
       });
@@ -297,7 +287,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
 
   describe('Outbox Events Table RLS', () => {
     it('should allow tenant to read own outbox events', async () => {
-      if (!dbAvailable) return;
       const result = await runWithTenant(TENANT_A, async (client) => {
         return client.query(`SELECT id, payload FROM outbox_events WHERE tenant_id = $1 AND id = 'outbox-a'`, [
           TENANT_A,
@@ -309,7 +298,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
     });
 
     it('should block tenant from reading other tenant outbox events', async () => {
-      if (!dbAvailable) return;
       const result = await runWithTenant(TENANT_A, async (client) => {
         return client.query(`SELECT id, payload FROM outbox_events WHERE tenant_id = $1 AND id = 'outbox-b'`, [
           TENANT_B,
@@ -320,7 +308,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
     });
 
     it('should block tenant from inserting outbox events for other tenant', async () => {
-      if (!dbAvailable) return;
       await expect(
         runWithTenant(TENANT_A, async (client) => {
           return client.query(
@@ -333,7 +320,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
     });
 
     it('should block tenant from updating other tenant outbox events', async () => {
-      if (!dbAvailable) return;
       const result = await runWithTenant(TENANT_A, async (client) => {
         return client.query(`UPDATE outbox_events SET published_at = NOW() WHERE tenant_id = $1 AND id = 'outbox-b'`, [
           TENANT_B,
@@ -344,7 +330,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
     });
 
     it('should block tenant from deleting other tenant outbox events', async () => {
-      if (!dbAvailable) return;
       const result = await runWithTenant(TENANT_A, async (client) => {
         return client.query(`DELETE FROM outbox_events WHERE tenant_id = $1 AND id = 'outbox-b'`, [TENANT_B]);
       });
@@ -355,7 +340,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
 
   describe('Audit Logs Table RLS', () => {
     it('should allow tenant to read own audit logs', async () => {
-      if (!dbAvailable) return;
       const result = await runWithTenant(TENANT_A, async (client) => {
         return client.query(`SELECT id, action FROM audit_logs WHERE tenant_id = $1 AND id = 'audit-a'`, [TENANT_A]);
       });
@@ -365,7 +349,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
     });
 
     it('should block tenant from reading other tenant audit logs', async () => {
-      if (!dbAvailable) return;
       const result = await runWithTenant(TENANT_A, async (client) => {
         return client.query(`SELECT id, action FROM audit_logs WHERE tenant_id = $1 AND id = 'audit-b'`, [TENANT_B]);
       });
@@ -374,7 +357,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
     });
 
     it('should block tenant from inserting audit logs for other tenant', async () => {
-      if (!dbAvailable) return;
       await expect(
         runWithTenant(TENANT_A, async (client) => {
           return client.query(
@@ -387,7 +369,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
     });
 
     it('should block tenant from updating other tenant audit logs', async () => {
-      if (!dbAvailable) return;
       const result = await runWithTenant(TENANT_A, async (client) => {
         return client.query(`UPDATE audit_logs SET action = 'TAMPERED' WHERE tenant_id = $1 AND id = 'audit-b'`, [
           TENANT_B,
@@ -398,7 +379,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
     });
 
     it('should block tenant from deleting other tenant audit logs', async () => {
-      if (!dbAvailable) return;
       const result = await runWithTenant(TENANT_A, async (client) => {
         return client.query(`DELETE FROM audit_logs WHERE tenant_id = $1 AND id = 'audit-b'`, [TENANT_B]);
       });
@@ -409,7 +389,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
 
   describe('Edge Cases and Attack Vectors', () => {
     it('should block SQL injection attempts to bypass RLS', async () => {
-      if (!dbAvailable) return;
       const maliciousInput = `${TENANT_A}' OR '1'='1`;
       const result = await runWithTenant(TENANT_A, async (client) => {
         return client.query(`SELECT id FROM conversations WHERE tenant_id = $1`, [maliciousInput]);
@@ -419,7 +398,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
     });
 
     it('should block attempts to unset tenant context', async () => {
-      if (!dbAvailable) return;
       await expect(
         runWithTenant(TENANT_A, async (client) => {
           await client.query(`SELECT set_config('app.current_tenant', '', true)`);
@@ -428,8 +406,7 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
       ).rejects.toThrow();
     });
 
-    it('should block attempts to switch tenant mid-transaction', async () => {
-      if (!dbAvailable) return;
+    it('should scope reads to the tenant selected inside the transaction', async () => {
       const result = await runWithTenant(TENANT_A, async (client) => {
         const beforeSwitch = await client.query(`SELECT id FROM conversations WHERE tenant_id = $1 AND id = $2`, [
           TENANT_A,
@@ -451,7 +428,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
     });
 
     it('should enforce RLS even with FORCE ROW LEVEL SECURITY', async () => {
-      if (!dbAvailable) return;
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
@@ -471,7 +447,6 @@ describe.skipIf(!databaseUrl)('Multi-Tenant Isolation (RLS)', () => {
     });
 
     it('should block JOIN-based cross-tenant data leakage', async () => {
-      if (!dbAvailable) return;
       const result = await runWithTenant(TENANT_A, async (client) => {
         return client.query(
           `SELECT m.message_id, m.tenant_id, c.tenant_id as conv_tenant

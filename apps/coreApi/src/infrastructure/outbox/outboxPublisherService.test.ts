@@ -141,13 +141,44 @@ describe('OutboxPublisherService', () => {
       end: vi.fn().mockResolvedValue(undefined),
     };
     const intervalHandle = setInterval(() => undefined, 60_000);
+    const cleanupIntervalHandle = setInterval(() => undefined, 60_000);
 
-    assignInternals(service, { intervalHandle, pool, producer });
+    assignInternals(service, { intervalHandle, cleanupIntervalHandle, pool, producer });
 
     await service.onModuleDestroy();
 
     expect(producer.disconnect).toHaveBeenCalledWith();
     expect(pool.end).not.toHaveBeenCalled();
+  });
+
+  it('waits for an in-flight publish before disconnecting Kafka', async () => {
+    const sendDeferred = createDeferred<void>();
+    const client = createMockClient([
+      { rowCount: 0, rows: [] },
+      { rowCount: 1, rows: [createOutboxRow()] },
+      { rowCount: 1, rows: [] },
+      { rowCount: 0, rows: [] },
+    ]);
+    const pool = createMockPool();
+    pool.connect = vi.fn(async () => client);
+    const producer = {
+      disconnect: vi.fn().mockResolvedValue(undefined),
+      send: vi.fn(() => sendDeferred.promise),
+    };
+    assignInternals(service, { pool, producer });
+
+    const publish = invokePublishBatch(service);
+    await vi.waitFor(() => expect(producer.send).toHaveBeenCalledTimes(1));
+    const destroy = service.onModuleDestroy();
+    await Promise.resolve();
+
+    expect(producer.disconnect).not.toHaveBeenCalled();
+
+    sendDeferred.resolve(undefined);
+    await Promise.all([publish, destroy]);
+
+    expect(producer.disconnect).toHaveBeenCalledTimes(1);
+    expect(producer.send.mock.invocationCallOrder[0]).toBeLessThan(producer.disconnect.mock.invocationCallOrder[0]);
   });
 
   it('increments retry_count when Kafka is unavailable but max retry is not reached', async () => {
@@ -291,12 +322,83 @@ describe('OutboxPublisherService', () => {
 
     expect(readIsPublishing(service)).toBe(false);
   });
+
+  describe('cleanupPublished', () => {
+    it('deletes published and DLQ rows older than the retention window', async () => {
+      const originalRetention = runtimeConfig.outbox.retentionDays;
+      runtimeConfig.outbox.retentionDays = 7;
+
+      const client = createMockClient([{ rowCount: 42, rows: [] }]);
+      const pool = createMockPool();
+      pool.connect = vi.fn(async () => client);
+
+      assignInternals(service, { pool });
+
+      try {
+        await invokeCleanupPublished(service);
+      } finally {
+        runtimeConfig.outbox.retentionDays = originalRetention;
+      }
+
+      const deleteCall = client.calls.find((call) => call.sql.includes('DELETE FROM outbox_events'));
+      expect(deleteCall).toBeDefined();
+      expect(deleteCall?.params[0]).toBe(7);
+      expect(deleteCall?.sql).toContain('published_at IS NOT NULL OR dlq_at IS NOT NULL');
+      expect(deleteCall?.sql).toContain('MAKE_INTERVAL(days => $1)');
+    });
+
+    it('retains rows that are neither published nor DLQ-ed even when older than retention', async () => {
+      // The cleanup WHERE clause requires (published_at IS NOT NULL OR dlq_at IS NOT NULL), so an
+      // undelivered row mid-flight is never lost even after the retention window.
+      const client = createMockClient([{ rowCount: 0, rows: [] }]);
+      const pool = createMockPool();
+      pool.connect = vi.fn(async () => client);
+
+      assignInternals(service, { pool });
+
+      await invokeCleanupPublished(service);
+
+      const deleteCall = client.calls.find((call) => call.sql.includes('DELETE FROM outbox_events'));
+      expect(deleteCall?.sql).toMatch(/\(published_at IS NOT NULL OR dlq_at IS NOT NULL\)/);
+    });
+
+    it('is a no-op when retentionDays is 0 (cleanup disabled)', async () => {
+      const originalRetention = runtimeConfig.outbox.retentionDays;
+      runtimeConfig.outbox.retentionDays = 0;
+
+      const client = createMockClient();
+      const pool = createMockPool();
+      pool.connect = vi.fn(async () => client);
+
+      assignInternals(service, { pool });
+
+      try {
+        await invokeCleanupPublished(service);
+      } finally {
+        runtimeConfig.outbox.retentionDays = originalRetention;
+      }
+
+      expect(pool.connect).not.toHaveBeenCalled();
+    });
+
+    it('does not throw when the cleanup query fails (logs and waits for next interval)', async () => {
+      const client = createMockClient();
+      client.query.mockRejectedValue(new Error('deadlock'));
+      const pool = createMockPool();
+      pool.connect = vi.fn(async () => client);
+
+      assignInternals(service, { pool });
+
+      await expect(invokeCleanupPublished(service)).resolves.toBeUndefined();
+    });
+  });
 });
 
 function assignInternals(
   service: OutboxPublisherService,
   values: {
     intervalHandle?: NodeJS.Timeout | null;
+    cleanupIntervalHandle?: NodeJS.Timeout | null;
     pool?: { connect?: () => Promise<unknown>; end?: () => Promise<void> } | null;
     producer?: {
       disconnect: () => Promise<void>;
@@ -305,6 +407,7 @@ function assignInternals(
   },
 ): void {
   const target = service as unknown as {
+    cleanupIntervalHandle: NodeJS.Timeout | null;
     intervalHandle: NodeJS.Timeout | null;
     pool: typeof values.pool;
     producer: typeof values.producer;
@@ -312,6 +415,9 @@ function assignInternals(
 
   if ('intervalHandle' in values) {
     target.intervalHandle = values.intervalHandle ?? null;
+  }
+  if ('cleanupIntervalHandle' in values) {
+    target.cleanupIntervalHandle = values.cleanupIntervalHandle ?? null;
   }
   if ('pool' in values) {
     target.pool = values.pool ?? null;
@@ -327,6 +433,14 @@ async function invokePublishBatch(service: OutboxPublisherService): Promise<void
       publishBatch: () => Promise<void>;
     }
   ).publishBatch();
+}
+
+async function invokeCleanupPublished(service: OutboxPublisherService): Promise<void> {
+  await (
+    service as unknown as {
+      cleanupPublished: () => Promise<void>;
+    }
+  ).cleanupPublished();
 }
 
 function readIsPublishing(service: OutboxPublisherService): boolean {

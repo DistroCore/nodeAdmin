@@ -1,2 +1,3 @@
 "nodeadmin" "nodeadmin"
+"nodeadmin_app" "nodeadmin"
 "nodeadmin_user" "nodeadmin_dev"

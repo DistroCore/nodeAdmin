@@ -1,0 +1,5 @@
+# 本仓库全部提交出自同一人，此处把多个提交身份归一到主身份。
+# git shortlog -sne / git log --use-mailmap 会按下面的映射显示。
+HXSLtim <108641211+HXSLtim@users.noreply.github.com> <a2778978136@163.com>
+HXSLtim <108641211+HXSLtim@users.noreply.github.com> hahage <108641211+HXSLtim@users.noreply.github.com>
+HXSLtim <108641211+HXSLtim@users.noreply.github.com> hades <SnugglePienqh@theplate.com>

@@ -24,3 +24,13 @@ apps/adminPortal/test-results/
 !apps/adminPortal/public/logo192.png
 !apps/adminPortal/public/logo512.png
 .playwright-cli/
+
+# Claude Code 个人本地配置（不入仓库；曾被误提交）
+.claude/settings.local.json
+
+# UmaDev（本地治理工具产物，不入仓库）
+.umadev/
+.umadevrc
+umadev.yaml
+umadev-bug-report.md
+knowledge/

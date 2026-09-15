@@ -18,9 +18,11 @@ interface RuntimeConfig {
   };
   outbox: {
     batchSize: number;
+    cleanupIntervalMs: number;
     enabled: boolean;
     maxRetry: number;
     pollIntervalMs: number;
+    retentionDays: number;
   };
   pluginRegistry: {
     url: string;
@@ -182,6 +184,20 @@ function readPositiveInt(name: string, defaultValue: number): number {
   return parsed;
 }
 
+function readNonNegativeInt(name: string, defaultValue: number): number {
+  const rawValue = process.env[name];
+  if (typeof rawValue !== 'string' || rawValue.trim().length === 0) {
+    return defaultValue;
+  }
+
+  const parsed = Number(rawValue);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new Error(`[config] ${name} must be a non-negative integer.`);
+  }
+
+  return parsed;
+}
+
 export const runtimeConfig: RuntimeConfig = {
   auth: {
     accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN?.trim() || '15m',
@@ -199,9 +215,13 @@ export const runtimeConfig: RuntimeConfig = {
   },
   outbox: {
     batchSize: readPositiveInt('OUTBOX_BATCH_SIZE', 100),
+    cleanupIntervalMs: readPositiveInt('OUTBOX_CLEANUP_INTERVAL_MS', 3_600_000),
     enabled: readBooleanEnv('OUTBOX_PUBLISHER_ENABLED', false),
     maxRetry: readPositiveInt('OUTBOX_MAX_RETRY', 5),
     pollIntervalMs: readPositiveInt('OUTBOX_POLL_INTERVAL_MS', 2000),
+    // 0 disables cleanup entirely (keeps all rows indefinitely). Otherwise rows older than N days
+    // that have been published OR sent to the DLQ are physically deleted.
+    retentionDays: readNonNegativeInt('OUTBOX_RETENTION_DAYS', 7),
   },
   pluginRegistry: {
     url:

@@ -108,13 +108,29 @@ export class AuditInterceptor implements NestInterceptor {
       return undefined;
     }
 
+    return this.sanitizeObject(body);
+  }
+
+  private sanitizeObject(value: Record<string, unknown>): Record<string, unknown> {
     const sanitized: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(body)) {
+    for (const [key, nestedValue] of Object.entries(value)) {
       if (!this.isSensitiveField(key)) {
-        sanitized[key] = value;
+        sanitized[key] = this.sanitizeValue(nestedValue);
       }
     }
     return sanitized;
+  }
+
+  private sanitizeValue(value: unknown): unknown {
+    if (Array.isArray(value)) {
+      return value.map((item) => this.sanitizeValue(item));
+    }
+
+    if (value && typeof value === 'object') {
+      return this.sanitizeObject(value as Record<string, unknown>);
+    }
+
+    return value;
   }
 
   private isSensitiveField(key: string): boolean {

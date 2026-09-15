@@ -43,6 +43,7 @@
     "smoke:mvp": "node scripts/smokeMvpRelease.cjs",
     "status": "node scripts/generateStatusCard.cjs",
     "test:coreApi": "vitest run",
+    "test:coreApi:coverage": "vitest run --coverage",
     "test:adminPortal": "vitest run --config apps/adminPortal/vitest.config.ts",
     "test:coreApi:integration": "vitest run --config vitest.integration.config.ts",
     "load:k6": "docker compose --profile loadtest run --rm k6",

@@ -602,25 +602,29 @@ export class ImMessageService implements OnModuleInit, OnModuleDestroy {
       throw new WsException('Edited message content is empty after sanitization.');
     }
 
+    const target = await this.messageRepository.findById(identity.tenantId, messageId);
+    if (!target || target.deletedAt !== null || !this.isMessageInContext(target, context, identity)) {
+      throw new WsException('Message not found or already deleted.');
+    }
+
+    if (target.userId !== identity.userId) {
+      throw new WsException('You can only edit your own messages.');
+    }
+
     const updated = await this.messageRepository.updateContent(identity.tenantId, messageId, sanitizedContent);
 
     if (!updated) {
       throw new WsException('Message not found or already deleted.');
     }
 
-    if (updated.userId !== identity.userId) {
-      throw new WsException('You can only edit your own messages.');
-    }
-
     return updated;
   }
 
   async deleteMessage(context: SocketContext, messageId: string, identity: AuthIdentity): Promise<StoredMessage> {
-    // First fetch to verify ownership before soft-deleting
-    const latest = await this.messageRepository.getLatest(identity.tenantId, context.conversationId, 200);
-
-    const target = latest.find((m) => m.messageId === messageId);
-    if (!target) {
+    // Single-row lookup by (tenant_id, message_id) — unbounded, unlike the previous getLatest(200)
+    // window which silently failed for messages older than the recent 200.
+    const target = await this.messageRepository.findById(identity.tenantId, messageId);
+    if (!target || !this.isMessageInContext(target, context, identity)) {
       throw new WsException('Message not found.');
     }
 
@@ -641,11 +645,11 @@ export class ImMessageService implements OnModuleInit, OnModuleDestroy {
     lastReadMessageId: string,
     identity: AuthIdentity,
   ): Promise<{ conversationId: string; lastReadMessageId: string; userId: string }> {
-    // Find the sequence ID for the referenced message
-    const latest = await this.messageRepository.getLatest(identity.tenantId, context.conversationId, 200);
-
-    const target = latest.find((m) => m.messageId === lastReadMessageId);
-    if (!target) {
+    // Resolve the referenced message's sequence id via a single-row lookup. message_reads stores
+    // last_read_sequence_id (not message_id), and the prior getLatest(200).find() capped this to
+    // the recent window — a message outside it would falsely report "not found".
+    const target = await this.messageRepository.findById(identity.tenantId, lastReadMessageId);
+    if (!target || !this.isMessageInContext(target, context, identity)) {
       throw new WsException('Referenced message not found.');
     }
 
@@ -661,5 +665,14 @@ export class ImMessageService implements OnModuleInit, OnModuleDestroy {
       lastReadMessageId,
       userId: identity.userId,
     };
+  }
+
+  private isMessageInContext(message: StoredMessage, context: SocketContext, identity: AuthIdentity): boolean {
+    return (
+      context.tenantId === identity.tenantId &&
+      context.userId === identity.userId &&
+      message.tenantId === identity.tenantId &&
+      message.conversationId === context.conversationId
+    );
   }
 }

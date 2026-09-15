@@ -3,6 +3,7 @@
 # This script performs automated backups of the PostgreSQL database
 
 set -euo pipefail
+umask 077
 
 # Configuration
 BACKUP_DIR="${BACKUP_DIR:-./infra/docker/postgres/backups}"
@@ -13,6 +14,7 @@ RETENTION_DAYS=7
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="nodeadmin_backup_${TIMESTAMP}.sql.gz"
 BACKUP_PATH="${BACKUP_DIR}/${BACKUP_FILE}"
+PARTIAL_PATH=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -49,40 +51,61 @@ log_info "Database: ${DB_NAME}"
 log_info "Backup file: ${BACKUP_FILE}"
 
 # Create backup directory if it doesn't exist
+if [ -L "${BACKUP_DIR}" ]; then
+    log_error "Backup directory must not be a symbolic link: ${BACKUP_DIR}"
+    exit 1
+fi
 mkdir -p "${BACKUP_DIR}"
+chmod 700 "${BACKUP_DIR}"
+
+PARTIAL_PATH=$(mktemp "${BACKUP_DIR}/.nodeadmin_backup_${TIMESTAMP}.XXXXXX")
+chmod 600 "${PARTIAL_PATH}"
+cleanup_partial() {
+    if [ -n "${PARTIAL_PATH}" ]; then
+        rm -f "${PARTIAL_PATH}"
+    fi
+}
+trap cleanup_partial EXIT HUP INT TERM
 
 # Perform backup using pg_dump
 if docker exec "${CONTAINER_NAME}" pg_dump -U "${DB_USER}" -d "${DB_NAME}" \
     --format=plain \
     --no-owner \
-    --no-acl \
-    --verbose 2>&1 | gzip > "${BACKUP_PATH}"; then
-
-    BACKUP_SIZE=$(du -h "${BACKUP_PATH}" | cut -f1)
-    log_info "Backup completed successfully"
-    log_info "Backup size: ${BACKUP_SIZE}"
-    log_info "Backup location: ${BACKUP_PATH}"
+    --no-acl | gzip > "${PARTIAL_PATH}"; then
+    :
 else
     log_error "Backup failed"
-    rm -f "${BACKUP_PATH}"
     exit 1
 fi
 
 # Verify backup file is not empty
-if [ ! -s "${BACKUP_PATH}" ]; then
+if [ ! -s "${PARTIAL_PATH}" ]; then
     log_error "Backup file is empty"
-    rm -f "${BACKUP_PATH}"
     exit 1
 fi
 
 # Test backup integrity by checking gzip
-if ! gzip -t "${BACKUP_PATH}" 2>/dev/null; then
+if ! gzip -t "${PARTIAL_PATH}" 2>/dev/null; then
     log_error "Backup file is corrupted (gzip test failed)"
-    rm -f "${BACKUP_PATH}"
     exit 1
 fi
 
+chmod 600 "${PARTIAL_PATH}"
+mv -f "${PARTIAL_PATH}" "${BACKUP_PATH}"
+PARTIAL_PATH=""
+trap - EXIT HUP INT TERM
+
+BACKUP_SIZE=$(du -h "${BACKUP_PATH}" | cut -f1)
+log_info "Backup completed successfully"
+log_info "Backup size: ${BACKUP_SIZE}"
+log_info "Backup location: ${BACKUP_PATH}"
 log_info "Backup integrity verified"
+
+if BACKUP_SIZE_BYTES=$(stat -c%s "${BACKUP_PATH}" 2>/dev/null); then
+    :
+else
+    BACKUP_SIZE_BYTES=$(stat -f%z "${BACKUP_PATH}")
+fi
 
 # Clean up old backups (keep last N days)
 log_info "Cleaning up backups older than ${RETENTION_DAYS} days..."
@@ -115,7 +138,7 @@ postgres_backup_success 1
 postgres_backup_timestamp_seconds $(date +%s)
 # HELP postgres_backup_size_bytes Size of the last backup in bytes
 # TYPE postgres_backup_size_bytes gauge
-postgres_backup_size_bytes $(stat -c%s "${BACKUP_PATH}")
+postgres_backup_size_bytes ${BACKUP_SIZE_BYTES}
 # HELP postgres_backup_count Total number of backups
 # TYPE postgres_backup_count gauge
 postgres_backup_count ${BACKUP_COUNT}

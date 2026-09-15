@@ -1,28 +1,17 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { hash } from 'bcryptjs';
 import { verify } from 'jsonwebtoken';
-import { createMockClient, createMockPool, setupTestEnv } from '../../__tests__/helpers';
-import type { MockPool, QueryResult } from '../../__tests__/helpers';
+import { createAuthServiceWithMocks, setupTestEnv } from '../../__tests__/helpers';
 
 // Must set env before importing runtimeConfig (loaded at import time)
 setupTestEnv();
 
-import { AuthService } from './authService';
-
 describe('AuthService', () => {
-  let service: AuthService;
-  let serviceWithPool: AuthService & { pool: MockPool | null };
-
-  beforeEach(() => {
-    service = new AuthService();
-    serviceWithPool = service as unknown as AuthService & { pool: MockPool | null };
-    // Pool is null because DATABASE_URL is empty
-  });
-
   // ─── issueTokens ──────────────────────────────────────────────
 
   describe('issueTokens', () => {
-    it('should return accessToken, refreshToken, and tokenType', () => {
+    it('returns accessToken, refreshToken, and tokenType', () => {
+      const { service } = createAuthServiceWithMocks();
       const result = service.issueTokens({
         roles: ['admin'],
         tenantId: 'tenant-1',
@@ -34,7 +23,8 @@ describe('AuthService', () => {
       expect(result.tokenType).toBe('Bearer');
     });
 
-    it('should sign accessToken with correct claims', () => {
+    it('signs accessToken with correct claims', () => {
+      const { service } = createAuthServiceWithMocks();
       const { accessToken } = service.issueTokens({
         roles: ['admin', 'viewer'],
         tenantId: 'tenant-1',
@@ -49,7 +39,8 @@ describe('AuthService', () => {
       expect(decoded.jti).toBeDefined();
     });
 
-    it('should sign refreshToken with correct claims', () => {
+    it('signs refreshToken with correct claims', () => {
+      const { service } = createAuthServiceWithMocks();
       const { refreshToken } = service.issueTokens({
         roles: ['admin'],
         tenantId: 'tenant-1',
@@ -63,7 +54,8 @@ describe('AuthService', () => {
       expect(decoded).not.toHaveProperty('roles');
     });
 
-    it('should deduplicate and trim roles', () => {
+    it('deduplicates and trims roles', () => {
+      const { service } = createAuthServiceWithMocks();
       const { accessToken } = service.issueTokens({
         roles: [' admin ', 'admin', 'viewer', 'viewer '],
         tenantId: 'tenant-1',
@@ -74,7 +66,8 @@ describe('AuthService', () => {
       expect(decoded.roles).toEqual(['admin', 'viewer']);
     });
 
-    it('should filter out empty roles', () => {
+    it('filters out empty roles', () => {
+      const { service } = createAuthServiceWithMocks();
       const { accessToken } = service.issueTokens({
         roles: ['admin', '', '  ', 'viewer'],
         tenantId: 'tenant-1',
@@ -89,7 +82,8 @@ describe('AuthService', () => {
   // ─── verifyAccessToken ────────────────────────────────────────
 
   describe('verifyAccessToken', () => {
-    it('should return AuthIdentity for a valid token', () => {
+    it('returns AuthIdentity for a valid token', () => {
+      const { service } = createAuthServiceWithMocks();
       const { accessToken } = service.issueTokens({
         roles: ['admin'],
         tenantId: 'tenant-1',
@@ -103,7 +97,8 @@ describe('AuthService', () => {
       expect(identity.jti).toBeDefined();
     });
 
-    it('should throw UnauthorizedException for a tampered token', () => {
+    it('throws UnauthorizedException for a tampered token', () => {
+      const { service } = createAuthServiceWithMocks();
       const { accessToken } = service.issueTokens({
         roles: ['admin'],
         tenantId: 'tenant-1',
@@ -113,16 +108,16 @@ describe('AuthService', () => {
       expect(() => service.verifyAccessToken(accessToken + 'x')).toThrow('Invalid or expired access token.');
     });
 
-    it('should throw for a token with wrong type (refresh token)', () => {
+    it('throws for a refresh token presented as an access token', () => {
+      const { service } = createAuthServiceWithMocks();
       const { refreshToken } = service.issueTokens({
         roles: ['admin'],
         tenantId: 'tenant-1',
         userId: 'user-1',
       });
 
-      // Refresh token is signed with refreshSecret, not accessSecret.
-      // verify() fails with "invalid signature" which maps to
-      // "Invalid or expired access token." — the type-check is never reached.
+      // Signed with refreshSecret, not accessSecret → verify() fails with "invalid signature",
+      // which maps to "Invalid or expired access token." before the type-check is reached.
       expect(() => service.verifyAccessToken(refreshToken)).toThrow('Invalid or expired access token.');
     });
   });
@@ -130,33 +125,27 @@ describe('AuthService', () => {
   // ─── register ─────────────────────────────────────────────────
 
   describe('register', () => {
-    it('should throw when pool is null (no DATABASE_URL)', async () => {
-      await expect(service.register('test@example.com', 'password123', 'tenant-1')).rejects.toThrow(
-        'Database not available.',
-      );
-    });
-
-    it('should throw when email already exists', async () => {
-      const mockPool = createMockPool([{ rows: [{ id: 'existing-user' }], rowCount: 1 }]);
-      serviceWithPool.pool = mockPool;
+    it('throws when the email already exists in the tenant', async () => {
+      const { service, mocks } = createAuthServiceWithMocks();
+      mocks.userRepository.findByEmail.mockResolvedValue({
+        id: 'existing-user',
+        email: 'test@example.com',
+        isActive: true,
+        name: null,
+        passwordHash: 'hash',
+      });
 
       await expect(service.register('test@example.com', 'password123', 'tenant-1')).rejects.toThrow(
         'Email already registered',
       );
+      expect(mocks.userRepository.createUserWithDefaultRole).not.toHaveBeenCalled();
     });
 
-    it('should return userId and tokens on success', async () => {
-      const mockClient = createMockClient([
-        { rows: [], rowCount: 0 }, // email check
-        { rows: [], rowCount: 1 }, // INSERT user
-        { rows: [], rowCount: 1 }, // INSERT user_roles
-        { rows: [{ name: 'viewer' }], rowCount: 1 }, // getUserRoles
-      ]);
-      // Override pool.query for the email check, and pool.connect for the transaction
-      const mockPool = createMockPool([{ rows: [], rowCount: 0 }]);
-      mockPool.connect = vi.fn<MockPool['connect']>(async () => mockClient);
-
-      serviceWithPool.pool = mockPool;
+    it('returns userId and tokens on success', async () => {
+      const { service, mocks } = createAuthServiceWithMocks();
+      mocks.userRepository.findByEmail.mockResolvedValue(null);
+      mocks.userRepository.createUserWithDefaultRole.mockResolvedValue(undefined);
+      mocks.userRepository.getRoleNames.mockResolvedValue(['viewer']);
 
       const result = await service.register('test@example.com', 'password123', 'tenant-1', 'Test');
 
@@ -164,119 +153,65 @@ describe('AuthService', () => {
       expect(result).toHaveProperty('tokens');
       expect(result.tokens).toHaveProperty('accessToken');
       expect(result.tokens).toHaveProperty('refreshToken');
-    });
-
-    it('should rollback on INSERT failure', async () => {
-      const mockClient = createMockClient([
-        { rows: [], rowCount: 0 }, // email check - no existing
-      ]);
-      // Make the INSERT fail but still track all calls
-      mockClient.query.mockImplementation(async (sql: string, params?: unknown[]) => {
-        mockClient.calls.push({ sql, params: params ?? [] });
-        if (sql.includes('INSERT INTO users')) {
-          throw new Error('DB insert error');
-        }
-        return { rows: [], rowCount: 0 };
-      });
-
-      const mockPool = createMockPool([{ rows: [], rowCount: 0 }]);
-      mockPool.connect = vi.fn<MockPool['connect']>(async () => mockClient);
-
-      serviceWithPool.pool = mockPool;
-
-      await expect(service.register('test@example.com', 'password123', 'tenant-1')).rejects.toThrow('DB insert error');
-
-      // Verify ROLLBACK was called
-      const rollbackCall = mockClient.calls.find((c) => c.sql === 'ROLLBACK');
-      expect(rollbackCall).toBeDefined();
+      expect(result.roles).toEqual(['viewer']);
     });
   });
 
   // ─── login ────────────────────────────────────────────────────
 
   describe('login', () => {
-    it('should throw when pool is null', async () => {
-      await expect(service.login('test@example.com', 'password123', 'tenant-1')).rejects.toThrow(
-        'Database not available.',
-      );
-    });
-
-    it('should throw for unknown email', async () => {
-      const mockPool = createMockPool([{ rows: [], rowCount: 0 }]);
-      serviceWithPool.pool = mockPool;
+    it('throws for an unknown email', async () => {
+      const { service, mocks } = createAuthServiceWithMocks();
+      mocks.userRepository.findByEmail.mockResolvedValue(null);
 
       await expect(service.login('unknown@example.com', 'password123', 'tenant-1')).rejects.toThrow(
         'Invalid email or password.',
       );
+      expect(mocks.userRepository.getRoleNames).not.toHaveBeenCalled();
     });
 
-    it('should throw for inactive user', async () => {
-      const passwordHash = await hash('password123', 4);
-      const mockPool = createMockPool([
-        {
-          rows: [
-            {
-              id: 'user-1',
-              email: 'test@example.com',
-              password_hash: passwordHash,
-              name: 'Test',
-              is_active: false,
-            },
-          ],
-          rowCount: 1,
-        },
-      ] as QueryResult[]);
-      serviceWithPool.pool = mockPool;
+    it('throws for an inactive user', async () => {
+      const { service, mocks } = createAuthServiceWithMocks();
+      mocks.userRepository.findByEmail.mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+        isActive: false,
+        name: 'Test',
+        passwordHash: await hash('password123', 4),
+      });
 
       await expect(service.login('test@example.com', 'password123', 'tenant-1')).rejects.toThrow(
         'Account is disabled.',
       );
+      expect(mocks.userRepository.getRoleNames).not.toHaveBeenCalled();
     });
 
-    it('should throw for wrong password', async () => {
-      const passwordHash = await hash('correct-password', 4);
-      const mockPool = createMockPool([
-        {
-          rows: [
-            {
-              id: 'user-1',
-              email: 'test@example.com',
-              password_hash: passwordHash,
-              name: 'Test',
-              is_active: true,
-            },
-          ],
-          rowCount: 1,
-        },
-        { rows: [{ name: 'admin' }], rowCount: 1 }, // getUserRoles
-      ]);
-
-      serviceWithPool.pool = mockPool;
+    it('throws for a wrong password', async () => {
+      const { service, mocks } = createAuthServiceWithMocks();
+      mocks.userRepository.findByEmail.mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+        isActive: true,
+        name: 'Test',
+        passwordHash: await hash('correct-password', 4),
+      });
 
       await expect(service.login('test@example.com', 'wrong-password', 'tenant-1')).rejects.toThrow(
         'Invalid email or password.',
       );
+      expect(mocks.userRepository.getRoleNames).not.toHaveBeenCalled();
     });
 
-    it('should return userId and tokens for valid credentials', async () => {
-      const passwordHash = await hash('password123', 4);
-      const mockPool = createMockPool([
-        {
-          rows: [
-            {
-              id: 'user-1',
-              email: 'test@example.com',
-              password_hash: passwordHash,
-              name: 'Test',
-              is_active: true,
-            },
-          ],
-          rowCount: 1,
-        },
-        { rows: [{ name: 'admin' }], rowCount: 1 }, // getUserRoles
-      ]);
-
-      serviceWithPool.pool = mockPool;
+    it('returns userId and tokens for valid credentials', async () => {
+      const { service, mocks } = createAuthServiceWithMocks();
+      mocks.userRepository.findByEmail.mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+        isActive: true,
+        name: 'Test',
+        passwordHash: await hash('password123', 4),
+      });
+      mocks.userRepository.getRoleNames.mockResolvedValue(['admin']);
 
       const result = await service.login('test@example.com', 'password123', 'tenant-1');
       expect(result.userId).toBe('user-1');
@@ -290,33 +225,42 @@ describe('AuthService', () => {
   // ─── refreshTokens ────────────────────────────────────────────
 
   describe('refreshTokens', () => {
-    it('should return new tokens for a valid refresh token', () => {
+    it('returns new tokens for a valid refresh token on an active account', async () => {
+      const { service, mocks } = createAuthServiceWithMocks();
+      mocks.userRepository.findById.mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+        isActive: true,
+        name: null,
+        passwordHash: 'hash',
+      });
+      mocks.userRepository.getRoleNames.mockResolvedValue(['admin']);
+
       const { refreshToken } = service.issueTokens({
         roles: ['admin'],
         tenantId: 'tenant-1',
         userId: 'user-1',
       });
 
-      // refreshTokens is async because of getUserRoles, but pool is null so it returns []
-      const result = service.refreshTokens(refreshToken);
-
-      return expect(result).resolves.toHaveProperty('accessToken');
+      const result = await service.refreshTokens(refreshToken);
+      expect(result).toHaveProperty('accessToken');
+      expect(result).toHaveProperty('refreshToken');
     });
 
-    it('should throw for an invalid refresh token', async () => {
+    it('throws for an invalid refresh token', async () => {
+      const { service } = createAuthServiceWithMocks();
       await expect(service.refreshTokens('invalid-token')).rejects.toThrow('Invalid or expired refresh token.');
     });
 
-    it('should throw for a token with wrong type (access token used as refresh)', async () => {
+    it('throws for an access token presented as a refresh token', async () => {
+      const { service } = createAuthServiceWithMocks();
       const { accessToken } = service.issueTokens({
         roles: ['admin'],
         tenantId: 'tenant-1',
         userId: 'user-1',
       });
 
-      // Access token was signed with accessSecret but refreshTokens verifies with refreshSecret.
-      // This means verify() fails with "invalid signature" which maps to
-      // "Invalid or expired refresh token." — the type-check is never reached.
+      // Signed with accessSecret; refreshTokens verifies with refreshSecret → "invalid signature".
       await expect(service.refreshTokens(accessToken)).rejects.toThrow('Invalid or expired refresh token.');
     });
   });
@@ -324,87 +268,46 @@ describe('AuthService', () => {
   // ─── changePassword ──────────────────────────────────────────
 
   describe('changePassword', () => {
-    it('should throw when pool is null', async () => {
-      await expect(service.changePassword('user-1', 'tenant-1', 'old', 'newpass123')).rejects.toThrow(
-        'Database not available.',
-      );
-    });
-
-    it('should throw when user not found', async () => {
-      const mockPool = createMockPool([{ rows: [], rowCount: 0 }]);
-      serviceWithPool.pool = mockPool;
+    it('throws when the user is not found in the tenant', async () => {
+      const { service, mocks } = createAuthServiceWithMocks();
+      mocks.userRepository.findById.mockResolvedValue(null);
 
       await expect(service.changePassword('nonexistent', 'tenant-1', 'old', 'newpass123')).rejects.toThrow(
         'User not found.',
       );
+      expect(mocks.userRepository.updatePassword).not.toHaveBeenCalled();
     });
 
-    it('should throw when current password is incorrect', async () => {
-      const passwordHash = await hash('correct-password', 4);
-      const mockPool = createMockPool([
-        {
-          rows: [{ id: 'user-1', password_hash: passwordHash, is_active: true }],
-          rowCount: 1,
-        },
-      ]);
-      serviceWithPool.pool = mockPool;
+    it('throws when the current password is incorrect', async () => {
+      const { service, mocks } = createAuthServiceWithMocks();
+      mocks.userRepository.findById.mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+        isActive: true,
+        name: null,
+        passwordHash: await hash('correct-password', 4),
+      });
 
       await expect(service.changePassword('user-1', 'tenant-1', 'wrong-password', 'newpass123')).rejects.toThrow(
         'Current password is incorrect.',
       );
+      expect(mocks.userRepository.updatePassword).not.toHaveBeenCalled();
     });
 
-    it('should update password when current password is correct', async () => {
-      const passwordHash = await hash('old-password', 4);
-      const mockClient = createMockClient([
-        { rows: [], rowCount: 0 }, // set_config
-        { rows: [], rowCount: 1 }, // UPDATE
-        { rows: [], rowCount: 0 }, // COMMIT
-      ]);
-      const mockPool = createMockPool([
-        {
-          rows: [{ id: 'user-1', password_hash: passwordHash, is_active: true }],
-          rowCount: 1,
-        },
-      ]);
-      mockPool.connect = vi.fn<MockPool['connect']>(async () => mockClient);
-      serviceWithPool.pool = mockPool;
+    it('updates the password when the current password is correct', async () => {
+      const { service, mocks } = createAuthServiceWithMocks();
+      mocks.userRepository.findById.mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+        isActive: true,
+        name: null,
+        passwordHash: await hash('old-password', 4),
+      });
+      mocks.userRepository.updatePassword.mockResolvedValue(undefined);
 
       await service.changePassword('user-1', 'tenant-1', 'old-password', 'newpass123');
 
-      // Verify UPDATE was called
-      const updateCall = mockClient.calls.find((c) => c.sql.includes('UPDATE users'));
-      expect(updateCall).toBeDefined();
-      // Verify COMMIT was called
-      const commitCall = mockClient.calls.find((c) => c.sql === 'COMMIT');
-      expect(commitCall).toBeDefined();
-    });
-
-    it('should rollback on UPDATE failure', async () => {
-      const passwordHash = await hash('old-password', 4);
-      const mockClient = createMockClient([]);
-      mockClient.query.mockImplementation(async (sql: string, params?: unknown[]) => {
-        mockClient.calls.push({ sql, params: params ?? [] });
-        if (sql.includes('UPDATE users')) {
-          throw new Error('DB update error');
-        }
-        return { rows: [], rowCount: 0 };
-      });
-      const mockPool = createMockPool([
-        {
-          rows: [{ id: 'user-1', password_hash: passwordHash, is_active: true }],
-          rowCount: 1,
-        },
-      ]);
-      mockPool.connect = vi.fn<MockPool['connect']>(async () => mockClient);
-      serviceWithPool.pool = mockPool;
-
-      await expect(service.changePassword('user-1', 'tenant-1', 'old-password', 'newpass123')).rejects.toThrow(
-        'DB update error',
-      );
-
-      const rollbackCall = mockClient.calls.find((c) => c.sql === 'ROLLBACK');
-      expect(rollbackCall).toBeDefined();
+      expect(mocks.userRepository.updatePassword).toHaveBeenCalledWith('tenant-1', 'user-1', expect.any(String));
     });
   });
 });

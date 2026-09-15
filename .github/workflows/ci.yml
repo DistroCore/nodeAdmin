@@ -50,7 +50,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: CoreApi unit tests
-        run: npm run test:coreApi
+        run: npm run test:coreApi:coverage
       - name: AdminPortal unit tests
         run: npm run test:adminPortal
 
@@ -172,12 +172,13 @@ jobs:
       - name: Start CoreApi
         run: |
           AUTH_ENABLE_DEV_TOKEN_ISSUE=true \
-          DATABASE_URL=postgres://nodeadmin:nodeadmin@localhost:55432/nodeadmin \
+          DATABASE_URL=postgres://nodeadmin_app:nodeadmin@localhost:55432/nodeadmin \
           FRONTEND_ORIGINS=http://localhost:3000 \
           JWT_ACCESS_SECRET=ci-access-secret \
           JWT_REFRESH_SECRET=ci-refresh-secret \
           KAFKA_BROKERS=localhost:9092 \
           OUTBOX_PUBLISHER_ENABLED=true \
+          OUTBOX_DATABASE_URL=postgres://nodeadmin_outbox:nodeadmin@localhost:55432/nodeadmin \
           OUTBOX_TOPIC=im.events \
           PORT=11451 \
           node apps/coreApi/dist/main.js &

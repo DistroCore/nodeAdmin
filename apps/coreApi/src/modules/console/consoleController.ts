@@ -1,6 +1,6 @@
 import { Controller, Get, Logger, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { count, desc, eq, gte } from 'drizzle-orm';
+import { and, count, desc, eq, gte, sql } from 'drizzle-orm';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
 import { AuditLogService } from '../../infrastructure/audit/auditLogService';
 import { ConnectionRegistry } from '../../infrastructure/connectionRegistry';
@@ -98,7 +98,7 @@ export class ConsoleController {
 
   @Get('overview')
   @ApiOperation({ summary: 'Get dashboard overview stats' })
-  async getOverview() {
+  async getOverview(@CurrentUser() identity: AuthIdentity) {
     let activeCount: number | null = null;
     try {
       const tenants = await this.tenantsService.list();
@@ -109,8 +109,8 @@ export class ConsoleController {
 
     const onlineUsers = this.connectionRegistry.totalUniqueUsers();
     const [totalConversations, todayMessages] = await Promise.all([
-      this.countAllConversations(),
-      this.countTodayMessages(),
+      this.countAllConversations(identity.tenantId),
+      this.countTodayMessages(identity.tenantId),
     ]);
     const todos = await this.buildOverviewTodos({
       activeTenantCount: activeCount,
@@ -281,13 +281,16 @@ export class ConsoleController {
     };
   }
 
-  private async countAllConversations(): Promise<number | null> {
+  private async countAllConversations(tenantId: AuthIdentity['tenantId']): Promise<number | null> {
     if (!this.databaseService.drizzle) {
       return null;
     }
 
     try {
-      const result = await this.databaseService.drizzle.select({ total: count() }).from(conversations);
+      const result = await this.databaseService.drizzle.transaction(async (tx) => {
+        await tx.execute(sql`SELECT set_config('app.current_tenant', ${tenantId}, true)`);
+        return tx.select({ total: count() }).from(conversations).where(eq(conversations.tenantId, tenantId));
+      });
 
       return Number(result[0]?.total ?? 0);
     } catch (error) {
@@ -296,7 +299,7 @@ export class ConsoleController {
     }
   }
 
-  private async countTodayMessages(): Promise<number | null> {
+  private async countTodayMessages(tenantId: AuthIdentity['tenantId']): Promise<number | null> {
     if (!this.databaseService.drizzle) {
       return null;
     }
@@ -305,10 +308,13 @@ export class ConsoleController {
     startOfToday.setHours(0, 0, 0, 0);
 
     try {
-      const result = await this.databaseService.drizzle
-        .select({ total: count() })
-        .from(messages)
-        .where(gte(messages.createdAt, startOfToday));
+      const result = await this.databaseService.drizzle.transaction(async (tx) => {
+        await tx.execute(sql`SELECT set_config('app.current_tenant', ${tenantId}, true)`);
+        return tx
+          .select({ total: count() })
+          .from(messages)
+          .where(and(eq(messages.tenantId, tenantId), gte(messages.createdAt, startOfToday)));
+      });
 
       return Number(result[0]?.total ?? 0);
     } catch (error) {
@@ -323,10 +329,10 @@ export class ConsoleController {
     }
 
     try {
-      const result = await this.databaseService.drizzle
-        .select({ total: count() })
-        .from(roles)
-        .where(eq(roles.tenantId, tenantId));
+      const result = await this.databaseService.drizzle.transaction(async (tx) => {
+        await tx.execute(sql`SELECT set_config('app.current_tenant', ${tenantId}, true)`);
+        return tx.select({ total: count() }).from(roles).where(eq(roles.tenantId, tenantId));
+      });
 
       return Number(result[0]?.total ?? 0);
     } catch {
@@ -344,8 +350,9 @@ export class ConsoleController {
     }
 
     try {
-      const [items, totalResult] = await Promise.all([
-        this.databaseService.drizzle
+      return await this.databaseService.drizzle.transaction(async (tx) => {
+        await tx.execute(sql`SELECT set_config('app.current_tenant', ${tenantId}, true)`);
+        const items = await tx
           .select({
             content: messages.content,
             conversationId: messages.conversationId,
@@ -357,14 +364,14 @@ export class ConsoleController {
           .where(eq(messages.tenantId, tenantId))
           .orderBy(desc(messages.createdAt))
           .limit(pageSize)
-          .offset((page - 1) * pageSize),
-        this.databaseService.drizzle.select({ total: count() }).from(messages).where(eq(messages.tenantId, tenantId)),
-      ]);
+          .offset((page - 1) * pageSize);
+        const totalResult = await tx.select({ total: count() }).from(messages).where(eq(messages.tenantId, tenantId));
 
-      return {
-        items,
-        total: Number(totalResult[0]?.total ?? 0),
-      };
+        return {
+          items,
+          total: Number(totalResult[0]?.total ?? 0),
+        };
+      });
     } catch (error) {
       this.logger.warn(`Failed to list recent messages for tenant ${tenantId}: ${this.formatError(error)}`);
       return { items: [], total: 0 };

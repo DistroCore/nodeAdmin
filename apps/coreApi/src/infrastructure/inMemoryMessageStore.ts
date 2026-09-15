@@ -88,13 +88,33 @@ export class InMemoryMessageStore {
     return currentMessages.slice(-limit);
   }
 
+  /**
+   * Look up a single message by id within a tenant. Used for ownership / sequence resolution in
+   * edit/delete/markAsRead paths that must not be capped by the getLatest window.
+   *
+   * NOTE: in-memory mode caps each stream at {@link maxStoredMessagesPerStream} (200) and evicts the
+   * oldest entry once exceeded. This is a structural limit of the dev fallback store and cannot be
+   * bypassed here. Production runs against PostgreSQL where the repository path uses the
+   * `(tenant_id, message_id)` unique index and is unbounded.
+   */
+  findById(tenantId: string, messageId: string): StoredMessage | null {
+    // messageByIdByStream is keyed by `${tenantId}::${conversationId}`; messageId is unique per
+    // tenant in practice (UUID), so scan the tenant's streams and return the first match.
+    for (const [key, messageById] of this.messageByIdByStream.entries()) {
+      if (!key.startsWith(`${tenantId}::`)) continue;
+      const msg = messageById.get(messageId);
+      if (msg && msg.tenantId === tenantId) return msg;
+    }
+    return null;
+  }
+
   updateContent(tenantId: string, conversationId: string, messageId: string, content: string): StoredMessage | null {
     const streamKey = this.toStreamKey(tenantId, conversationId);
     const messageById = this.messageByIdByStream.get(streamKey);
     if (!messageById) return null;
 
     const msg = messageById.get(messageId);
-    if (!msg) return null;
+    if (!msg || msg.deletedAt !== null) return null;
 
     msg.content = content;
     msg.editedAt = new Date().toISOString();
@@ -107,7 +127,7 @@ export class InMemoryMessageStore {
     if (!messageById) return null;
 
     const msg = messageById.get(messageId);
-    if (!msg) return null;
+    if (!msg || msg.deletedAt !== null) return null;
 
     msg.content = '';
     msg.deletedAt = new Date().toISOString();

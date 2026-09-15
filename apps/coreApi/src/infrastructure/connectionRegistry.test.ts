@@ -77,6 +77,19 @@ describe('ConnectionRegistry', () => {
     expect(registry.countByTenant('tenant-2')).toBe(1);
   });
 
+  it('preserves the old tenant state when a tenant switch is rejected', () => {
+    const registry = new ConnectionRegistry() as unknown as RegistryTestAccess;
+    const originalContext = createContext('tenant-1', 'conversation-1');
+
+    registry.upsert('socket-a', originalContext);
+    registry.countByTenantId.set('tenant-2', ConnectionRegistry.MAX_CONNECTIONS_PER_TENANT);
+
+    expect(() => registry.upsert('socket-a', createContext('tenant-2', 'conversation-2'))).toThrowError(WsException);
+    expect(registry.get('socket-a')).toEqual(originalContext);
+    expect(registry.countByTenant('tenant-1')).toBe(1);
+    expect(registry.countByTenant('tenant-2')).toBe(ConnectionRegistry.MAX_CONNECTIONS_PER_TENANT);
+  });
+
   it('counts unique online users across sockets instead of raw connections', () => {
     const registry = new ConnectionRegistry() as unknown as RegistryTestAccess;
 

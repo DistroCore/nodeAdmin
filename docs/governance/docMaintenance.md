@@ -1,6 +1,6 @@
 # 文档维护机制
 
-> **status**: approved | **last-reviewed**: 2026-02-28
+> **status**: approved | **last-reviewed**: 2026-07-09
 
 ## 1. 维护原则
 

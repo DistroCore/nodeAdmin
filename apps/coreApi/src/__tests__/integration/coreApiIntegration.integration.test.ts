@@ -138,25 +138,33 @@ describe.sequential('CoreApi integration', () => {
   });
 
   it('covers IM websocket join and message delivery', async () => {
-    const senderToken = await context.issueDevToken(context.uniqueId('im-sender'), ['im:operator']);
-    const receiverToken = await context.issueDevToken(context.uniqueId('im-receiver'), ['im:operator']);
-    const conversationId = context.uniqueId('conversation');
+    const senderId = context.uniqueId('im-sender');
+    const receiverId = context.uniqueId('im-receiver');
+    const senderToken = await context.issueDevToken(senderId, ['im:operator']);
+    const receiverToken = await context.issueDevToken(receiverId, ['im:operator']);
+    const createConversationResponse = await context.http
+      .post('/api/v1/im/conversations')
+      .set('Authorization', `Bearer ${senderToken}`)
+      .send({ memberUserIds: [receiverId], type: 'dm' });
+
+    expect(createConversationResponse.status).toBe(201);
+    const conversationId = createConversationResponse.body.id as string;
     const messageId = context.uniqueId('message');
     const traceId = context.uniqueId('trace');
 
     const sender = await connectSocket(context.baseUrl, senderToken);
     const receiver = await connectSocket(context.baseUrl, receiverToken);
+    let receiverMessage: Promise<{ conversationId: string; messageId: string }> | null = null;
 
     try {
-      const receiverMessage = waitForEvent(
-        receiver,
-        'messageReceived',
-        (payload: { messageId?: string }) => payload?.messageId === messageId,
-      );
-
       await emitWithAck(sender, 'joinConversation', { conversationId });
       await emitWithAck(receiver, 'joinConversation', { conversationId });
 
+      receiverMessage = waitForEvent<{ conversationId: string; messageId: string }>(
+        receiver,
+        'messageReceived',
+        (payload) => payload?.messageId === messageId,
+      );
       const sendAck = await emitWithAck(sender, 'sendMessage', {
         content: 'Integration websocket message',
         conversationId,
@@ -171,7 +179,35 @@ describe.sequential('CoreApi integration', () => {
 
       expect(deliveredMessage.messageId).toBe(messageId);
       expect(deliveredMessage.conversationId).toBe(conversationId);
+
+      const overviewResponse = await context.http
+        .get('/api/v1/console/overview')
+        .set('Authorization', `Bearer ${senderToken}`);
+      expect(overviewResponse.status).toBe(200);
+      expect(readOverviewStat(overviewResponse.body, 'overview.stat.totalConversations')).not.toBe('N/A');
+      expect(readOverviewStat(overviewResponse.body, 'overview.stat.todayMessages')).not.toBe('N/A');
+
+      await waitForCondition(async () => {
+        const recentMessagesResponse = await context.http
+          .get('/api/v1/console/recent-messages')
+          .set('Authorization', `Bearer ${senderToken}`);
+        return (
+          recentMessagesResponse.status === 200 &&
+          recentMessagesResponse.body.items.some((item: { id: string }) => item.id === messageId)
+        );
+      });
+
+      await waitForCondition(async () => {
+        const auditResponse = await context.http
+          .get('/api/v1/console/audit-logs')
+          .query({ action: 'im.join_conversation' })
+          .set('Authorization', `Bearer ${senderToken}`);
+        return auditResponse.status === 200 && auditResponse.body.total >= 1;
+      });
     } finally {
+      if (receiverMessage) {
+        void receiverMessage.catch(() => undefined);
+      }
       sender.disconnect();
       receiver.disconnect();
     }
@@ -340,6 +376,24 @@ describe.sequential('CoreApi integration', () => {
   });
 });
 
+function readOverviewStat(
+  body: { stats?: Array<{ label: string; value: string }> },
+  label: string,
+): string | undefined {
+  return body.stats?.find((stat) => stat.label === label)?.value;
+}
+
+async function waitForCondition(check: () => Promise<boolean>, timeoutMs = 5000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await check()) {
+      return;
+    }
+    await new Promise<void>((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error(`Condition was not met within ${timeoutMs}ms.`);
+}
+
 async function connectSocket(baseUrl: string, token: string): Promise<Socket> {
   const socket = io(baseUrl, {
     auth: {
@@ -373,12 +427,22 @@ async function emitWithAck<TPayload extends object, TAck>(
   payload: TPayload,
 ): Promise<TAck> {
   return await new Promise<TAck>((resolve, reject) => {
+    const cleanup = () => {
+      clearTimeout(timeout);
+      socket.off('wsError', onWsError);
+    };
+    const onWsError = (error: unknown) => {
+      cleanup();
+      reject(new Error(`Socket rejected ${eventName}: ${JSON.stringify(error)}`));
+    };
     const timeout = setTimeout(() => {
+      socket.off('wsError', onWsError);
       reject(new Error(`Socket ack timed out for ${eventName}.`));
     }, 5000);
 
+    socket.once('wsError', onWsError);
     socket.emit(eventName, payload, (ack: TAck) => {
-      clearTimeout(timeout);
+      cleanup();
       resolve(ack);
     });
   });

@@ -212,6 +212,31 @@ describe('AuditInterceptor', () => {
     expect(recordMock.mock.calls[0][0].context).toEqual({ displayName: 'Alice' });
   });
 
+  it('recursively filters sensitive fields from nested objects and arrays', async () => {
+    const ctx = createHttpContext('POST', '/api/v1/users', mockIdentity, {
+      authorization: 'Bearer hidden',
+      items: [
+        {
+          access_token: 'nested-token',
+          label: 'safe',
+        },
+      ],
+      profile: {
+        apiSecret: 'nested-secret',
+        name: 'Alice',
+        password: 'nested-password',
+      },
+    });
+    const next = createCallHandler();
+
+    await interceptor.intercept(ctx, next).toPromise();
+
+    expect(recordMock.mock.calls[0][0].context).toEqual({
+      items: [{ label: 'safe' }],
+      profile: { name: 'Alice' },
+    });
+  });
+
   it('omits context entirely when the body only contains sensitive fields', async () => {
     const ctx = createHttpContext('PATCH', '/api/v1/users/user-1', mockIdentity, {
       password: 'secret',

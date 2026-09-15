@@ -28,11 +28,6 @@ export class ConnectionRegistry {
   upsert(socketId: string, context: SocketContext): void {
     const existing = this.contextBySocketId.get(socketId);
 
-    // If this socket is switching tenants (edge case), decrement the old tenant count.
-    if (existing && existing.tenantId !== context.tenantId) {
-      this.decrementTenant(existing.tenantId);
-    }
-
     // Only count new sockets (not re-joins to same or different conversation).
     const isNew = !existing || existing.tenantId !== context.tenantId;
     if (isNew) {
@@ -44,6 +39,12 @@ export class ConnectionRegistry {
         throw new WsException(
           `Connection limit reached for tenant. Maximum ${ConnectionRegistry.MAX_CONNECTIONS_PER_TENANT} concurrent connections allowed.`,
         );
+      }
+
+      // Apply a tenant switch only after the target capacity check succeeds. A rejected switch must
+      // leave both the existing socket context and the old tenant's count unchanged.
+      if (existing) {
+        this.decrementTenant(existing.tenantId);
       }
       this.countByTenantId.set(context.tenantId, current + 1);
     }

@@ -10,7 +10,7 @@ const RESET = '\x1b[0m';
 const BOLD = '\x1b[1m';
 
 const ROOT_DIR = path.resolve(__dirname, '..');
-const GENERATED_DATE = '2026-04-10';
+const GENERATED_DATE = new Date().toISOString().slice(0, 10);
 
 function readRepoFile(relativePath) {
   return fs.readFileSync(path.join(ROOT_DIR, relativePath), 'utf8');

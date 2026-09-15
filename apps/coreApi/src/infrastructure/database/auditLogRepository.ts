@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, lte, type SQL } from 'drizzle-orm';
+import { and, count, desc, eq, gte, lte, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { randomUUID } from 'node:crypto';
@@ -46,44 +46,50 @@ export class AuditLogRepository {
     traceId: string;
     userId: string;
   }): Promise<void> {
-    await this.db.insert(auditLogs).values({
-      id: randomUUID(),
-      tenantId: input.tenantId,
-      userId: input.userId,
-      action: input.action,
-      targetType: input.targetType ?? null,
-      targetId: input.targetId ?? null,
-      traceId: input.traceId,
-      contextJson: input.context ? JSON.stringify(input.context) : null,
+    await this.db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT set_config('app.current_tenant', ${input.tenantId}, true)`);
+      await tx.insert(auditLogs).values({
+        id: randomUUID(),
+        tenantId: input.tenantId,
+        userId: input.userId,
+        action: input.action,
+        targetType: input.targetType ?? null,
+        targetId: input.targetId ?? null,
+        traceId: input.traceId,
+        contextJson: input.context ? JSON.stringify(input.context) : null,
+      });
     });
   }
 
   async findByFilter(filter: AuditLogFilter, page: number, pageSize: number): Promise<StoredAuditLog[]> {
     const conditions = this.buildConditions(filter);
 
-    const rows = await this.db
-      .select({
-        id: auditLogs.id,
-        tenantId: auditLogs.tenantId,
-        userId: auditLogs.userId,
-        action: auditLogs.action,
-        targetType: auditLogs.targetType,
-        targetId: auditLogs.targetId,
-        traceId: auditLogs.traceId,
-        contextJson: auditLogs.contextJson,
-        createdAt: auditLogs.createdAt,
-        actorName: users.name,
-        actorEmail: users.email,
-        targetUserName: targetUsers.name,
-        targetUserEmail: targetUsers.email,
-      })
-      .from(auditLogs)
-      .leftJoin(users, eq(users.id, auditLogs.userId))
-      .leftJoin(targetUsers, eq(targetUsers.id, auditLogs.targetId))
-      .where(and(...conditions))
-      .orderBy(desc(auditLogs.createdAt))
-      .limit(pageSize)
-      .offset((page - 1) * pageSize);
+    const rows = await this.db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT set_config('app.current_tenant', ${filter.tenantId}, true)`);
+      return tx
+        .select({
+          id: auditLogs.id,
+          tenantId: auditLogs.tenantId,
+          userId: auditLogs.userId,
+          action: auditLogs.action,
+          targetType: auditLogs.targetType,
+          targetId: auditLogs.targetId,
+          traceId: auditLogs.traceId,
+          contextJson: auditLogs.contextJson,
+          createdAt: auditLogs.createdAt,
+          actorName: users.name,
+          actorEmail: users.email,
+          targetUserName: targetUsers.name,
+          targetUserEmail: targetUsers.email,
+        })
+        .from(auditLogs)
+        .leftJoin(users, eq(users.id, auditLogs.userId))
+        .leftJoin(targetUsers, eq(targetUsers.id, auditLogs.targetId))
+        .where(and(...conditions))
+        .orderBy(desc(auditLogs.createdAt))
+        .limit(pageSize)
+        .offset((page - 1) * pageSize);
+    });
 
     return rows.map((row) => ({
       id: row.id,
@@ -104,10 +110,13 @@ export class AuditLogRepository {
   async countByFilter(filter: AuditLogFilter): Promise<number> {
     const conditions = this.buildConditions(filter);
 
-    const result = await this.db
-      .select({ total: count() })
-      .from(auditLogs)
-      .where(and(...conditions));
+    const result = await this.db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT set_config('app.current_tenant', ${filter.tenantId}, true)`);
+      return tx
+        .select({ total: count() })
+        .from(auditLogs)
+        .where(and(...conditions));
+    });
 
     return Number(result[0]?.total ?? 0);
   }

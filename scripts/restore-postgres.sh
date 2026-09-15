@@ -3,12 +3,16 @@
 # This script restores a PostgreSQL backup
 
 set -euo pipefail
+umask 077
 
 # Configuration
 BACKUP_DIR="${BACKUP_DIR:-./infra/docker/postgres/backups}"
-CONTAINER_NAME="nodeadmin-postgres"
-DB_NAME="nodeadmin"
-DB_USER="nodeadmin"
+CONTAINER_NAME="${CONTAINER_NAME:-nodeadmin-postgres}"
+DB_NAME="${DB_NAME:-nodeadmin}"
+DB_USER="${DB_USER:-nodeadmin}"
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+POST_RESTORE_PRIVILEGES_PATH="${SCRIPT_DIR}/postRestorePrivileges.sql"
+RESTORE_ERROR_LOG=""
 
 # Colors for output
 RED='\033[0;31m'
@@ -27,6 +31,13 @@ log_warn() {
 log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
+
+if [[ ! "${CONTAINER_NAME}" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]*$ ]] ||
+   [[ ! "${DB_NAME}" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] ||
+   [[ ! "${DB_USER}" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+    log_error "Container, database, and user names must be safe identifiers"
+    exit 1
+fi
 
 # Check if backup file is provided
 if [ $# -eq 0 ]; then
@@ -79,6 +90,13 @@ fi
 
 log_info "Backup file integrity verified"
 
+ROLE_COUNT=$(docker exec "${CONTAINER_NAME}" psql -U "${DB_USER}" -d postgres -At -c \
+    "SELECT COUNT(*) FROM pg_roles WHERE (rolname = 'nodeadmin_app' AND NOT rolsuper AND NOT rolbypassrls) OR (rolname = 'nodeadmin_outbox' AND NOT rolsuper AND rolbypassrls);")
+if [ "${ROLE_COUNT}" -ne 2 ]; then
+    log_error "Required restricted roles are missing or unsafe; run database role migrations before restore"
+    exit 1
+fi
+
 # Terminate existing connections
 log_info "Terminating existing connections to database..."
 docker exec "${CONTAINER_NAME}" psql -U "${DB_USER}" -d postgres -c \
@@ -100,16 +118,60 @@ docker exec "${CONTAINER_NAME}" psql -U "${DB_USER}" -d postgres -c "CREATE DATA
 
 # Restore backup
 log_info "Restoring backup..."
-if gunzip -c "${BACKUP_FILE}" | docker exec -i "${CONTAINER_NAME}" psql -U "${DB_USER}" -d "${DB_NAME}" > /dev/null 2>&1; then
+RESTORE_ERROR_LOG=$(mktemp "${TMPDIR:-/tmp}/nodeadmin-restore.XXXXXX")
+chmod 600 "${RESTORE_ERROR_LOG}"
+cleanup_restore_log() {
+    if [ -n "${RESTORE_ERROR_LOG}" ]; then
+        rm -f "${RESTORE_ERROR_LOG}"
+    fi
+}
+trap cleanup_restore_log EXIT HUP INT TERM
+
+if { gunzip -c "${BACKUP_FILE}" | docker exec -i "${CONTAINER_NAME}" psql \
+    --no-psqlrc \
+    --no-password \
+    --set=ON_ERROR_STOP=1 \
+    --single-transaction \
+    -U "${DB_USER}" \
+    -d "${DB_NAME}" \
+    --file=-; } > /dev/null 2>"${RESTORE_ERROR_LOG}"; then
     log_info "Restore completed successfully"
 else
     log_error "Restore failed"
+    tail -n 20 "${RESTORE_ERROR_LOG}" >&2
     exit 1
 fi
+
+if docker exec -i "${CONTAINER_NAME}" psql \
+    --no-psqlrc \
+    --no-password \
+    --set=ON_ERROR_STOP=1 \
+    --single-transaction \
+    -U "${DB_USER}" \
+    -d "${DB_NAME}" \
+    --file=- < "${POST_RESTORE_PRIVILEGES_PATH}" > /dev/null 2>>"${RESTORE_ERROR_LOG}"; then
+    log_info "Post-restore privileges and RLS metadata verified"
+else
+    log_error "Post-restore privilege hardening failed"
+    tail -n 20 "${RESTORE_ERROR_LOG}" >&2
+    exit 1
+fi
+
+rm -f "${RESTORE_ERROR_LOG}"
+RESTORE_ERROR_LOG=""
+trap - EXIT HUP INT TERM
 
 # Verify restore
 TABLE_COUNT=$(docker exec "${CONTAINER_NAME}" psql -U "${DB_USER}" -d "${DB_NAME}" -t -c \
     "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" | tr -d ' ')
+
+CORE_TABLE_COUNT=$(docker exec "${CONTAINER_NAME}" psql -U "${DB_USER}" -d "${DB_NAME}" -At -c \
+    "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('audit_logs', 'conversations', 'messages', 'outbox_events');")
+
+if [ "${CORE_TABLE_COUNT}" -ne 4 ]; then
+    log_error "Restore verification failed: expected 4 core tables, found ${CORE_TABLE_COUNT}"
+    exit 1
+fi
 
 log_info "Restored ${TABLE_COUNT} tables"
 

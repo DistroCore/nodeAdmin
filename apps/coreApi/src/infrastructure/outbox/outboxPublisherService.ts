@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nest
 import { Kafka, Producer } from 'kafkajs';
 import { Pool, type PoolClient } from 'pg';
 import { runtimeConfig } from '../../app/runtimeConfig';
-import { DatabaseService } from '../database/databaseService';
+import { OutboxDatabaseService } from './outboxDatabaseService';
 
 interface OutboxRow {
   aggregate_id: string;
@@ -20,12 +20,17 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
   private static readonly maxErrorLength = 2000;
 
   private intervalHandle: NodeJS.Timeout | null = null;
+  private cleanupIntervalHandle: NodeJS.Timeout | null = null;
   private isPublishing = false;
   private readonly pool: Pool | null;
   private producer: Producer | null = null;
+  private publishCompletion: Promise<void> | null = null;
 
-  constructor(@Inject(DatabaseService) databaseService: DatabaseService = new DatabaseService()) {
-    this.pool = (databaseService.drizzle?.$client as Pool | undefined) ?? null;
+  constructor(
+    @Inject(OutboxDatabaseService)
+    private readonly databaseService: OutboxDatabaseService = new OutboxDatabaseService(),
+  ) {
+    this.pool = databaseService.pool;
   }
 
   async onModuleInit(): Promise<void> {
@@ -34,16 +39,15 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
     }
 
     if (!this.pool) {
-      this.logger.warn('Outbox publisher enabled but DATABASE_URL is missing.');
-      return;
+      throw new Error('OUTBOX_DATABASE_URL is required when the outbox publisher is enabled.');
     }
 
     if (runtimeConfig.kafka.brokers.length === 0) {
-      this.logger.warn('Outbox publisher enabled but KAFKA_BROKERS is empty.');
-      return;
+      throw new Error('KAFKA_BROKERS is required when the outbox publisher is enabled.');
     }
 
     try {
+      await this.databaseService.assertSafeRole();
       const kafka = new Kafka({
         brokers: runtimeConfig.kafka.brokers,
         clientId: runtimeConfig.kafka.clientId,
@@ -57,19 +61,19 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
         void this.publishBatch();
       }, runtimeConfig.outbox.pollIntervalMs);
 
+      this.startCleanupInterval();
+
       this.logger.log(
         `Outbox publisher enabled interval=${runtimeConfig.outbox.pollIntervalMs}ms batchSize=${runtimeConfig.outbox.batchSize} topic=${runtimeConfig.kafka.topic} dlq=${runtimeConfig.kafka.dlqTopic}.`,
       );
     } catch (error) {
-      this.logger.error(
-        'Failed to initialize Outbox publisher. Service will continue without outbox functionality.',
-        error,
-      );
+      this.logger.error('Failed to initialize Outbox publisher. Application startup will fail.', error);
       // Clean up resources if initialization failed
       if (this.producer) {
         await this.producer.disconnect().catch(() => {});
         this.producer = null;
       }
+      throw error;
     }
   }
 
@@ -79,22 +83,48 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
       this.intervalHandle = null;
     }
 
-    if (this.producer) {
-      await this.producer.disconnect();
-      this.producer = null;
+    if (this.cleanupIntervalHandle) {
+      clearInterval(this.cleanupIntervalHandle);
+      this.cleanupIntervalHandle = null;
+    }
+
+    try {
+      if (this.publishCompletion) {
+        await this.publishCompletion;
+      }
+    } finally {
+      if (this.producer) {
+        await this.producer.disconnect();
+        this.producer = null;
+      }
     }
   }
 
-  private async publishBatch(): Promise<void> {
-    if (this.isPublishing || !this.pool || !this.producer) {
-      return;
+  private publishBatch(): Promise<void> {
+    if (this.publishCompletion) {
+      return this.publishCompletion;
+    }
+    const pool = this.pool;
+    const producer = this.producer;
+    if (!pool || !producer) {
+      return Promise.resolve();
     }
 
+    const completion = this.executePublishBatch(pool, producer);
+    this.publishCompletion = completion;
+    void completion.then(
+      () => this.clearPublishCompletion(completion),
+      () => this.clearPublishCompletion(completion),
+    );
+    return completion;
+  }
+
+  private async executePublishBatch(pool: Pool, producer: Producer): Promise<void> {
     this.isPublishing = true;
     let client: PoolClient | null = null;
 
     try {
-      client = await this.pool.connect();
+      client = await pool.connect();
       await client.query('BEGIN');
       const picked = await client.query<OutboxRow>(
         `
@@ -127,7 +157,7 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
         const payload = row.payload;
 
         try {
-          await this.producer.send({
+          await producer.send({
             messages: [
               {
                 headers: {
@@ -160,7 +190,7 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
 
           if (nextRetry >= runtimeConfig.outbox.maxRetry) {
             try {
-              await this.producer.send({
+              await producer.send({
                 messages: [
                   {
                     headers: {
@@ -232,7 +262,63 @@ export class OutboxPublisherService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  private clearPublishCompletion(completion: Promise<void>): void {
+    if (this.publishCompletion === completion) {
+      this.publishCompletion = null;
+    }
+  }
+
   private truncateError(error: string): string {
     return error.slice(0, OutboxPublisherService.maxErrorLength);
+  }
+
+  private startCleanupInterval(): void {
+    const { retentionDays, cleanupIntervalMs } = runtimeConfig.outbox;
+    // 0 explicitly disables cleanup — keeps all rows for audit/forensics.
+    if (retentionDays <= 0) {
+      this.logger.log('Outbox retention cleanup disabled (OUTBOX_RETENTION_DAYS=0).');
+      return;
+    }
+
+    this.cleanupIntervalHandle = setInterval(() => {
+      void this.cleanupPublished();
+    }, cleanupIntervalMs);
+    this.cleanupIntervalHandle.unref?.();
+  }
+
+  private async cleanupPublished(): Promise<void> {
+    if (!this.pool) {
+      return;
+    }
+
+    const { retentionDays } = runtimeConfig.outbox;
+    if (retentionDays <= 0) {
+      return;
+    }
+
+    let client: PoolClient | null = null;
+    try {
+      client = await this.pool.connect();
+      // Delete rows that have been fully processed (either published to the primary topic or
+      // forwarded to the DLQ) AND are older than the retention window. Rows still mid-flight
+      // (neither published nor DLQ'd) are always retained so we never lose an undelivered event.
+      const result = await client.query(
+        `
+          DELETE FROM outbox_events
+          WHERE created_at < NOW() - MAKE_INTERVAL(days => $1)
+            AND (published_at IS NOT NULL OR dlq_at IS NOT NULL);
+        `,
+        [retentionDays],
+      );
+
+      const deletedRows = result.rowCount ?? 0;
+      if (deletedRows > 0) {
+        this.logger.log(`Outbox cleanup removed ${deletedRows} rows older than ${retentionDays} day(s).`);
+      }
+    } catch (error) {
+      this.logger.warn(`Outbox cleanup failed (will retry next interval): ${String(error)}`);
+    } finally {
+      client?.release();
+    }
   }
 }

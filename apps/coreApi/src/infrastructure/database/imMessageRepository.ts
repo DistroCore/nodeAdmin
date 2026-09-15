@@ -219,9 +219,49 @@ export class ImMessageRepository {
     });
   }
 
+  /**
+   * Fetch a single message by id within a tenant. Uses the `(tenant_id, message_id)` unique index —
+   * unbounded, unlike getLatest which is windowed. Used by edit/delete/markAsRead flows that must
+   * resolve messages outside the recent 200-message window.
+   */
+  async findById(tenantId: string, messageId: string): Promise<StoredMessage | null> {
+    if (!this.pool) {
+      return this.inMemoryStore.findById(tenantId, messageId);
+    }
+
+    return this.runWithTenant(tenantId, async (client) => {
+      const result = await client.query<MessageRow>(
+        `
+          SELECT content,
+                 conversation_id,
+                 created_at,
+                 deleted_at,
+                 edited_at,
+                 message_id,
+                 message_type,
+                 metadata_json,
+                 sequence_id,
+                 tenant_id,
+                 trace_id,
+                 user_id
+          FROM messages
+          WHERE tenant_id = $1
+            AND message_id = $2
+          LIMIT 1;
+        `,
+        [tenantId, messageId],
+      );
+
+      if (!result.rowCount || result.rowCount === 0) return null;
+      return this.toStoredMessage(result.rows[0]);
+    });
+  }
+
   async updateContent(tenantId: string, messageId: string, content: string): Promise<StoredMessage | null> {
     if (!this.pool) {
-      return this.inMemoryStore.updateContent(tenantId, '', messageId, content);
+      const existingMessage = this.inMemoryStore.findById(tenantId, messageId);
+      if (!existingMessage) return null;
+      return this.inMemoryStore.updateContent(tenantId, existingMessage.conversationId, messageId, content);
     }
 
     return this.runWithTenant(tenantId, async (client) => {
@@ -244,7 +284,9 @@ export class ImMessageRepository {
 
   async softDelete(tenantId: string, messageId: string): Promise<StoredMessage | null> {
     if (!this.pool) {
-      return this.inMemoryStore.softDelete(tenantId, '', messageId);
+      const existingMessage = this.inMemoryStore.findById(tenantId, messageId);
+      if (!existingMessage) return null;
+      return this.inMemoryStore.softDelete(tenantId, existingMessage.conversationId, messageId);
     }
 
     return this.runWithTenant(tenantId, async (client) => {

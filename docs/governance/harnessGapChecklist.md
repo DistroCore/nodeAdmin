@@ -1,6 +1,6 @@
 # Harness 补强清单
 
-> **status**: draft | **last-reviewed**: 2026-06-03
+> **status**: approved | **last-reviewed**: 2026-07-09
 
 ## 1. 背景
 

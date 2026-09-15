@@ -37,19 +37,23 @@ apps/
   coreApi/         ← 后端 NestJS 应用 (CommonJS, port 11451)
     src/
       app/         ← 根模块、配置、过滤器
-      modules/     ← 业务模块 (Health, Auth, Im)
-      infrastructure/ ← 数据库、Redis、消息存储
+      modules/     ← 业务模块 (auth/console/health/im/menus/permissions/plugin/roles/tenants/users)
+      infrastructure/ ← database(RLS)、Redis、Kafka outbox、audit、observability、tenant、resilience、security
   adminPortal/     ← 前端 React 应用 (ESM, port 3000)
     src/
       app/         ← 路由、根组件
       components/
-        ui/        ← shadcn/ui 基础组件 (button, card, input, table, badge, toast)
+        ui/        ← shadcn/ui 基础组件
         business/  ← 业务面板组件
       hooks/       ← 自定义 Hooks (useApiClient, useImSocket)
       stores/      ← Zustand Stores (useAuthStore, useSocketStore, useMessageStore, useUiStore)
       lib/         ← 工具函数 (apiClient, className)
-packages/          ← 共享包（预留）
-docs/              ← 项目文档
+packages/
+  shared-types/    ← 共享 TypeScript 类型/接口 (ESM)
+  plugin-backlog/  ← backlog 业务插件（dogfooding，自持 pg Pool + 自带表/RLS/权限菜单迁移）
+infra/             ← Caddy、Nginx、Prometheus、Grafana 配置
+scripts/           ← 运维与验收脚本 (CommonJS .cjs)
+docs/              ← 架构、交付、运维文档
 ```
 
 ## 命名规范（强制）
@@ -96,13 +100,13 @@ docs/              ← 项目文档
 
 ## 禁止事项
 
-- ❌ 不要使用 `any` 类型（除非绝对必要并添加注释）
-- ❌ 不要使用 `console.log`（使用结构化日志系统）
-- ❌ 不要硬编码 tenantId / userId / conversationId
-- ❌ 不要在代码中直接写 API base URL（使用环境变量）
-- ❌ 不要修改 `.git/` 目录下的文件
-- ❌ 不要自动安装新依赖包（除非任务明确要求）
-- ❌ 不要自动 commit 或 push
+- 不要使用 `any` 类型（除非绝对必要并添加注释）
+- 不要使用 `console.log`（使用结构化日志系统）
+- 不要硬编码 tenantId / userId / conversationId
+- 不要在代码中直接写 API base URL（使用环境变量）
+- 不要修改 `.git/` 目录下的文件
+- 不要自动安装新依赖包（除非任务明确要求）
+- 不要自动 commit 或 push
 
 ## API 路径约定
 
@@ -116,58 +120,54 @@ docs/              ← 项目文档
 - 前端：Vitest + Testing Library (`npm run test:adminPortal`)，E2E 用 Playwright (`npm run test:e2e:web`，仅本地运行)
 - 代码质量：ESLint (`eslint.config.cjs`) + Prettier (`.prettierrc.cjs`)
 
+## 常用命令（速查）
+
+仓库根目录执行，完整清单见 `CLAUDE.md`：
+
+| 命令                                                   | 用途                                               |
+| ------------------------------------------------------ | -------------------------------------------------- |
+| `npm run infra:up`                                     | 启动核心基础设施（PostgreSQL 55432 / Redis 56379） |
+| `npm run dev:api` / `npm run dev:web`                  | 启动后端（11451）/ 前端（3000）                    |
+| `npm run build`                                        | 构建前后端                                         |
+| `npm run test:coreApi` / `npm run test:adminPortal`    | 后端 / 前端单元测试                                |
+| `npm run lint` / `npm run format:check`                | ESLint（零容忍）/ Prettier 检查                    |
+| `npm run check:naming` / `check:layers` / `check:docs` | 命名 / 分层 / 文档漂移结构校验                     |
+| `npm run ci:local`                                     | 本地全量 CI（格式 + lint + 测试 + 构建）           |
+
 ## 多 Agent 协作协议
 
-本项目使用三 agent 协作模式，运行在 tmux `ai-workbench` session 中。
+本项目使用三 agent 协作模式，运行在 tmux `ai-collab` session 中。协作总线是 `ai` 命令（详见公用 skill `ai-collaboration`，项目无关）。
 
 ### 角色与职责
 
-| Agent                    | Pane               | 职责                              | 禁止                          |
-| ------------------------ | ------------------ | --------------------------------- | ----------------------------- |
-| **Claude (Claude Code)** | `ai-workbench:1.1` | 协调、规划、E2E 测试、文档、CI/CD | —                             |
-| **Codex**                | `ai-workbench:1.2` | 后端开发、后端测试、基础设施      | ❌ 前端代码                   |
-| **Gemini**               | `ai-workbench:1.3` | **前端 UI/UX only**               | ❌ 后端、❌ 测试、❌ 基础设施 |
+| Agent                    | Pane                 | 职责                              | 禁止          |
+| ------------------------ | -------------------- | --------------------------------- | ------------- |
+| **Claude (Claude Code)** | `ai-collab:agents.0` | 协调、规划、E2E 测试、文档、CI/CD | —             |
+| **Antigravity (agy)**    | `ai-collab:agents.1` | **前端 UI/UX、原型、可视化**      | 不做后端/协议 |
+| **Codex**                | `ai-collab:agents.2` | 后端开发、后端测试、基础设施      | 不做前端代码  |
 
-### tmux 通讯协议（强制）
+### `ai` 命令总线（强制）
 
-你正在 tmux pane 中运行。当你收到包含路由头的协作消息（如 `[Claude][to:Codex][task:T-XXX][msg:M-XXX][P1][task] ...`），**必须通过 tmux 回发到发送方的 pane**，不能只在本地对话中回复。
-
-**核心规则：本地 CLI 输出 ≠ 已回复对方。只有通过 tmux 发回对方 pane 才算真正回复。**
-
-#### 回复流程
-
-1. 解析路由头中的 `to:`，确认消息是发给自己的
-2. 立即用脚本发一个短 `ack` 回给发送方
-3. 处理完任务后，再补发 `answer` / `done` / `blocked`
-
-#### 发送脚本
+你正在 tmux pane 中运行。**必须通过 `ai` 命令发消息——本地 CLI 输出对方收不到。**
 
 ```bash
-# 回复 Claude（发到 Claude 的 pane）
-~/.claude/skills/tmux-ai-collab/scripts/sendTmuxAiMessage.sh \
-  --to claude \
-  --message "[Codex][to:Claude][task:T-XXX][msg:M-XXX][inReplyTo:M-XXX][P1][answer] 回复内容"
-
-# 自动生成并发送 ack（推荐，从原始消息自动解析路由头）
-~/.claude/skills/tmux-ai-collab/scripts/autoAckTmuxAiMessage.sh \
-  --as codex \
-  --message "粘贴收到的原始消息"
+ai send claude "短消息"
+ai send antigravity "短消息"   # 别名 agy
+ai send codex "短消息"
+ai broadcast "发给全体（跳过自己）"
+ai ack <sender> "收到；简短计划"
+ai final <sender> "result: 结论/产物；files: 路径；verify: 命令/结果；next: 后续"
+ai read <agent> [行数]
+ai log [n]
+ai panes
 ```
 
-#### 消息格式
+- 每条发送追加到 `~/.local/share/ai-collab/messages.log`，`ai log [n]` 看尾部；消息格式 `[sender -> recipient HH:MM:SS]`。
+- 响应协议：收到 task/求助，最多回两次——先一条 `ack`，做完一条 `final`，中间不发进度闲聊；需澄清就把阻塞问题写进 `final`。
 
-```
-[发送方][to:接收方][task:T-XXX][msg:M-XXX][优先级][消息类型]
-正文内容
-```
+### 完整协议
 
-- 优先级：P0（阻塞/破坏性）/ P1（核心协作）/ P2（非阻塞）
-- 消息类型：task / question / answer / update / blocked / done / review / handoff
-- 回复时加 `[inReplyTo:M-XXX]`
-
-#### 完整协议
-
-详细规则见 skill 文件：`~/.codex/skills/tmux-ai-collab/SKILL.md`
+详见公用 skill：`~/.claude/skills/ai-collaboration/SKILL.md`（项目无关，勿在其中写项目专属内容）。
 
 ## 相关文档
 
