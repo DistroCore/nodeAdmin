@@ -44,3 +44,7 @@
 
 - 迁移：`apps/coreApi/drizzle/migrations/`（`0000` outbox、`0001`/`0009` RLS、`0016` RBAC、`0022` conversation_members、`0025` booleanize、`0003` audit）。
 - 文档：`architectureBaseline.md`、`coreVsPluginBoundary.md`；强制约束见根 `CLAUDE.md` / `AGENTS.md`。
+
+## 最近更新时间
+
+- 2026-06-17（首版：把框架已在执行的设计原则显式化，每条配证据与反模式）
