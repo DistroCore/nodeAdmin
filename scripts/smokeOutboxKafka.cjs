@@ -17,7 +17,10 @@ const outboxPartitions = Number(process.env.OUTBOX_TOPIC_PARTITIONS || 6);
 const dlqPartitions = Number(process.env.OUTBOX_DLQ_TOPIC_PARTITIONS || 6);
 const tenantId = (process.env.SMOKE_TENANT_ID || 'tenant-demo').trim();
 const userId = (process.env.SMOKE_USER_ID || 'smoke-outbox-user').trim();
-const conversationId = (process.env.SMOKE_CONVERSATION_ID || 'conversation-outbox').trim();
+// Empty means "create a fresh conversation for this run". As in smokeImFlow.cjs, the previous
+// hard-coded default was never created anywhere, so joinConversation never acked and this smoke
+// test hung until the surrounding CI step timed out.
+const conversationId = (process.env.SMOKE_CONVERSATION_ID || '').trim();
 const waitTimeoutMs = Number(process.env.SMOKE_OUTBOX_TIMEOUT_MS || 15000);
 
 async function issueAccessToken() {
@@ -87,12 +90,64 @@ async function ensureTopic(admin, topic, targetPartitions) {
 
 function wait(ms) {
   return new Promise((resolve) => {
-    setTimeout(resolve, ms);
+    setTimeout(resolve, Math.max(0, ms));
   });
+}
+
+function withTimeout(promise, label, timeoutMs = 5000) {
+  return new Promise((resolve, reject) => {
+    const timeoutHandle = setTimeout(() => {
+      reject(new Error(`Timeout waiting for ${label} (${timeoutMs}ms)`));
+    }, timeoutMs);
+
+    promise.then(
+      (value) => {
+        clearTimeout(timeoutHandle);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timeoutHandle);
+        reject(error);
+      },
+    );
+  });
+}
+
+async function ensureConversation(accessToken) {
+  if (conversationId) {
+    return conversationId;
+  }
+
+  const response = await fetch(`${baseUrl}/api/v1/im/conversations`, {
+    body: JSON.stringify({
+      // A group conversation must include at least one member other than the creator;
+      // the creator is added automatically as admin.
+      memberUserIds: [`${userId}-peer`],
+      title: 'smoke-outbox-conversation',
+      type: 'group',
+    }),
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Create conversation failed with status ${response.status}`);
+  }
+
+  const payload = await response.json();
+  if (!payload || typeof payload.id !== 'string' || payload.id.length === 0) {
+    throw new Error('Create conversation response missing id.');
+  }
+
+  return payload.id;
 }
 
 async function run() {
   const accessToken = await issueAccessToken();
+  const activeConversationId = await ensureConversation(accessToken);
   const messageId = `outbox-smoke-${randomUUID()}`;
   const traceId = `trace-${randomUUID()}`;
   const kafka = new Kafka({
@@ -129,40 +184,49 @@ async function run() {
   });
 
   try {
-    await new Promise((resolve, reject) => {
-      socket.once('connect', resolve);
-      socket.once('connect_error', (error) => reject(error));
-    });
+    await withTimeout(
+      new Promise((resolve, reject) => {
+        socket.once('connect', resolve);
+        socket.once('connect_error', (error) => reject(error));
+      }),
+      'socket connect',
+    );
 
-    await new Promise((resolve, reject) => {
-      socket.emit('joinConversation', { conversationId }, (ack) => {
-        if (!ack || ack.ok !== true) {
-          reject(new Error('joinConversation ack failed'));
-          return;
-        }
-        resolve();
-      });
-    });
-
-    await new Promise((resolve, reject) => {
-      socket.emit(
-        'sendMessage',
-        {
-          content: `[outbox-smoke] ${new Date().toISOString()}`,
-          conversationId,
-          messageId,
-          messageType: 'system',
-          traceId,
-        },
-        (ack) => {
-          if (!ack || ack.accepted !== true) {
-            reject(new Error('sendMessage ack failed'));
+    await withTimeout(
+      new Promise((resolve, reject) => {
+        socket.emit('joinConversation', { conversationId: activeConversationId }, (ack) => {
+          if (!ack || ack.ok !== true) {
+            reject(new Error(`joinConversation ack failed: ${JSON.stringify(ack)}`));
             return;
           }
           resolve();
-        },
-      );
-    });
+        });
+      }),
+      'joinConversation ack',
+    );
+
+    await withTimeout(
+      new Promise((resolve, reject) => {
+        socket.emit(
+          'sendMessage',
+          {
+            content: `[outbox-smoke] ${new Date().toISOString()}`,
+            conversationId: activeConversationId,
+            messageId,
+            messageType: 'system',
+            traceId,
+          },
+          (ack) => {
+            if (!ack || ack.accepted !== true) {
+              reject(new Error(`sendMessage ack failed: ${JSON.stringify(ack)}`));
+              return;
+            }
+            resolve();
+          },
+        );
+      }),
+      'sendMessage ack',
+    );
 
     const startedAt = Date.now();
     while (Date.now() - startedAt < waitTimeoutMs) {
