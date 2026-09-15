@@ -1,10 +1,10 @@
-<div align="center">
+**简体中文** | [English](README.en.md)
 
-**English** | [简体中文](README.zh-CN.md)
+<div align="center">
 
 # nodeAdmin
 
-**An opinionated, enterprise-grade framework for building multi-tenant middle/back-office applications — fast.**
+**一个有主见的企业级多租户中后台框架 —— 让你把平台层这件事一次做完。**
 
 NestJS 11 + Fastify · React 18 + Vite 6 · PostgreSQL (RLS) · Redis · Kafka · Socket.IO · OpenTelemetry
 
@@ -16,67 +16,67 @@ NestJS 11 + Fastify · React 18 + Vite 6 · PostgreSQL (RLS) · Redis · Kafka �
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-[Quick start](#quick-start) · [Features](#what-you-get) · [Architecture](#architecture) · [Documentation](#documentation) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
+[快速开始](#快速开始) · [特性](#特性) · [架构](#架构) · [文档](#文档) · [贡献](#贡献) · [安全](SECURITY.md)
 
 </div>
 
 ---
 
-## Why nodeAdmin
+## 为什么要有 nodeAdmin
 
-Most "admin dashboard" starters solve the UI and stop there. Real internal platforms need a lot more than a sidebar and a table: multi-tenant isolation, auth/RBAC, audit logging, async messaging, realtime delivery, observability, a plugin story, and a CI pipeline you can actually trust.
+多数「后台管理模板」只把界面搭好就结束了。但真正要上线的内部平台远不止侧边栏加表格：多租户隔离、认证与 RBAC、审计日志、异步消息、实时推送、可观测性、插件机制，以及一条**你真敢信的** CI 流水线。
 
-**nodeAdmin is a framework, not a product.** It is designed to be **forked and extended** — you bring your business domain, it brings the platform plumbing. A reference IM (instant messaging) module is included to prove every piece of that plumbing actually works end-to-end at 1万+ concurrent connections.
+**nodeAdmin 是框架，不是产品。** 它的设计目标是**被 fork 后扩展** —— 你带业务域进来，它提供平台层的水电煤。仓库内置一个参照实现（IM 即时通讯模块），用来证明这套平台层在 **1 万+ 并发连接**下确实端到端跑得通，而不是纸面能力。
 
-> The companion modules (Agent services, vertical integrations, etc.) that used to live here have been moved to downstream forks. The upstream `nodeAdmin` repo now focuses exclusively on **framework DX, platform stability, and extensibility**. See [roadmap §9](docs/delivery/roadmapPlan.md#9-phase-5m3-之后的增量能力) and decision log `D-019` for the positioning.
+> 曾经放在本仓库的配套模块（Agent 服务、垂直行业集成等）已迁至下游 fork。上游 `nodeAdmin` 现在只聚焦三件事：**框架开发体验、平台稳定性、可扩展性**。定位说明见 [roadmap §9](docs/delivery/roadmapPlan.md#9-phase-5m3-之后的增量能力) 与决策记录 `D-019`。
 
-## What you get
+## 特性
 
-### 🚀 Developer Experience
+### 🚀 开发体验
 
-- **Swagger / OpenAPI out of the box** — every controller tagged, every DTO annotated, served at `/api/docs` behind `SWAGGER_ENABLED`
-- **Code generator CLI** — `npm run generate:crud` scaffolds controller + service + Drizzle schema + DTO + React page from one command
-- **Shared TypeScript types** — `packages/shared-types` keeps the wire protocol honest across the stack; the FE cannot drift from the BE
-- **shadcn/ui + Tailwind** preconfigured with design tokens, dark mode, and 20+ business components ready to compose
-- **Plugin marketplace** — drop-in NestJS modules and React pages with dynamic `import()` + importmap shared deps; install/uninstall/update without redeploy
-- **Zero-warning lint** policy, Prettier, strict TS, and a one-shot `npm run ci:local` that mirrors GitHub Actions
+- **开箱即用的 Swagger / OpenAPI** —— 每个 controller 都有 tag、每个 DTO 都有注解，由 `SWAGGER_ENABLED` 控制，挂在 `/api/docs`
+- **代码生成 CLI** —— `npm run generate:crud` 一条命令生成 controller + service + Drizzle schema + DTO + React 页面
+- **前后端共享类型** —— `packages/shared-types` 让接口协议无法悄悄漂移：前端想跟后端不一致都难
+- **shadcn/ui + Tailwind** 已预配置设计令牌、暗色模式，以及 20+ 个可直接组合的业务组件
+- **插件市场** —— NestJS 模块与 React 页面以动态 `import()` + importmap 共享依赖的方式即插即用；安装 / 卸载 / 更新**都不需要重新部署**
+- **零警告 lint** 策略、Prettier、严格 TS，以及一条与 GitHub Actions 对齐的 `npm run ci:local`
 
-### 🛡 Platform Stability
+### 🛡 平台稳定性
 
-- **6-job CI pipeline** — static / unit-test / audit / build / integration / docker-build, with artifact sharing and failure log collection
-- **Supply-chain gate** — `audit-ci` blocks high/critical advisories; allowlist entries carry mandatory expiry dates that CI enforces
-- **Security-first defaults** — JWT auth, RLS-backed multi-tenancy, structured audit log, encrypted secrets, hardened `.dockerignore`
-- **Outbox pattern** — every business write that publishes an event inserts the outbox row in the same DB transaction, then a Kafka consumer drains it. No double-writes, no lost messages, idempotent consumers
-- **Postgres RLS** — tenant isolation is enforced by the database, not by the application layer alone
-- **OpenTelemetry** tracing + structured logging + Prometheus metrics + Grafana dashboards + Alertmanager rules, all wired in infra/
-- **Load-tested to 10,000 concurrent Socket.IO connections** (see `docs/delivery/m2CapacityBaseline.md`)
+- **6 段 CI 流水线** —— 静态检查 / 单元测试 / 依赖审计 / 构建 / 集成 / 镜像构建，带产物传递与失败日志收集
+- **供应链闸门** —— `audit-ci` 拦截高危与严重级依赖告警；白名单条目**必须带过期时间**，由 CI 强制校验
+- **安全优先的默认值** —— JWT 认证、RLS 支撑的多租户、结构化审计日志、密钥加密、加固过的 `.dockerignore`
+- **Outbox 模式** —— 每一次会发事件的业务写入，都在**同一个事务**里落一条 outbox 记录，再由 Kafka 消费者投递。不双写、不丢消息、消费端幂等
+- **Postgres RLS** —— 租户隔离由**数据库**强制，而不是只靠应用层自觉
+- **OpenTelemetry** 链路追踪 + 结构化日志 + Prometheus 指标 + Grafana 看板 + Alertmanager 告警规则，全部在 `infra/` 里接好
+- **经压测验证支持 1 万并发 Socket.IO 连接**（见 `docs/delivery/m2CapacityBaseline.md`）
 
-### 🧩 Extensibility
+### 🧩 可扩展性
 
-- **`TenantContext` + `SINGLE_TENANT_MODE`** — one codebase, one deployment model for both single-tenant and multi-tenant installs (decision `D-015`)
-- **Plugin marketplace Phase 0–2 complete** — manifest validation, dynamic module registration, React.lazy FE loading, shared deps via importmap, install/uninstall/publish/auto-update APIs
-- **Modernizer module** — analyze / docSync / controller pipeline that keeps API docs and schemas in lockstep with code
-- **PgBouncer, Redis Cluster, Kafka partitioning** all validated in the reference docker-compose — not aspirational
+- **`TenantContext` + `SINGLE_TENANT_MODE`** —— 一套代码、一种部署模型，同时支持单租户与多租户交付（决策 `D-015`）
+- **插件市场 Phase 0–2 已完成** —— manifest 校验、动态模块注册、React.lazy 前端加载、importmap 共享依赖、安装 / 卸载 / 发布 / 自动更新 API
+- **Modernizer 模块** —— analyze / docSync / controller 管线，让 API 文档与 schema 始终和代码同步
+- **PgBouncer、Redis Cluster、Kafka 分区** 都在参考版 docker-compose 里实测通过 —— 不是「计划支持」
 
-## Tech stack
+## 技术栈
 
-| Layer                  | Choice                                                        | Why                                                         |
-| ---------------------- | ------------------------------------------------------------- | ----------------------------------------------------------- |
-| **Runtime**            | Node.js ≥ 22                                                  | Top-level await, native test runner, performance            |
-| **Backend framework**  | NestJS 11 + Fastify 11                                        | DI + decorators + the fastest Node HTTP adapter             |
-| **Database**           | PostgreSQL 16 + [Drizzle ORM](https://orm.drizzle.team/) 0.45 | Type-safe SQL, RLS for tenant isolation, honest migrations  |
-| **Connection pooling** | PgBouncer (transaction mode)                                  | Survives the "1万 connections" stampede                     |
-| **Cache / pub-sub**    | Redis 7                                                       | Socket.IO adapter, rate limiting, session store             |
-| **Async messaging**    | Kafka 3 (KRaft) + Outbox pattern                              | At-least-once delivery, conversation-scoped ordering        |
-| **Realtime**           | Socket.IO 4 + Redis Adapter                                   | Horizontal scale-out across pods                            |
-| **Frontend framework** | React 18 + Vite 6                                             | HMR in <100ms, ESM everywhere                               |
-| **UI primitives**      | Tailwind CSS + shadcn/ui                                      | Copy-paste components, no runtime CSS-in-JS                 |
-| **Server state**       | TanStack Query 5                                              | Cache invalidation is not your problem anymore              |
-| **Client state**       | Zustand 5                                                     | Less boilerplate than Redux, more predictable than Context  |
-| **Observability**      | OpenTelemetry + Prometheus + Grafana + Alertmanager           | Traces, metrics, logs, alerts — all correlated by `traceId` |
-| **CI / Quality gates** | GitHub Actions + ESLint + Prettier + Vitest + audit-ci        | Zero-warning lint, supply-chain audit, allowlist expiry     |
+| 层 | 选型 | 理由 |
+| --- | --- | --- |
+| **运行时** | Node.js ≥ 22 | 顶层 await、原生测试运行器、性能 |
+| **后端框架** | NestJS 11 + Fastify 11 | DI + 装饰器 + 最快的 Node HTTP 适配器 |
+| **数据库** | PostgreSQL 16 + [Drizzle ORM](https://orm.drizzle.team/) 0.45 | 类型安全 SQL、用 RLS 做租户隔离、迁移可读可审 |
+| **连接池** | PgBouncer（transaction 模式） | 扛住「1 万连接」的冲击 |
+| **缓存 / 发布订阅** | Redis 7 | Socket.IO 适配器、限流、会话存储 |
+| **异步消息** | Kafka 3 (KRaft) + Outbox 模式 | 至少一次投递、会话内有序 |
+| **实时通信** | Socket.IO 4 + Redis Adapter | 跨节点水平扩展 |
+| **前端框架** | React 18 + Vite 6 | HMR 小于 100ms，全链路 ESM |
+| **UI 基元** | Tailwind CSS + shadcn/ui | 组件是代码不是依赖，无运行时 CSS-in-JS |
+| **服务端状态** | TanStack Query 5 | 缓存失效不再是你的事 |
+| **客户端状态** | Zustand 5 | 比 Redux 少样板，比 Context 更可预测 |
+| **可观测性** | OpenTelemetry + Prometheus + Grafana + Alertmanager | 链路、指标、日志、告警全部按 `traceId` 关联 |
+| **CI / 质量门禁** | GitHub Actions + ESLint + Prettier + Vitest + audit-ci | 零警告 lint、供应链审计、白名单过期强制 |
 
-## Architecture
+## 架构
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -99,138 +99,138 @@ Most "admin dashboard" starters solve the UI and stop there. Real internal platf
 └─────┘    └─────────┘   └─────────┘   └───────────┘   └─────────┘
 ```
 
-- **Request flow**: `Controller → DTO validation → Service → Repository → Drizzle → Postgres (with RLS)`
-- **Event flow**: `Service writes business row + outbox row in one TX → Kafka consumer publishes → downstream consumers (idempotent by eventId)`
-- **Realtime flow**: `Socket.IO gateway → Redis adapter → fan-out to all nodes → client delivery ACK → sequence-id reconcile`
+- **请求链路**：`Controller → DTO 校验 → Service → Repository → Drizzle → Postgres（带 RLS）`
+- **事件链路**：`Service 在一个事务里写业务行 + outbox 行 → Kafka 消费者投递 → 下游消费（按 eventId 幂等）`
+- **实时链路**：`Socket.IO 网关 → Redis 适配器 → 扇出到所有节点 → 客户端投递 ACK → 按序列号对账`
 
-Deeper reading: [`docs/architecture/`](docs/architecture/), [`docs/platformSpec.md`](docs/platformSpec.md).
+深入阅读：[`docs/architecture/`](docs/architecture/)、[`docs/platformSpec.md`](docs/platformSpec.md)。
 
-## Quick start
+## 快速开始
 
-**Requirements**: Node.js ≥ 22, npm ≥ 10, Docker + Docker Compose.
+**环境要求**：Node.js ≥ 22、npm ≥ 10、Docker + Docker Compose。
 
 ```bash
-# 1. Clone & install
+# 1. 克隆并安装
 git clone https://github.com/DistroCore/nodeAdmin.git
 cd nodeAdmin
 npm ci
 
-# 2. Start infra (PostgreSQL 55432, PgBouncer 6432, Redis 56379)
+# 2. 启动基础设施（PostgreSQL 55432、PgBouncer 6432、Redis 56379）
 npm run infra:up
 
-# 3. Configure environment
+# 3. 配置环境变量
 cp apps/coreApi/.env.example apps/coreApi/.env
 
-# 4. Apply database migrations
+# 4. 执行数据库迁移
 npm run db:migrate -w coreApi
 
-# 5. Start dev servers (two terminals, or run in background)
-npm run dev:api    # CoreApi backend — http://localhost:11451
-npm run dev:web    # AdminPortal    — http://localhost:3000
+# 5. 启动开发服务（两个终端，或后台运行）
+npm run dev:api    # CoreApi 后端 —— http://localhost:11451
+npm run dev:web    # AdminPortal  —— http://localhost:3000
 ```
 
-Then open:
+然后打开：
 
-- **Admin portal** → http://localhost:3000
-- **API docs (Swagger)** → http://localhost:11451/api/docs
-- **Health** → http://localhost:11451/health
+- **管理后台** → http://localhost:3000
+- **API 文档（Swagger）** → http://localhost:11451/api/docs
+- **健康检查** → http://localhost:11451/health
 
-### Default login
+### 默认账号
 
-| Email                 | Password      | Tenant    | Role          |
-| --------------------- | ------------- | --------- | ------------- |
+| 邮箱 | 密码 | 租户 | 角色 |
+| --- | --- | --- | --- |
 | `admin@nodeadmin.dev` | `Admin123456` | `default` | `super-admin` |
 
-Register additional accounts at http://localhost:3000/register.
+在 http://localhost:3000/register 可以继续注册账号。
 
-### Optional profiles
+### 可选启用的组件
 
 ```bash
-npm run infra:up:kafka        # + Kafka + Zookeeper (for outbox event flow)
+npm run infra:up:kafka        # + Kafka + Zookeeper（跑 outbox 事件链路用）
 npm run infra:up:monitoring   # + Prometheus + Grafana + Alertmanager
-npm run infra:up:tls          # + Nginx TLS proxy on :3443
+npm run infra:up:tls          # + Nginx TLS 代理，监听 :3443
 ```
 
-## Local CI
+## 本地 CI
 
-Before opening a PR, run the same checks GitHub Actions runs (minus the integration-heavy jobs):
+开 PR 之前，跑一遍和 GitHub Actions 相同的检查（不含重集成的那几项）：
 
 ```bash
 npm run ci:local     # format:check → lint → test:coreApi + test:adminPortal → build
 ```
 
-Or step by step:
+也可以逐步执行：
 
 ```bash
 npm run format:check
-npm run lint                  # --max-warnings=0, zero tolerance
-npm run test:coreApi          # Vitest backend unit tests
-npm run test:adminPortal      # Vitest frontend unit tests
-npm run build                 # Both apps
+npm run lint                  # --max-warnings=0，零容忍
+npm run test:coreApi          # Vitest 后端单元测试
+npm run test:adminPortal      # Vitest 前端单元测试
+npm run build                 # 前后端一起构建
 ```
 
-Backend integration tests (need `npm run infra:up` first):
+后端集成测试（需先 `npm run infra:up`）：
 
 ```bash
 npm run test:coreApi:integration
-npm run m2:acceptance:auto    # end-to-end M2 milestone acceptance
+npm run m2:acceptance:auto    # M2 里程碑端到端验收
 ```
 
-## Documentation
+## 文档
 
-| Topic                               | File                                                                                       |
-| ----------------------------------- | ------------------------------------------------------------------------------------------ |
-| Architecture deep-dive              | [`docs/architecture/`](docs/architecture/)                                                 |
-| Platform spec (non-functional reqs) | [`docs/platformSpec.md`](docs/platformSpec.md)                                             |
-| API endpoint catalogue              | [`docs/api-endpoints.md`](docs/api-endpoints.md)                                           |
-| Roadmap & milestone history         | [`docs/delivery/roadmapPlan.md`](docs/delivery/roadmapPlan.md)                             |
-| Decision log (ADRs)                 | [`docs/governance/decisionLog.md`](docs/governance/decisionLog.md)                         |
-| Security policy                     | [`SECURITY.md`](SECURITY.md)                                                               |
-| Contributing guide                  | [`CONTRIBUTING.md`](CONTRIBUTING.md)                                                       |
-| Operations runbooks                 | [`docs/operations/`](docs/operations/)                                                     |
-| Plugin marketplace                  | [`docs/architecture/pluginMarketplacePlan.md`](docs/architecture/pluginMarketplacePlan.md) |
-| Full doc index                      | [`docs/docIndex.md`](docs/docIndex.md)                                                     |
+| 主题 | 文件 |
+| --- | --- |
+| 架构深入 | [`docs/architecture/`](docs/architecture/) |
+| 平台规格（非功能需求） | [`docs/platformSpec.md`](docs/platformSpec.md) |
+| API 接口目录 | [`docs/api-endpoints.md`](docs/api-endpoints.md) |
+| 路线图与里程碑历史 | [`docs/delivery/roadmapPlan.md`](docs/delivery/roadmapPlan.md) |
+| 决策记录（ADR） | [`docs/governance/decisionLog.md`](docs/governance/decisionLog.md) |
+| 安全策略 | [`SECURITY.md`](SECURITY.md) |
+| 贡献指南 | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
+| 运维手册 | [`docs/operations/`](docs/operations/) |
+| 插件市场 | [`docs/architecture/pluginMarketplacePlan.md`](docs/architecture/pluginMarketplacePlan.md) |
+| 完整文档索引 | [`docs/docIndex.md`](docs/docIndex.md) |
 
-## Project status
+## 项目状态
 
-nodeAdmin has cleared all three MVP milestones:
+nodeAdmin 已通过全部三个 MVP 里程碑：
 
-| Milestone         | Scope                                                                            | Status |
-| ----------------- | -------------------------------------------------------------------------------- | ------ |
-| **M1 — Usable**   | Main request/event paths up, core APIs stable, Phase 1 → 2 capacity gates passed | ✅     |
-| **M2 — Reliable** | Idempotency, retries, alerting, load tests at 10K concurrent connections         | ✅     |
-| **M3 — Operable** | Audit, DR drills, SLA dashboards, on-call handbook                               | ✅     |
+| 里程碑 | 范围 | 状态 |
+| --- | --- | --- |
+| **M1 — 可用** | 主请求 / 事件链路打通，核心 API 稳定，Phase 1 → 2 容量门禁通过 | ✅ |
+| **M2 — 可靠** | 幂等、重试、告警，1 万并发连接压测 | ✅ |
+| **M3 — 可运维** | 审计、容灾演练、SLA 看板、值班手册 | ✅ |
 
-Since M3, the project is in **Phase 5** — incremental framework-level improvements only. No new business verticals ship in the upstream repo; see [`docs/delivery/roadmapPlan.md §9`](docs/delivery/roadmapPlan.md#9-phase-5m3-之后的增量能力).
+M3 之后项目进入 **Phase 5** —— 只做框架层的增量改进。上游仓库不再新增业务垂类，见 [`docs/delivery/roadmapPlan.md §9`](docs/delivery/roadmapPlan.md#9-phase-5m3-之后的增量能力)。
 
-## Known tech debt
+## 已知技术债
 
-We keep this list short and honest rather than hide it. Full details and tracking IDs in [`roadmapPlan.md §9.3`](docs/delivery/roadmapPlan.md#93-tech-debt按紧迫度排序).
+我们选择把这份清单保持得又短又诚实，而不是藏起来。完整细节与跟踪编号见 [`roadmapPlan.md §9.3`](docs/delivery/roadmapPlan.md#93-tech-debt按紧迫度排序)。
 
-- **TD-1** — `@nestjs/swagger@11.2.6` exact-pins `lodash@4.17.23` and `path-to-regexp@8.3.0`, forcing an `audit-ci` allowlist entry that expires **2026-07-07**
-- **TD-2** — `react-intl@10.1.1` × `@types/react@18.3.28` peer conflict means only `npm ci` produces a clean install; `npm install` cannot cleanly rebuild the lockfile
-- **TD-3** — Playwright E2E was removed from CI (commit `c33a0fc`) due to flakiness; root-cause is still open before it can be re-added
+- **TD-1** —— `@nestjs/swagger@11.2.6` 精确锁定了 `lodash@4.17.23` 与 `path-to-regexp@8.3.0`，导致必须在 `audit-ci` 白名单里留一条记录，该记录**2026-07-07 过期**
+- **TD-2** —— `react-intl@10.1.1` 与 `@types/react@18.3.28` 存在 peer 冲突，只有 `npm ci` 能装出干净依赖；`npm install` 无法干净地重建 lockfile
+- **TD-3** —— Playwright E2E 因不稳定已从 CI 移除（提交 `c33a0fc`），根因仍在排查，之后才能重新纳入
 
-New contributors: any of the above is a great first-PR target. Open an issue before starting so we can coordinate.
+新贡献者注意：以上任何一条都是很好的第一个 PR 目标。动手前请先开 issue 协调一下。
 
-## Contributing
+## 贡献
 
-We welcome issues, PRs, documentation improvements, and community plugins. Start here: [`CONTRIBUTING.md`](CONTRIBUTING.md).
+我们欢迎 issue、PR、文档改进和社区插件。从这里开始：[`CONTRIBUTING.md`](CONTRIBUTING.md)。
 
-Because nodeAdmin is designed to be forked, most downstream work happens in your fork. Only **framework-level** improvements (DX, stability, extensibility, security) need to come back upstream — business features belong in the fork.
+因为 nodeAdmin 的设计目标就是被 fork，大部分下游工作发生在你自己的 fork 里。只有**框架层**的改进（开发体验、稳定性、可扩展性、安全）才需要回流上游 —— 业务功能属于 fork。
 
-## Community & support
+## 社区与支持
 
-- **Bugs / feature requests** — use the [issue tracker](https://github.com/DistroCore/nodeAdmin/issues) with the appropriate template
-- **Security vulnerabilities** — **do not** open a public issue; see [`SECURITY.md`](SECURITY.md) for the private disclosure flow
-- **Discussions** — use GitHub Discussions for design questions and show-and-tell (enable in repo Settings → Features if not yet on)
+- **缺陷 / 功能请求** —— 用 [issue 追踪器](https://github.com/DistroCore/nodeAdmin/issues)，请选择合适的模板
+- **安全漏洞** —— **不要**开公开 issue；私有披露流程见 [`SECURITY.md`](SECURITY.md)
+- **讨论** —— 设计问题与作品分享请用 GitHub Discussions（若尚未开启，在仓库 Settings → Features 中打开）
 
-## License
+## 许可
 
-nodeAdmin is released under the [MIT License](LICENSE). You are free to use, copy, modify, merge, publish, distribute, sublicense, and sell copies of the software, subject to the conditions in the license file. Contributions are accepted under the same terms.
+nodeAdmin 基于 [MIT License](LICENSE) 发布。你可以在遵守许可条件的前提下自由使用、复制、修改、合并、发布、分发、再授权与销售本软件。贡献同样按此条款接受。
 
 ---
 
 <div align="center">
-Built with care for teams that refuse to re-invent the platform layer on every project.
+为那些拒绝在每个项目上重新发明平台层的团队而做。
 </div>
